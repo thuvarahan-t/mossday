@@ -1,11 +1,12 @@
-import { useCallback, type ReactNode } from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useCallback, type ComponentRef, type ReactNode, type Ref } from 'react';
+import { Pressable, type PressableProps, type StyleProp, type View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { scales } from '@/constants/motion';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
 
-export type PressableScaleProps = Omit<PressableProps, 'style' | 'children'> & {
+export type PressableScaleProps = Omit<PressableProps, 'style' | 'children' | 'ref'> & {
+  ref?: Ref<ComponentRef<typeof View>>;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
   /** Scale while pressed; defaults to the app-wide 0.96. */

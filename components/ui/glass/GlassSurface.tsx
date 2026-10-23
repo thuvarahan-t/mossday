@@ -2,26 +2,36 @@ import { BlurView } from 'expo-blur';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import type { ColorToken } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useBlurTarget } from './BlurTarget';
 
-export type GlassMaterial = 'regular' | 'hud';
+/**
+ * - `regular`: translucent bars and buttons.
+ * - `hud`: always-dark material for toasts (UI-ANALYSIS R14).
+ * - `sheet` / `groupedSheet`: the near-opaque sheet materials from the design, still with
+ *   the glass edge highlight.
+ */
+export type GlassMaterial = 'regular' | 'hud' | 'sheet' | 'groupedSheet';
 
 export type GlassSurfaceProps = {
   children?: ReactNode;
   /** Corner radius applied to every layer; defaults to a full pill. */
   radius?: number;
-  /** `hud` is the always-dark material used by toasts (UI-ANALYSIS R14). */
+  /** Round only the top corners (sheets). */
+  topCornersOnly?: boolean;
   material?: GlassMaterial;
   /** 0→1 press progress from `PressableScale`; brightens the surface while pressed. */
   pressProgress?: SharedValue<number>;
-  /** Drop the floating shadow (e.g. glass that is part of a sheet edge). */
+  /** Drop the floating shadow. */
   flat?: boolean;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
 };
 
 const BLUR_INTENSITY = { light: 60, dark: 50 } as const;
+
+const OPAQUE_MATERIALS: Partial<Record<GlassMaterial, ColorToken>> = { sheet: 'sheet', groupedSheet: 'groupedSheet' };
 
 function useReduceTransparency() {
   const [enabled, setEnabled] = useState(false);
@@ -39,7 +49,7 @@ function useReduceTransparency() {
  * Reduce Transparency) it renders a near-opaque fill that reads the same.
  */
 export function GlassSurface({
-  children, radius, material = 'regular', pressProgress, flat, style, contentStyle,
+  children, radius, topCornersOnly, material = 'regular', pressProgress, flat, style, contentStyle,
 }: GlassSurfaceProps) {
   const theme = useTheme();
   const target = useBlurTarget();
@@ -47,16 +57,22 @@ export function GlassSurface({
   const { colors } = theme;
   const cornerRadius = radius ?? theme.radii.pill;
   const isHud = material === 'hud';
-  const canBlur = !!target && !reduceTransparency;
+  const opaqueToken = OPAQUE_MATERIALS[material];
+  const canBlur = !!target && !reduceTransparency && !opaqueToken;
 
-  const tint = isHud ? colors.hudTint : canBlur ? colors.glassTint : colors.glassFallback;
+  const tint = opaqueToken
+    ? colors[opaqueToken]
+    : isHud ? colors.hudTint : canBlur ? colors.glassTint : colors.glassFallback;
   const blurTint = isHud || theme.isDark ? 'dark' : 'light';
 
   const pressedStyle = useAnimatedStyle(() => ({ opacity: pressProgress?.get() ?? 0 }));
-  const corners = { borderRadius: cornerRadius, borderCurve: 'continuous' } as const;
+  const corners: ViewStyle = topCornersOnly
+    ? { borderTopLeftRadius: cornerRadius, borderTopRightRadius: cornerRadius, borderCurve: 'continuous' }
+    : { borderRadius: cornerRadius, borderCurve: 'continuous' };
+  const shadow = material === 'sheet' || material === 'groupedSheet' ? theme.shadows.sheet : theme.shadows.floating;
 
   return (
-    <View style={[corners, !flat && { boxShadow: theme.shadows.floating }, style]}>
+    <View style={[corners, !flat && { boxShadow: shadow }, style]}>
       <View style={[StyleSheet.absoluteFill, corners, styles.clip]} pointerEvents="none">
         {canBlur && (
           <BlurView
@@ -78,7 +94,7 @@ export function GlassSurface({
             StyleSheet.absoluteFill, corners,
             {
               borderWidth: theme.sizes.hairline,
-              borderColor: colors.glassBorder,
+              borderColor: opaqueToken ? 'transparent' : colors.glassBorder,
               borderTopColor: isHud ? colors.hudFill : colors.glassHighlight,
             },
           ]}

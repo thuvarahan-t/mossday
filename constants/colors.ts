@@ -42,6 +42,7 @@ const light = {
   danger: '#FF3B30',
   dangerText: '#D70015',
   dangerFill: 'rgba(255, 59, 48, 0.12)',
+  onDanger: '#FFFFFF',
   warning: '#FF9500',
   warningText: '#C93400',
   // Glass
@@ -56,6 +57,10 @@ const light = {
   hudAccent: '#30D158',
   hudFill: 'rgba(255, 255, 255, 0.14)',
   scrim: 'rgba(0, 0, 0, 0.22)',
+  /** Shows around the app while a large sheet scales it down (iOS card stack). */
+  underlay: '#000000',
+  /** Context menu backdrop over the blurred app. */
+  menuScrim: 'rgba(0, 0, 0, 0.12)',
   shadow: '#000000',
 };
 
@@ -82,6 +87,7 @@ const dark: ColorTokens = {
   danger: '#FF453A',
   dangerText: '#FF6961',
   dangerFill: 'rgba(255, 69, 58, 0.18)',
+  onDanger: '#FFFFFF',
   warning: '#FF9F0A',
   warningText: '#FFB340',
   glassTint: 'rgba(28, 28, 30, 0.45)',
@@ -94,6 +100,8 @@ const dark: ColorTokens = {
   hudAccent: '#30D158',
   hudFill: 'rgba(255, 255, 255, 0.14)',
   scrim: 'rgba(0, 0, 0, 0.5)',
+  underlay: '#000000',
+  menuScrim: 'rgba(0, 0, 0, 0.35)',
   shadow: '#000000',
 };
 

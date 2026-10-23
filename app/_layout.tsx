@@ -1,11 +1,16 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Stack, TransitionPresets } from 'expo-router/js-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
+import { ToastProvider } from '@/components/ui/Toast';
+import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
+import { AppSheetCover } from '@/components/ui/sheet/SheetCover';
 import { useTheme } from '@/hooks/useTheme';
 import { getDatabase } from '@/lib/db';
 
@@ -48,17 +53,15 @@ export default function RootLayout() {
               {fontError ? 'Mossday could not load its fonts. Please reopen the app.' : 'Mossday could not open its local database.'}
             </Text>
             {!fontError && (
-              <Pressable accessibilityRole="button"
+              <PressableScale
                 onPress={() => { setError(null); setAttempt((value) => value + 1); }}
                 style={{ padding: theme.spacing.md, minHeight: theme.sizes.touchTarget }}>
                 <Text color="accent" variant="headline">Try again</Text>
-              </Pressable>
+              </PressableScale>
             )}
           </View>
         ) : ready && fontsLoaded ? (
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-          </Stack>
+          <AppShell />
         ) : (
           <View style={[styles.center, { gap: theme.spacing.md }]}>
             <ActivityIndicator size="large" color={theme.colors.accent} />
@@ -70,4 +73,37 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({ center: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
+/**
+ * Everything below the root: the app is the root blur target (so toasts and menus blur it)
+ * and recedes while a large sheet is open. Pushed screens use the iOS card transition with
+ * the left-edge swipe-back gesture on both platforms (JS stack, not Android's native one).
+ */
+function AppShell() {
+  const theme = useTheme();
+  return (
+    <AppSheetCover>
+      <BlurTargetProvider root>
+        <ToastProvider>
+          <BlurTargetContent style={styles.fill}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                ...TransitionPresets.SlideFromRightIOS,
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+                cardStyle: { backgroundColor: theme.colors.groupedBackground },
+              }}
+            >
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </BlurTargetContent>
+        </ToastProvider>
+      </BlurTargetProvider>
+    </AppSheetCover>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});
