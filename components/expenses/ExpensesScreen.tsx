@@ -35,6 +35,7 @@ import { BudgetMeter } from './BudgetMeter';
 import { expensesShareContent } from './expensesShare';
 import { ExpenseSheet, preloadCategories } from './ExpenseSheet';
 import { PeriodHeader } from './PeriodHeader';
+import { PeriodSwipeArea } from './PeriodSwipeArea';
 import { categoryStyle } from './categoryStyle';
 import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
 import { recordedDayAverage } from './expenseMetrics';
@@ -81,41 +82,43 @@ export function ExpensesScreen() {
     if (!data) return;
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
-  return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />} contentContainerStyle={{ gap: theme.spacing.lg }}>
-    <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
-    <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
-      canGoForward={selected.to < today} onShift={shift} />
-    {dailyBudget > 0 && <PressableScale accessibilityLabel="Daily budget, edit" haptic="tap" onPress={() => setBudgetEditor('dailyBudget')}
-      style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></PressableScale>}
-    {monthlyBudget > 0 ? <PressableScale accessibilityLabel={`${monthName(view.date)} budget, edit`} haptic="tap" onPress={() => setBudgetEditor('monthlyBudget')}>
-      <Card style={{ gap: theme.spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text variant="headline">{monthName(view.date)} budget</Text>
-          <Icon name="chevronRight" color="tertiaryLabel" />
-        </View>
-        <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
-        <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
-      </Card>
-    </PressableScale> : view.period === 'Month' ? <Card><Button title="Set a budget" variant="plain" onPress={() => setBudgetEditor('monthlyBudget')} /></Card> : null}
-    {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
-      <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
-        message="Add one in a few taps." action={{ label: 'Add Expense', onPress: () => setEditor('new') }} /> : view.period === 'Day' ?
-      <GroupedList>{[...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((expense) => <AnimatedListItem key={expense.id}>
-        <ExpenseRow expense={expense} onEdit={() => setEditor(expense)} onDelete={() => remove(expense)} />
-      </AnimatedListItem>)}
-        {/* The next expense is one tap away at the end of the day's list. */}
-        <ListRow key="add" title="Add expense" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />
-      </GroupedList> : <>
-        <Card>
-          <BarChart values={amounts.map((amount, index) => days[index] > today ? null : amount)} highlightIndex={days.indexOf(today)}
-            labels={chartLabels(view.period, days, days.indexOf(today))}
-            accessibilityLabel={`Spending per day. ${formatLongDate(view.from)} to ${formatLongDate(view.to)}`} />
+  return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}>
+    <PeriodSwipeArea canGoForward={selected.to < today} onShift={shift} style={{ gap: theme.spacing.lg }}>
+      <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
+      <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
+        canGoForward={selected.to < today} onShift={shift} />
+      {dailyBudget > 0 && <PressableScale accessibilityLabel="Daily budget, edit" haptic="tap" onPress={() => setBudgetEditor('dailyBudget')}
+        style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></PressableScale>}
+      {monthlyBudget > 0 ? <PressableScale accessibilityLabel={`${monthName(view.date)} budget, edit`} haptic="tap" onPress={() => setBudgetEditor('monthlyBudget')}>
+        <Card style={{ gap: theme.spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text variant="headline">{monthName(view.date)} budget</Text>
+            <Icon name="chevronRight" color="tertiaryLabel" />
+          </View>
+          <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
+          <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
         </Card>
-        <CategoryBreakdown totals={categoryTotals(data)} total={total}
-          footnote={`Highest day: ${formatMoney(Math.max(...amounts))}`} period={view.period} />
-      </>}
-    {budgetEditor && result && <BudgetSheet {...budgetTransition} initial={budgetEditor} budgets={result.settings} onClose={() => setBudgetEditor(null)} />}
-    {editor && <ExpenseSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} date={date} onClose={() => setEditor(null)} />}
+      </PressableScale> : view.period === 'Month' ? <Card><Button title="Set a budget" variant="plain" onPress={() => setBudgetEditor('monthlyBudget')} /></Card> : null}
+      {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
+        <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
+          message="Add one in a few taps." action={{ label: 'Add Expense', onPress: () => setEditor('new') }} /> : view.period === 'Day' ?
+        <GroupedList>{[...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((expense) => <AnimatedListItem key={expense.id}>
+          <ExpenseRow expense={expense} onEdit={() => setEditor(expense)} onDelete={() => remove(expense)} />
+        </AnimatedListItem>)}
+          {/* The next expense is one tap away at the end of the day's list. */}
+          <ListRow key="add" title="Add expense" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />
+        </GroupedList> : <>
+          <Card>
+            <BarChart values={amounts.map((amount, index) => days[index] > today ? null : amount)} highlightIndex={days.indexOf(today)}
+              labels={chartLabels(view.period, days, days.indexOf(today))}
+              accessibilityLabel={`Spending per day. ${formatLongDate(view.from)} to ${formatLongDate(view.to)}`} />
+          </Card>
+          <CategoryBreakdown totals={categoryTotals(data)} total={total}
+            footnote={`Highest day: ${formatMoney(Math.max(...amounts))}`} period={view.period} />
+        </>}
+      {budgetEditor && result && <BudgetSheet {...budgetTransition} initial={budgetEditor} budgets={result.settings} onClose={() => setBudgetEditor(null)} />}
+      {editor && <ExpenseSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} date={date} onClose={() => setEditor(null)} />}
+    </PeriodSwipeArea>
   </LargeTitleScreen>;
 }
 
