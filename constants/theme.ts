@@ -1,4 +1,4 @@
-import { accents, colors, heatmapColors, spendColors, type AccentName } from './colors';
+import { accents, colors, glassSheen, heatmapColors, spendColors, type AccentName } from './colors';
 import { radii, sizes, spacing } from './layout';
 import { shadows } from './shadows';
 
@@ -10,6 +10,7 @@ function buildTheme(scheme: ColorScheme) {
     isDark: scheme === 'dark',
     colors: colors[scheme],
     accents: accents[scheme],
+    glassSheen: glassSheen[scheme],
     heatmap: heatmapColors[scheme],
     spend: spendColors[scheme],
     shadows: shadows[scheme],

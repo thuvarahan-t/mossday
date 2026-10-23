@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, ScrollView, View } from 'react-native';
-import { useFabAction } from '@/components/navigation/FabAction';
+import { AddButton } from '@/components/navigation/AddButton';
 import { Button } from '@/components/ui/Button';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { Card } from '@/components/ui/Card';
@@ -39,7 +39,6 @@ export function NotesScreen() {
   const action = useAction();
   const toast = useToast();
   const newNote = useNewNote();
-  useFabAction(newNote);
   const { data, error, refresh } = useResource(listNotes);
   const [search, setSearch] = useState('');
   const [folder, setFolder] = useState('All');
@@ -74,7 +73,7 @@ export function NotesScreen() {
       </Card> : <ListRow title={title} titleVariant="headline" subtitle={preview ? `${time} · ${preview}` : time} />}
     </ContextMenu></AnimatedListItem>;
   };
-  return <LargeTitleScreen title="Notes" contentContainerStyle={{ gap: theme.spacing.md }}>
+  return <LargeTitleScreen title="Notes" titleAccessory={<AddButton accessibilityLabel="New note" onPress={newNote} />} contentContainerStyle={{ gap: theme.spacing.md }}>
     <SearchField value={search} onChangeText={setSearch} />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
       {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}

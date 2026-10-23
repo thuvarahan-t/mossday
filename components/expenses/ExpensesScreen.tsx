@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFabAction } from '@/components/navigation/FabAction';
+import { AddButton } from '@/components/navigation/AddButton';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
@@ -38,7 +38,6 @@ export function ExpensesScreen() {
   const [date, setDate] = useState(today);
   const [period, setPeriod] = useState<Period>('Day');
   const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new'>();
-  useFabAction(useCallback(() => setEditor('new'), [setEditor]));
   const from = period === 'Day' ? date : period === 'Week' ? startOfWeek(date) : startOfMonth(date);
   const to = period === 'Day' ? date : period === 'Week' ? addDays(from, 6) : endOfMonth(date);
   const previousFrom = period === 'Month' ? addMonths(from, -1) : addDays(from, -(daysBetween(from, to) + 1));
@@ -59,7 +58,7 @@ export function ExpensesScreen() {
   const shift = (delta: -1 | 1) => setDate(period === 'Month' ? addMonths(date, delta) : addDays(date, delta * (period === 'Week' ? 7 : 1)));
   const summary = periodSummary(period, total, result ? sum(result.previous) : 0, elapsedDays, date === today);
 
-  return <LargeTitleScreen title="Expenses" contentContainerStyle={{ gap: theme.spacing.lg }}>
+  return <LargeTitleScreen title="Expenses" titleAccessory={<AddButton accessibilityLabel="Add expense" onPress={() => setEditor('new')} />} contentContainerStyle={{ gap: theme.spacing.lg }}>
     <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
     <PeriodHeader label={periodLabel(period, date, from, today)} total={total} summary={summary.text} summaryColor={summary.color}
       canGoForward={to < today} onShift={shift} />

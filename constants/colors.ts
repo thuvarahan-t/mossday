@@ -58,6 +58,9 @@ const light = {
   glassHighlight: 'rgba(255, 255, 255, 0.9)',
   glassBorder: 'rgba(0, 0, 0, 0.05)',
   glassFallback: 'rgba(249, 249, 251, 0.94)',
+  /** Active tab lens and the raised action button's rim. */
+  glassLens: 'rgba(52, 199, 89, 0.16)',
+  glassRim: 'rgba(255, 255, 255, 0.75)',
   // Always-dark material for toasts (R14)
   hudTint: 'rgba(44, 44, 46, 0.86)',
   hudLabel: '#FFFFFF',
@@ -107,6 +110,8 @@ const dark: ColorTokens = {
   glassHighlight: 'rgba(255, 255, 255, 0.16)',
   glassBorder: 'rgba(255, 255, 255, 0.08)',
   glassFallback: 'rgba(30, 30, 32, 0.94)',
+  glassLens: 'rgba(48, 209, 88, 0.2)',
+  glassRim: 'rgba(255, 255, 255, 0.28)',
   hudTint: 'rgba(58, 58, 60, 0.88)',
   hudLabel: '#FFFFFF',
   hudAccent: '#30D158',
@@ -118,6 +123,15 @@ const dark: ColorTokens = {
 };
 
 export const colors = { light: light as ColorTokens, dark } as const;
+
+/**
+ * Liquid glass gradient: white specular sheen from the top edge, black shade at the bottom.
+ * Opacities are separate because Android SVG gradients ignore alpha inside stop colours.
+ */
+export const glassSheen = {
+  light: { sheen: 0.7, shade: 0.05 },
+  dark: { sheen: 0.16, shade: 0.3 },
+} as const;
 
 /** Habit heatmap levels 0–4 (R3). */
 export const heatmapColors = {

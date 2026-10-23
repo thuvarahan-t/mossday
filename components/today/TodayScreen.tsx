@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { useFabAction } from '@/components/navigation/FabAction';
+import { AddButton } from '@/components/navigation/AddButton';
 import { ExpenseSheet } from '@/components/expenses/ExpenseSheet';
 import { TodoList } from '@/components/diary/TodoList';
 import { TodoSheet } from '@/components/diary/TodoSheet';
@@ -42,7 +42,6 @@ export function TodayScreen() {
   const today = useToday();
   const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
-  useFabAction(useCallback(() => setSheet('quick'), [setSheet]));
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [expenses, categories, habits, logs, todos, settings] = await Promise.all([
       listExpenses(today), listCategories(), listHabits(), listHabitLogs(today, today), listTodos(today), getSettings(),
@@ -56,7 +55,10 @@ export function TodayScreen() {
   const countFor = (id: number) => data?.logs.find((l) => l.habitId === id)?.count ?? 0;
   const done = active.filter((h) => countFor(h.id) >= h.dailyGoal).length;
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
-    titleAccessory={<GlassButton accessibilityLabel="Settings" onPress={() => router.push('/settings')}><Icon name="settings" /></GlassButton>}
+    titleAccessory={<View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+      <GlassButton accessibilityLabel="Settings" onPress={() => router.push('/settings')}><Icon name="settings" /></GlassButton>
+      <AddButton accessibilityLabel="Quick add" onPress={() => setSheet('quick')} />
+    </View>}
     contentContainerStyle={{ gap: theme.spacing.md }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>

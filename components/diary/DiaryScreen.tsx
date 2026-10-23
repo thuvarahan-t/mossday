@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, View } from 'react-native';
-import { useFabAction } from '@/components/navigation/FabAction';
+import { AddButton } from '@/components/navigation/AddButton';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
@@ -35,7 +35,6 @@ export function DiaryScreen() {
   const [calendar, setCalendar] = useState(false);
   const [adding, selectAdding, addingTransition] = useSheetState<true>();
   const setAdding = useCallback((open: boolean) => selectAdding(open ? true : null), [selectAdding]);
-  useFabAction(useCallback(() => setAdding(true), [setAdding]));
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, weekTodos] = await Promise.all([
       listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listExpenses(date), listHabits(), listHabitLogs(date, date),
@@ -60,7 +59,10 @@ export function DiaryScreen() {
   </GlassSurface>;
   return <LargeTitleScreen title={calendar ? `${monthName(month)}${month.slice(0, 4) === today.slice(0, 4) ? '' : ` ${month.slice(0, 4)}`}` : `${dayOfMonth(date)} ${monthName(date)}`}
     subtitle={calendar ? undefined : `${weekdayName(date)}, ${date.slice(0, 4)}`} showBack={calendar} onBack={closeCalendar} headerRight={calendar ? monthNavigation : undefined}
-    titleAccessory={calendar ? undefined : <GlassButton accessibilityLabel="Open calendar" onPress={() => { setMonth(startOfMonth(date)); setCalendar(true); }}><Icon name="calendar" /></GlassButton>}
+    titleAccessory={calendar ? undefined : <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+      <GlassButton accessibilityLabel="Open calendar" onPress={() => { setMonth(startOfMonth(date)); setCalendar(true); }}><Icon name="calendar" /></GlassButton>
+      <AddButton accessibilityLabel="Add to-do" onPress={() => setAdding(true)} />
+    </View>}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <DiaryCalendar month={month} today={today} selected={date}
       monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}

@@ -67,11 +67,11 @@ Not drawn but required by spec (built from the closest drawn pattern): Expenses 
 
 ## 3. Per-screen analysis
 
-### 3.1 Tab bar + app shell (`Component · Floating glass tab bar`, cover)
-- **Layout:** pill (≈288×62) with 5 equal items: icon 24 (stroke 2, rounded) over caption2-ish label 11 semibold. Separate 62 pt glass circle FAB with a green "+" (28).
-- **States:** active item = inner pill highlight (`fill`, ≈56×52) + icon & label in `accent`; icon switches to its *filled* variant. Inactive = `label`. Dark: tint dark, highlight `fill` dark, accent #30D158.
-- **Behaviour:** tab bar always above content; scrolled content visible blurred behind. FAB action depends on tab (spec §4). Hidden on pushed detail screens (habit detail, note editor, settings).
-- **Animations:** active highlight slides between items (spring.snappy, shared position); icon bounce (scale 1→1.12→1, spring.bouncy) + `selectionAsync`; screen cross-fade (durations.fast). Press = PressableScale 0.96. FAB press 0.96 + light impact.
+### 3.1 Tab bar + app shell (`Component · Floating glass tab bar`, cover — revised)
+- **Layout (user revision, 23 Oct):** one full-width floating liquid-glass pill, 5 equal items in the order Expenses · Habits · **Today** · Diary · Notes, so Today sits in the middle. No "+" in the bar; each tab's add action is a glass "+" beside its large title (Today: Quick Add, next to the gear).
+- **Glass:** blur of the scenes behind, translucent tint, specular sheen from the top edge, soft shade at the bottom, bright rim (`GlassSurface sheen`).
+- **States:** focused item = green glass lens (accent-tinted fill, bright rim, soft shadow) + icon/label in `accent`; others `secondaryLabel`.
+- **Animations:** tapping slides the lens with `spring.snappy` and a brief liquid stretch; dragging along the bar carries the lens under the finger (lifted 1.1×, selection haptic per tab crossed) and releasing opens the tab under it. Icon bounce on focus. Hidden on pushed detail screens.
 
 ### 3.2 Today (`A · Today`, `A · Today — Dark`, `M · Over budget`)
 Top → bottom:

@@ -1,7 +1,8 @@
 import { BlurView } from 'expo-blur';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { ColorToken } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useBlurTarget } from './BlurTarget';
@@ -25,6 +26,8 @@ export type GlassSurfaceProps = {
   pressProgress?: SharedValue<number>;
   /** Drop the floating shadow. */
   flat?: boolean;
+  /** Liquid glass depth: a specular sheen from the top edge and a soft shade at the bottom. */
+  sheen?: boolean;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
 };
@@ -50,8 +53,10 @@ function useReduceTransparency() {
  * Reduce Transparency) it renders a near-opaque fill that reads the same.
  */
 export function GlassSurface({
-  children, radius, topCornersOnly, material = 'regular', pressProgress, flat, style, contentStyle,
+  children, radius, topCornersOnly, material = 'regular', pressProgress, flat, sheen, style, contentStyle,
 }: GlassSurfaceProps) {
+  // SVG url() references cannot contain the colons React puts in generated ids.
+  const gradientId = `sheen${useId().replace(/:/g, '')}`;
   const theme = useTheme();
   const target = useBlurTarget();
   const reduceTransparency = useReduceTransparency();
@@ -85,6 +90,19 @@ export function GlassSurface({
           />
         )}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} />
+        {sheen && (
+          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
+            <Defs>
+              <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#FFFFFF" stopOpacity={theme.glassSheen.sheen} />
+                <Stop offset="0.48" stopColor="#FFFFFF" stopOpacity={0} />
+                <Stop offset="0.7" stopColor="#000000" stopOpacity={0} />
+                <Stop offset="1" stopColor="#000000" stopOpacity={theme.glassSheen.shade} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill={`url(#${gradientId})`} />
+          </Svg>
+        )}
         {pressProgress && (
           <Animated.View
             style={[StyleSheet.absoluteFill, { backgroundColor: isHud ? colors.hudFill : colors.glassTintPressed }, pressedStyle]}
@@ -94,9 +112,9 @@ export function GlassSurface({
           style={[
             StyleSheet.absoluteFill, corners,
             {
-              borderWidth: theme.sizes.hairline,
               borderColor: opaqueToken ? 'transparent' : colors.glassBorder,
-              borderTopColor: isHud ? colors.hudFill : colors.glassHighlight,
+              borderTopColor: isHud ? colors.hudFill : sheen ? colors.glassRim : colors.glassHighlight,
+              borderWidth: sheen ? theme.sizes.hairline * 2 : theme.sizes.hairline,
             },
           ]}
         />

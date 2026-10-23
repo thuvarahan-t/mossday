@@ -36,7 +36,6 @@ export const sizes = {
   toolbarHeight: 52, // note editor floating tool pill
   tabBarHeight: 62,
   tabItemHighlight: 52,
-  fab: 62,
   buttonHeight: 52,
   smallButtonHeight: 36,
   chipHeight: 40,
