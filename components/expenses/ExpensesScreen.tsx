@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { router } from 'expo-router';
-import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
@@ -73,11 +72,7 @@ export function ExpensesScreen() {
     if (!data) return;
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
-  return <LargeTitleScreen title="Expenses" titleAccessory={<HeaderActions actions={[
-    { icon: 'share', label: 'Share expenses', onPress: shareExpenses },
-    { icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') },
-    { icon: 'plus', label: 'Add expense', primary: true, onPress: () => setEditor('new') },
-  ]} />} contentContainerStyle={{ gap: theme.spacing.lg }}>
+  return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />} contentContainerStyle={{ gap: theme.spacing.lg }}>
     <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
     <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
       canGoForward={selected.to < today} onShift={shift} />

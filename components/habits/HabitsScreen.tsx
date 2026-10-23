@@ -1,4 +1,4 @@
-import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
@@ -31,10 +31,7 @@ export function HabitsScreen() {
   const shareHabits = () => {
     if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle }));
   };
-  return <LargeTitleScreen title="Habits" titleAccessory={<HeaderActions actions={[
-    { icon: 'share', label: 'Share habits', onPress: shareHabits },
-    { icon: 'plus', label: 'New habit', primary: true, onPress: () => setEditor('new') },
-  ]} />} subtitle={subtitle} contentContainerStyle={{ gap: theme.spacing.md }}>
+  return <LargeTitleScreen title="Habits" titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} addLabel="New habit" onAdd={() => setEditor('new')} />} subtitle={subtitle} contentContainerStyle={{ gap: theme.spacing.md }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : !data.habits.length ?
       <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
       data.habits.map((habit) => <AnimatedListItem key={habit.id}><HabitCard habit={habit} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} /></AnimatedListItem>)}

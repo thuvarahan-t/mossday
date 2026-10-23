@@ -154,7 +154,7 @@ export function LargeTitleScreen({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start' },
   navBar: { position: 'absolute', top: 0, left: 0, right: 0 },
   separator: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   navRow: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center' },

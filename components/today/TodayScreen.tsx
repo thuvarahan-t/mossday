@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ExpenseSheet, preloadCategories } from '@/components/expenses/ExpenseSheet';
@@ -63,17 +63,15 @@ export function TodayScreen() {
     }));
   };
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
-    titleAccessory={<HeaderActions actions={[
-      { icon: 'share', label: 'Share today', onPress: shareToday },
-      { icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') },
-      { icon: 'plus', label: 'Quick add', primary: true, onPress: () => setSheet('quick') },
-    ]} />}
+    titleAccessory={<TabHeaderActions shareLabel="Share today" onShare={shareToday} addLabel="Quick add" onAdd={() => setSheet('quick')} />}
     contentContainerStyle={{ gap: theme.spacing.md }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
-        <Text color="secondaryLabel">Spent today</Text>
-        <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
-        {budget > 0 && <BudgetMeter spent={spent} budget={budget} />}
+        <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={() => router.navigate('/expenses')} style={{ gap: theme.spacing.sm }}>
+          <Text color="secondaryLabel">Spent today</Text>
+          <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
+          {budget > 0 && <BudgetMeter spent={spent} budget={budget} />}
+        </PressableScale>
         <Separator />
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           {data.categories.filter((c) => c.type === 'MEAL').map((category) => {
@@ -86,14 +84,14 @@ export function TodayScreen() {
           })}
         </View>
       </Card></AnimatedListItem>
-      <SectionTitle title="Habits" trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
+      <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
       <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around' }}>
         {active.length ? active.map((habit) => <View key={habit.id} style={{ alignItems: 'center', gap: theme.spacing.sm }}>
           <HabitTickButton name={habit.name} count={countFor(habit.id)} goal={habit.dailyGoal} emoji={habit.icon || '🌱'} onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
           <Text variant="subheadline">{habit.name}</Text>
         </View>) : <Button title="Add your first habit" variant="plain" onPress={() => router.navigate('/habits')} />}
       </ScrollView></Card></AnimatedListItem>
-      <SectionTitle title="To-dos" trailing={<Button title="See All" variant="plain" size="small" onPress={() => router.navigate('/diary')} />} />
+      <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<Button title="See All" variant="plain" size="small" onPress={() => router.navigate('/diary')} />} />
       {data.todos.length ? <TodoList todos={data.todos.slice(0, 5)} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
     </>}
     <BottomSheet {...sheetTransition} onDismissed={() => {

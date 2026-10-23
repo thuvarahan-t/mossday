@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, View } from 'react-native';
-import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -65,15 +65,12 @@ export function DiaryScreen() {
   </GlassSurface>;
   return <LargeTitleScreen title={calendar ? `${monthName(month)}${month.slice(0, 4) === today.slice(0, 4) ? '' : ` ${month.slice(0, 4)}`}` : `${dayOfMonth(date)} ${monthName(date)}`}
     subtitle={calendar ? undefined : `${weekdayName(date)}, ${date.slice(0, 4)}`} showBack={calendar} onBack={closeCalendar} headerRight={calendar ? monthNavigation : undefined}
-    titleAccessory={calendar ? undefined : <HeaderActions actions={[
-      { icon: 'calendar', label: 'Open calendar', onPress: () => { setMonth(startOfMonth(date)); setCalendar(true); } },
-      { icon: 'share', label: 'Share this day', onPress: shareDay },
-      { icon: 'plus', label: 'Add to-do', primary: true, onPress: () => setAdding(true) },
-    ]} />}
+    titleAccessory={calendar ? undefined : <TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <DiaryCalendar month={month} today={today} selected={date}
       monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}
       onSelect={setDate} onOpenDay={closeCalendar} /> : <>
+      <Button title="Open calendar" variant="plain" size="small" onPress={() => { setMonth(startOfMonth(date)); setCalendar(true); }} />
       <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.weekTodos.map((t) => t.date))} onSelect={setDate} onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} />
       {data.todos.length || data.previous.length ? <TodoList todos={data.todos} reorder header={data.previous.length > 0 &&
         <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
