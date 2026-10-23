@@ -1,11 +1,12 @@
 import { BlurView } from 'expo-blur';
 import { Fragment, useCallback, useRef, useState, type ComponentRef, type ReactNode } from 'react';
-import { Modal, Platform, Pressable, StatusBar, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { durations, easing, scales } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
+import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
@@ -41,6 +42,7 @@ const MENU_ROW_HEIGHT = 44;
 export function ContextMenu({ actions, children, onPress, accessibilityLabel, style }: ContextMenuProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const windowTop = useWindowTopOffset();
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const rootTarget = useRootBlurTarget();
@@ -51,9 +53,7 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
   const open = () => {
     anchor.current?.measureInWindow((x, y, width, height) => {
       haptics.tick();
-      // The menu's modal window covers the whole screen. When the app window starts below the
-      // Android status bar (not edge-to-edge, e.g. Expo Go) its insets are 0, so shift by the bar.
-      const windowTop = Platform.OS === 'android' ? Math.max(0, (StatusBar.currentHeight ?? 0) - insets.top) : 0;
+      // The menu's modal window covers the whole screen, which may start above the app window.
       setFrame({ x, y: y + windowTop, width, height });
       progress.set(0);
       progress.set(animateTo(1, 'default', reduceMotion));
