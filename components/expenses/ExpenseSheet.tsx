@@ -198,7 +198,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
           void action(async () => { const id = await addCategory(categoryName, 'tag', color); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
         }} />
       </>}
-      {editingCategory && <CategoryEditor {...categoryEditorTransition} category={editingCategory} onSaved={refreshCategories} onClose={() => setEditingCategory(null)} />}
+      {editingCategory && <CategoryEditor key={editingCategory.id} {...categoryEditorTransition} category={editingCategory} onSaved={refreshCategories} onClose={() => setEditingCategory(null)} />}
     </FormSheet>}
   </FormSheet>;
 }
