@@ -17,6 +17,11 @@ export type NumberKeypadProps = {
   onClear?: () => void;
 };
 
+export type NumberKeypadLayoutProps = NumberKeypadProps & {
+  /** Fill the remaining height, shrinking keys (down to a touch target) on short screens. */
+  fill?: boolean;
+};
+
 const Key = memo(function Key({ value, onKey, onClear }: { value: KeypadKey } & NumberKeypadProps) {
   const theme = useTheme();
   const progress = useSharedValue(0);
@@ -24,7 +29,7 @@ const Key = memo(function Key({ value, onKey, onClear }: { value: KeypadKey } & 
   const isBackspace = value === 'backspace';
   return (
     <PressableScale
-      style={[styles.key, { height: theme.sizes.keypadKeyHeight }]}
+      style={styles.key}
       pressProgress={progress}
       accessibilityLabel={isBackspace ? 'Delete' : value === '.' ? 'Decimal point' : value}
       onPress={() => { haptics.tap(); onKey(value); }}
@@ -33,7 +38,7 @@ const Key = memo(function Key({ value, onKey, onClear }: { value: KeypadKey } & 
       <Animated.View
         pointerEvents="none"
         style={[styles.highlight, {
-          width: theme.sizes.keypadKeyHeight + theme.spacing.lg, height: theme.sizes.keypadKeyHeight,
+          width: theme.sizes.keypadKeyHeight + theme.spacing.lg, height: '100%',
           borderRadius: theme.radii.pill, backgroundColor: theme.colors.fill,
         }, highlight]}
       />
@@ -45,12 +50,15 @@ const Key = memo(function Key({ value, onKey, onClear }: { value: KeypadKey } & 
 });
 
 /** Phone-style amount keypad (no key backgrounds, a soft circle highlights the pressed key). */
-export function NumberKeypad({ onKey, onClear }: NumberKeypadProps) {
+export function NumberKeypad({ onKey, onClear, fill }: NumberKeypadLayoutProps) {
   const theme = useTheme();
+  const rowHeight = fill
+    ? { flex: 1, maxHeight: theme.sizes.keypadKeyHeight, minHeight: theme.sizes.touchTarget }
+    : { height: theme.sizes.keypadKeyHeight };
   return (
-    <View style={{ paddingHorizontal: theme.spacing.xxl }}>
+    <View style={[{ paddingHorizontal: theme.spacing.xxl }, fill && styles.fill]}>
       {ROWS.map((row) => (
-        <View key={row.join('')} style={styles.row}>
+        <View key={row.join('')} style={[styles.row, rowHeight]}>
           {row.map((value) => <Key key={value} value={value} onKey={onKey} onClear={onClear} />)}
         </View>
       ))}
@@ -60,6 +68,7 @@ export function NumberKeypad({ onKey, onClear }: NumberKeypadProps) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
-  key: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  key: { flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  fill: { flex: 1, justifyContent: 'flex-end' },
   highlight: { position: 'absolute' },
 });

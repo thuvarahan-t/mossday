@@ -74,7 +74,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
     saving.current = false; setBusy(false);
     if (success) { Keyboard.dismiss(); haptics.success(); onClose(); }
   };
-  return <FormSheet {...transition} background="plain" title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
+  return <FormSheet {...transition} background="plain" scroll={false} title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
     {!categories ? <LoadState error={error} retry={load} /> : <>
       <AmountDisplay input={input} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.spacing.sm }}>
@@ -91,9 +91,8 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
       ]} />
       {datePicker.picker}
       {showNote && <AnimatedListItem><TextField value={note} onChangeText={setNote} placeholder="Add a note" accessibilityLabel="Expense note" /></AnimatedListItem>}
-      {/* Keeps the keypad and Save at the bottom of the sheet, within thumb reach. */}
-      <View style={{ flex: 1 }} />
-      <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
+      {/* Fills the rest of the sheet so the keypad and Save sit at the bottom on any screen height. */}
+      <NumberKeypad fill onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
       <Button title={busy ? 'Saving…' : 'Save'} disabled={busy || !amount || (oneTime ? !title.trim() : !categoryId)} onPress={() => { void save(); }} fullWidth />
     </>}
     {other && <FormSheet {...otherTransition} title="Categories" onClose={() => setOther(false)}>

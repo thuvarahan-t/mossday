@@ -5,7 +5,7 @@ import Animated, {
   Extrapolation, interpolate, useAnimatedKeyboard, useAnimatedReaction, useAnimatedStyle,
   ReduceMotion, useReducedMotion, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { durations, easing, gestures, spring } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
@@ -39,8 +39,17 @@ export function BottomSheet({
   visible, onClose, children, detents = ['large'], background = 'plain', onDismissed,
 }: BottomSheetProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const contextInsets = useSafeAreaInsets();
+  // Sheets nested in another modal window get zero insets; fall back to the device's.
+  const insets = {
+    top: Math.max(contextInsets.top, initialWindowMetrics?.insets.top ?? 0),
+    bottom: Math.max(contextInsets.bottom, initialWindowMetrics?.insets.bottom ?? 0),
+  };
+  const window = useWindowDimensions();
+  // Android reports the window without the system bars, but this modal draws under them;
+  // size detents from the modal's measured height so large sheets fill the real screen.
+  const [measuredHeight, setMeasuredHeight] = useState(0);
+  const screenHeight = measuredHeight || window.height;
   const reduceMotion = useReducedMotion();
   const parentCover = useSheetCover();
   // Forms can unmount after saving. Never leave their presenter scaled down.
@@ -144,7 +153,7 @@ export function BottomSheet({
 
   return (
     <Modal transparent visible statusBarTranslucent navigationBarTranslucent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={styles.fill}>
+      <GestureHandlerRootView style={styles.fill} onLayout={(event) => setMeasuredHeight(Math.round(event.nativeEvent.layout.height))}>
         <BlurTargetBoundary>
           <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.scrim }, scrimStyle]}>
             <Pressable style={styles.fill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
