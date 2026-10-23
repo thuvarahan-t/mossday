@@ -35,6 +35,20 @@ On a phone, verify all five tabs and change Android's light/dark setting.
 The app should reopen offline without a second seed or a loading hang.
 Full expense, habit, diary, and note features are future modules.
 
+## UI development checkpoint
+
+The shared UI library and development gallery are implemented on `feat/ios-ui`.
+Open `mossday://dev/components` in a running development build to inspect light/dark
+controls, charts, sheets, and recording/playback samples. The gallery redirects
+to the home screen in production. Device appearance and native gestures still
+need a phone check; automated checks do not establish visual fidelity.
+
+Continue screen work using [the UI build plan](docs/UI-BUILD-PLAN.md). The app shell
+and Today screen are the next integration steps; full feature screens remain pending.
+No Git remote is configured, so commits are currently local.
+
 Run `npm test` for SQLite migration, seed persistence, foreign key, cascade, local date, and money checks.
+It also covers keypad limits, heatmap levels, and mocked voice recorder lifecycle
+regressions (release during setup, save/cancel, stop failure, and unmount).
 
 Dependency audit: the generated SDK 58 dependency tree reports 19 high-severity advisories. npm proposes incompatible Expo/React Native downgrades; these have not been applied. Review compatible upstream fixes before release.
