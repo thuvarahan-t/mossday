@@ -21,8 +21,16 @@ acceptance still includes device checks; the UI plan keeps those boxes open.
 - [x] Expo Doctor reports 20/20 checks passed.
 - [x] Android and iOS production Hermes bundles compile.
 - [x] Four Inter weights are bundled instead of the entire family.
+- [x] Design fidelity pass against `design/*.png` using seeded data in a 393 pt
+  web preview: Expenses day/month (category tiles, hero header, chart labels),
+  Add Expense options bar, habit tick states, habit detail layout, Add Habit
+  grouped form, diary carry-over row and calendar view, section spacing and
+  Settings rows. Web preview renders list items without layout animations.
 
 ## Release and device checklist
+
+- [ ] Note editor and recording state were not compared in the web preview;
+  compare them with `K · Note editor.png` / `K · Recording.png` on a phone.
 
 - [ ] Compare every Phase 6 screen with its design on mobile in light/dark mode.
 - [ ] Run the [motion acceptance checks](MOTION-CHECKLIST.md) on a device.
