@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -34,6 +34,15 @@ export type GlassSurfaceProps = {
 
 const BLUR_INTENSITY = { light: 60, dark: 50 } as const;
 
+/**
+ * Glass resting on another glass bar (the screen header) drops its floating shadow: there
+ * its 30 pt blur read as a grey box around the action pill rather than as depth.
+ */
+const OnGlassBarContext = createContext(false);
+export function OnGlassBar({ children }: { children: ReactNode }) {
+  return <OnGlassBarContext.Provider value>{children}</OnGlassBarContext.Provider>;
+}
+
 const OPAQUE_MATERIALS: Partial<Record<GlassMaterial, ColorToken>> = { sheet: 'sheet', groupedSheet: 'groupedSheet' };
 
 function useReduceTransparency() {
@@ -60,6 +69,7 @@ export function GlassSurface({
   const theme = useTheme();
   const target = useBlurTarget();
   const reduceTransparency = useReduceTransparency();
+  const onGlassBar = useContext(OnGlassBarContext);
   const { colors } = theme;
   const cornerRadius = radius ?? theme.radii.pill;
   const isHud = material === 'hud';
@@ -78,7 +88,7 @@ export function GlassSurface({
   const shadow = material === 'sheet' || material === 'groupedSheet' ? theme.shadows.sheet : theme.shadows.floating;
 
   return (
-    <View style={[corners, !flat && { boxShadow: shadow }, style]}>
+    <View style={[corners, !flat && !onGlassBar && { boxShadow: shadow }, style]}>
       <View style={[StyleSheet.absoluteFill, corners, styles.clip]} pointerEvents="none">
         {canBlur && (
           <BlurView

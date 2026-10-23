@@ -12,7 +12,7 @@ import { Icon } from './Icon';
 import { Text } from './Text';
 import { BlurTargetBoundary, BlurTargetContent, BlurTargetProvider } from './glass/BlurTarget';
 import { GlassButton } from './glass/GlassButton';
-import { GlassSurface } from './glass/GlassSurface';
+import { GlassSurface, OnGlassBar } from './glass/GlassSurface';
 
 export type LargeTitleScreenProps = {
   title: string; subtitle?: string;
@@ -70,9 +70,9 @@ export function LargeTitleScreen({
           <GlassSurface radius={0} flat style={styles.fill} />
           <View style={[styles.separator, { height: theme.sizes.hairline, backgroundColor: theme.colors.separator }]} />
         </Animated.View>
-        {/* Controls on the glass bar use solid glass: a second blur layer on top of the bar's
-            own blur drew a visible box behind the action pill on Android. */}
-        <BlurTargetBoundary>
+        {/* Controls on the bar use solid, shadowless glass: a second blur layer or a floating
+            shadow on top of the bar each drew a grey box behind the action pill. */}
+        <BlurTargetBoundary><OnGlassBar>
           <View style={{ paddingTop: insets.top + theme.spacing.sm, paddingBottom: theme.spacing.sm, paddingHorizontal: theme.sizes.screenInset }}>
             <View style={[styles.row, { gap: theme.spacing.sm, minHeight: theme.sizes.circleButton }]}>
               {showBack && <GlassButton accessibilityLabel="Back" haptic="tap" onPress={onBack}><Icon name="chevronLeft" /></GlassButton>}
@@ -81,7 +81,7 @@ export function LargeTitleScreen({
             </View>
             {subtitle ? <Text variant="footnote" color="secondaryLabel" style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text> : null}
           </View>
-        </BlurTargetBoundary>
+        </OnGlassBar></BlurTargetBoundary>
       </View>
     </View>
   </BlurTargetProvider>;
