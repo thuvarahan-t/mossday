@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { subscribeToStore } from '@/lib/repos/store';
 import { useToast } from '@/components/ui/Toast';
@@ -38,7 +38,7 @@ export function useAction() {
 export function useAutosave<T>(save: (value: T) => Promise<unknown>) {
   const action = useAction();
   const latestSave = useRef(save);
-  latestSave.current = save;
+  useLayoutEffect(() => { latestSave.current = save; }, [save]);
   const pending = useRef<{ value: T; timer: ReturnType<typeof setTimeout> } | null>(null);
   const flush = useCallback(() => {
     const edit = pending.current;

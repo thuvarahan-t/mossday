@@ -347,6 +347,10 @@ Budgets & alerts, recurring expenses, reminders/notifications, home-screen widge
 
 ## 10. Progress
 
+See [remaining work](docs/REMAINING-WORK.md) for current evidence. Expenses, Habits,
+Diary and Notes have implementation commits; Today and Settings have working-tree
+implementations. Their boxes remain open pending end-to-end phone verification.
+
 - [ ] Setup (Expo project, git, Expo Go)
 - [x] Foundation (theme, tabs, DB, helpers)
 - [ ] Expenses module

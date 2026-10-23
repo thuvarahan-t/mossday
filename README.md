@@ -1,8 +1,9 @@
 # Mossday
 
 Offline Android app built with Expo, React Native, TypeScript, and Expo Router.
-The foundation includes five title-only tabs, system light/dark themes,
-local SQLite storage, 11 first-run expense categories, and date/money helpers.
+Includes feature tabs, local SQLite storage, expenses, habit heatmaps, diary tasks
+and journal, and notes with photo and voice blocks. Today and Settings are being
+integrated. See [remaining work](docs/REMAINING-WORK.md) for current evidence.
 
 ## Run
 
@@ -33,7 +34,7 @@ Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
 Run `npx tsc --noEmit` and `npx expo-doctor`.
 On a phone, verify all five tabs and change Android's light/dark setting.
 The app should reopen offline without a second seed or a loading hang.
-Full expense, habit, diary, and note features are future modules.
+Verify expense, habit, diary and note flows on the phone before release.
 
 ## UI development checkpoint
 
@@ -44,7 +45,7 @@ to the home screen in production. Device appearance and native gestures still
 need a phone check; automated checks do not establish visual fidelity.
 
 Continue screen work using [the UI build plan](docs/UI-BUILD-PLAN.md). The app shell
-and Today screen are the next integration steps; full feature screens remain pending.
+and Today screen have working-tree implementations; phone verification remains pending.
 No Git remote is configured, so commits are currently local.
 
 Run `npm test` for SQLite migration, seed persistence, foreign key, cascade, local date, and money checks.

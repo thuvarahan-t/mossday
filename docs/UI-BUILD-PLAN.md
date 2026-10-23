@@ -3,6 +3,10 @@
 Build the full UI of **Mossday** (Expo, React Native, TypeScript, Expo Router).
 Tick each box (`[x]`) only after that part is finished, type-checked and committed.
 
+**Current audit (2026-10-23):** Feature code is ahead of the older session logs.
+See [remaining work](REMAINING-WORK.md) for implementation evidence, current
+checks, and device/release tasks. Screen boxes remain open pending verification.
+
 **Sources of truth**
 - `design/*.png` → how every screen must LOOK (layout, spacing, colours, sizes). Local only — `design/` is git-ignored and never pushed.
 - `spec.md` → features, behaviour and data (also holds the design-system tables; there is no separate DESIGN.md).
