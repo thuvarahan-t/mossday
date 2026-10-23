@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, ScrollView, View } from 'react-native';
-import { AddButton } from '@/components/navigation/AddButton';
+import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { useShareImage } from '@/components/share/ShareImage';
+import { notesShareContent } from './notesShare';
 import { Button } from '@/components/ui/Button';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { Card } from '@/components/ui/Card';
@@ -73,7 +75,14 @@ export function NotesScreen() {
       </Card> : <ListRow title={title} titleVariant="headline" subtitle={preview ? `${time} · ${preview}` : time} />}
     </ContextMenu></AnimatedListItem>;
   };
-  return <LargeTitleScreen title="Notes" titleAccessory={<AddButton accessibilityLabel="New note" onPress={newNote} />} contentContainerStyle={{ gap: theme.spacing.md }}>
+  const shareImage = useShareImage();
+  const shareNotes = () => {
+    void shareImage(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })) }));
+  };
+  return <LargeTitleScreen title="Notes" titleAccessory={<HeaderActions actions={[
+    { icon: 'share', label: 'Share notes', onPress: shareNotes },
+    { icon: 'plus', label: 'New note', primary: true, onPress: newNote },
+  ]} />} contentContainerStyle={{ gap: theme.spacing.md }}>
     <SearchField value={search} onChangeText={setSearch} />
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
       {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}

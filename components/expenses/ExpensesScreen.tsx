@@ -1,9 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { AddButton } from '@/components/navigation/AddButton';
+import { router } from 'expo-router';
+import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { useShareImage } from '@/components/share/ShareImage';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
+import { ContextMenu } from '@/components/ui/ContextMenu';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { GroupedList, ListRow, SectionHeader } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
@@ -19,19 +22,21 @@ import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import {
-  addDays, addMonths, dateRange, daysBetween, endOfMonth, formatClock, formatDayHeading, formatLongDate, monthName,
+  addDays, addMonths, dateRange, daysBetween, endOfMonth, formatDayHeading, formatLongDate, monthName,
   startOfMonth, startOfWeek, weekdayShort,
 } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { deleteExpense, listExpenses, restoreExpense, type Expense } from '@/lib/repos/expenses';
 import { getSettings } from '@/lib/repos/settings';
 import { BudgetMeter } from './BudgetMeter';
-import { ExpenseSheet } from './ExpenseSheet';
+import { expensesShareContent } from './expensesShare';
+import { ExpenseSheet, preloadCategories } from './ExpenseSheet';
 import { PeriodHeader } from './PeriodHeader';
-import { categoryStyle, type CategoryStyle } from './categoryStyle';
+import { categoryStyle } from './categoryStyle';
+import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
 
 type Period = 'Day' | 'Week' | 'Month';
-type CategoryTotal = { name: string; amount: number; style: CategoryStyle };
+type PeriodRange = { period: Period; date: string; from: string; to: string };
 
 export function ExpensesScreen() {
   const theme = useTheme();
@@ -40,17 +45,17 @@ export function ExpensesScreen() {
   const today = useToday();
   const [date, setDate] = useState(today);
   const [period, setPeriod] = useState<Period>('Day');
+  useEffect(preloadCategories, []);
   const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new'>();
-  const from = period === 'Day' ? date : period === 'Week' ? startOfWeek(date) : startOfMonth(date);
-  const to = period === 'Day' ? date : period === 'Week' ? addDays(from, 6) : endOfMonth(date);
-  const previousFrom = period === 'Month' ? addMonths(from, -1) : addDays(from, -(daysBetween(from, to) + 1));
-  const { data: result, error, refresh } = useResource(useCallback(async () => ({
-    current: await listExpenses(from, to), previous: await listExpenses(previousFrom, addDays(from, -1)), settings: await getSettings(),
-  }), [from, to, previousFrom]));
-  const dailyBudget = period === 'Day' ? result?.settings.dailyBudget ?? 0 : 0;
+  const selected = periodRange(period, date);
+  const { data: result, error, refresh } = useResource(useCallback(() => loadPeriod(period, date), [period, date]));
+  // While the next period loads, draw the one the data belongs to: switching Month → Day
+  // must never lay a whole month of expenses out as the day's list.
+  const view = result?.range ?? selected;
+  const dailyBudget = view.period === 'Day' ? result?.settings.dailyBudget ?? 0 : 0;
   const data = result?.current;
   const total = sum(data ?? []);
-  const days = dateRange(from, to);
+  const days = dateRange(view.from, view.to);
   const amounts = days.map((day) => sum(data?.filter((e) => e.date === day) ?? []));
   const elapsedDays = days.filter((day) => day <= today).length;
 
@@ -60,35 +65,75 @@ export function ExpensesScreen() {
     }));
   };
   const shift = (delta: -1 | 1) => setDate(period === 'Month' ? addMonths(date, delta) : addDays(date, delta * (period === 'Week' ? 7 : 1)));
-  const summary = periodSummary(period, total, result ? sum(result.previous) : 0, elapsedDays, date === today);
+  const summary = periodSummary(view.period, total, result ? sum(result.previous) : 0, elapsedDays, view.date === today);
+  const label = periodLabel(view, today);
 
-  return <LargeTitleScreen title="Expenses" titleAccessory={<AddButton accessibilityLabel="Add expense" onPress={() => setEditor('new')} />} contentContainerStyle={{ gap: theme.spacing.lg }}>
+  const shareImage = useShareImage();
+  const shareExpenses = () => {
+    if (!data) return;
+    void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
+  };
+  return <LargeTitleScreen title="Expenses" titleAccessory={<HeaderActions actions={[
+    { icon: 'share', label: 'Share expenses', onPress: shareExpenses },
+    { icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') },
+    { icon: 'plus', label: 'Add expense', primary: true, onPress: () => setEditor('new') },
+  ]} />} contentContainerStyle={{ gap: theme.spacing.lg }}>
     <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
-    <PeriodHeader label={periodLabel(period, date, from, today)} total={total} summary={summary.text} summaryColor={summary.color}
-      canGoForward={to < today} onShift={shift} />
+    <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
+      canGoForward={selected.to < today} onShift={shift} />
     {dailyBudget > 0 && <View style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></View>}
     {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
-      <EmptyState icon="wallet" title={period === 'Day' && date === today ? 'No expenses today' : `Nothing spent this ${period.toLowerCase()}`}
-        message="Tap here to add one." onPress={() => setEditor('new')} /> : period === 'Day' ?
+      <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
+        message="Add one in a few taps." action={{ label: 'Add Expense', onPress: () => setEditor('new') }} /> : view.period === 'Day' ?
       <GroupedList>{[...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((expense) => <AnimatedListItem key={expense.id}>
-        <SwipeableRow onDelete={() => remove(expense)}>
-          <ListRow title={expense.title || expense.categoryName || 'One-time'} subtitle={expenseDetail(expense)} valueColor="label"
-            value={formatMoney(expense.amount)} onPress={() => setEditor(expense)} icon={categoryStyle(expense.categoryIcon, expense.categoryColor)} />
-        </SwipeableRow>
+        <ExpenseRow expense={expense} onEdit={() => setEditor(expense)} onDelete={() => remove(expense)} />
       </AnimatedListItem>)}
         {/* The next expense is one tap away at the end of the day's list. */}
         <ListRow key="add" title="Add expense" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />
       </GroupedList> : <>
         <Card>
           <BarChart values={amounts.map((amount, index) => days[index] > today ? null : amount)} highlightIndex={days.indexOf(today)}
-            labels={chartLabels(period, days, days.indexOf(today))}
-            accessibilityLabel={`Spending per day. ${formatLongDate(from)} to ${formatLongDate(to)}`} />
+            labels={chartLabels(view.period, days, days.indexOf(today))}
+            accessibilityLabel={`Spending per day. ${formatLongDate(view.from)} to ${formatLongDate(view.to)}`} />
         </Card>
         <CategoryBreakdown totals={categoryTotals(data)} total={total}
-          footnote={`Highest day: ${formatMoney(Math.max(...amounts))}`} period={period} />
+          footnote={`Highest day: ${formatMoney(Math.max(...amounts))}`} period={view.period} />
       </>}
     {editor && <ExpenseSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} date={date} onClose={() => setEditor(null)} />}
   </LargeTitleScreen>;
+}
+
+/** The period a date falls in, e.g. Week → Monday to Sunday around it. */
+function periodRange(period: Period, date: string): PeriodRange {
+  const from = period === 'Day' ? date : period === 'Week' ? startOfWeek(date) : startOfMonth(date);
+  const to = period === 'Day' ? date : period === 'Week' ? addDays(from, 6) : endOfMonth(date);
+  return { period, date, from, to };
+}
+
+/** The period's expenses, plus the equally long period before it for the comparison line. */
+async function loadPeriod(period: Period, date: string) {
+  const range = periodRange(period, date);
+  const previousFrom = period === 'Month' ? addMonths(range.from, -1) : addDays(range.from, -(daysBetween(range.from, range.to) + 1));
+  return {
+    range,
+    current: await listExpenses(range.from, range.to),
+    previous: await listExpenses(previousFrom, addDays(range.from, -1)),
+    settings: await getSettings(),
+  };
+}
+
+/** A day-list row: tap to edit, long press for Edit / Delete, or swipe left to delete. */
+function ExpenseRow({ expense, onEdit, onDelete }: { expense: Expense; onEdit: () => void; onDelete: () => void }) {
+  const title = expense.title || expense.categoryName || 'One-time';
+  return <SwipeableRow onDelete={onDelete}>
+    <ContextMenu accessibilityLabel={`${title}, ${formatMoney(expense.amount)}`} onPress={onEdit} actions={[
+      { label: 'Edit', icon: 'edit', onPress: onEdit },
+      { label: 'Delete', icon: 'trash', destructive: true, onPress: onDelete },
+    ]}>
+      <ListRow title={title} subtitle={expenseDetail(expense)} valueColor="label" value={formatMoney(expense.amount)}
+        icon={categoryStyle(expense.categoryIcon, expense.categoryColor)} />
+    </ContextMenu>
+  </SwipeableRow>;
 }
 
 /** "BY CATEGORY" rows with each category's colour bar (UI analysis R7), plus local insights. */
@@ -105,28 +150,7 @@ function CategoryBreakdown({ totals, total, footnote, period }: { totals: Catego
   </>;
 }
 
-const sum = (expenses: Expense[]) => expenses.reduce((total, e) => total + e.amount, 0);
-
-function categoryTotals(expenses: Expense[]): CategoryTotal[] {
-  const totals = new Map<string, CategoryTotal>();
-  for (const e of expenses) {
-    const name = e.categoryName ?? 'One-time';
-    const entry = totals.get(name) ?? { name, amount: 0, style: categoryStyle(e.categoryIcon, e.categoryColor) };
-    entry.amount += e.amount;
-    totals.set(name, entry);
-  }
-  return [...totals.values()].sort((a, b) => b.amount - a.amount);
-}
-
-/** "7:40", "18:10 · One-time", "12:50 · Card" — cash is the default and stays implicit. */
-function expenseDetail(expense: Expense) {
-  const parts = [formatClock(new Date(expense.createdAt))];
-  if (expense.isOneTime) parts.push('One-time');
-  if (expense.paymentMethod !== 'CASH') parts.push(expense.paymentMethod[0] + expense.paymentMethod.slice(1).toLowerCase());
-  return parts.join(' · ');
-}
-
-function periodLabel(period: Period, date: string, from: string, today: string) {
+function periodLabel({ period, date, from }: PeriodRange, today: string) {
   if (period === 'Day') return formatDayHeading(date);
   if (period === 'Week') return from === startOfWeek(today) ? 'This week' : `Week of ${formatDayHeading(from)}`;
   return date.slice(0, 4) === today.slice(0, 4) ? monthName(date) : `${monthName(date)} ${date.slice(0, 4)}`;

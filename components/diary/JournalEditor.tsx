@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { saveJournal, type DiaryEntry } from '@/lib/repos/diary';
 
-const MOODS = ['😞', '😐', '🙂', '😄', '🤩'];
+export const MOODS = ['😞', '😐', '🙂', '😄', '🤩'];
 const MOOD_LABELS = ['Very low', 'Low', 'Okay', 'Good', 'Great'];
 
 function MoodButton({ index, selected, onPress }: { index: number; selected: boolean; onPress: () => void }) {

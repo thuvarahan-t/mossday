@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { AddButton } from '@/components/navigation/AddButton';
+import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { useShareImage } from '@/components/share/ShareImage';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
-import { ExpenseSheet } from '@/components/expenses/ExpenseSheet';
+import { ExpenseSheet, preloadCategories } from '@/components/expenses/ExpenseSheet';
 import { TodoList } from '@/components/diary/TodoList';
 import { TodoSheet } from '@/components/diary/TodoSheet';
 import { useNewNote } from '@/components/notes/NotesScreen';
@@ -12,13 +13,11 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { GroupedList, ListRow, SectionTitle, Separator } from '@/components/ui/GroupedList';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
-import { Icon } from '@/components/ui/Icon';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { HabitTickButton } from '@/components/habits/HabitTickButton';
 import { Text } from '@/components/ui/Text';
-import { GlassButton } from '@/components/ui/glass/GlassButton';
 import { BottomSheet } from '@/components/ui/sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from '@/components/ui/sheet/SheetHeader';
 import { useAction, useResource } from '@/hooks/useResource';
@@ -26,6 +25,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import { formatLongDate } from '@/lib/date';
+import { todayShareContent } from './todayShare';
 import { isActiveDay } from '@/lib/heatmap';
 import { haptics } from '@/lib/haptics';
 import { formatMoney } from '@/lib/money';
@@ -42,6 +42,7 @@ export function TodayScreen() {
   const today = useToday();
   const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
+  useEffect(preloadCategories, []);
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [expenses, categories, habits, logs, todos, settings] = await Promise.all([
       listExpenses(today), listCategories(), listHabits(), listHabitLogs(today, today), listTodos(today), getSettings(),
@@ -53,11 +54,20 @@ export function TodayScreen() {
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, today)) ?? [];
   const countFor = (id: number) => data?.logs.find((l) => l.habitId === id)?.count ?? 0;
   const done = active.filter((h) => countFor(h.id) >= h.dailyGoal).length;
+  const shareImage = useShareImage();
+  const shareToday = () => {
+    if (!data) return;
+    void shareImage(todayShareContent({
+      theme, today, spent, budget, meals: data.categories.filter((c) => c.type === 'MEAL'),
+      expenses: data.expenses.filter((e) => e.date === today), habits: active, countFor, todos: data.todos,
+    }));
+  };
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
-    titleAccessory={<View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-      <GlassButton accessibilityLabel="Settings" onPress={() => router.push('/settings')}><Icon name="settings" /></GlassButton>
-      <AddButton accessibilityLabel="Quick add" onPress={() => setSheet('quick')} />
-    </View>}
+    titleAccessory={<HeaderActions actions={[
+      { icon: 'share', label: 'Share today', onPress: shareToday },
+      { icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') },
+      { icon: 'plus', label: 'Quick add', primary: true, onPress: () => setSheet('quick') },
+    ]} />}
     contentContainerStyle={{ gap: theme.spacing.md }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>

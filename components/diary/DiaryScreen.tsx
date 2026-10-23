@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, View } from 'react-native';
-import { AddButton } from '@/components/navigation/AddButton';
+import { HeaderActions } from '@/components/navigation/HeaderActions';
+import { useShareImage } from '@/components/share/ShareImage';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
@@ -9,7 +10,6 @@ import { LoadState } from '@/components/ui/LoadState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
 import { WeekStrip } from '@/components/ui/WeekStrip';
-import { GlassButton } from '@/components/ui/glass/GlassButton';
 import { GlassSurface } from '@/components/ui/glass/GlassSurface';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
@@ -22,6 +22,7 @@ import { listExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits } from '@/lib/repos/habits';
 import { isActiveDay } from '@/lib/heatmap';
 import { DiaryCalendar } from './DiaryCalendar';
+import { diaryShareContent } from './diaryShare';
 import { JournalEditor } from './JournalEditor';
 import { TodoList } from './TodoList';
 import { TodoSheet } from './TodoSheet';
@@ -47,6 +48,11 @@ export function DiaryScreen() {
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, date)) ?? [];
   const done = active.filter((h) => (data?.logs.find((l) => l.habitId === h.id)?.count ?? 0) >= h.dailyGoal).length;
   const closeCalendar = useCallback(() => setCalendar(false), []);
+  const summary = `Spent ${formatMoney(spend)} · ${done} of ${active.length} habits done`;
+  const shareImage = useShareImage();
+  const shareDay = () => {
+    if (data) void shareImage(diaryShareContent({ theme, date, todos: data.todos, journal: data.journal, summary }));
+  };
   useEffect(() => {
     if (!calendar) return;
     // Android back leaves the calendar mode before it leaves the tab.
@@ -59,10 +65,11 @@ export function DiaryScreen() {
   </GlassSurface>;
   return <LargeTitleScreen title={calendar ? `${monthName(month)}${month.slice(0, 4) === today.slice(0, 4) ? '' : ` ${month.slice(0, 4)}`}` : `${dayOfMonth(date)} ${monthName(date)}`}
     subtitle={calendar ? undefined : `${weekdayName(date)}, ${date.slice(0, 4)}`} showBack={calendar} onBack={closeCalendar} headerRight={calendar ? monthNavigation : undefined}
-    titleAccessory={calendar ? undefined : <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-      <GlassButton accessibilityLabel="Open calendar" onPress={() => { setMonth(startOfMonth(date)); setCalendar(true); }}><Icon name="calendar" /></GlassButton>
-      <AddButton accessibilityLabel="Add to-do" onPress={() => setAdding(true)} />
-    </View>}
+    titleAccessory={calendar ? undefined : <HeaderActions actions={[
+      { icon: 'calendar', label: 'Open calendar', onPress: () => { setMonth(startOfMonth(date)); setCalendar(true); } },
+      { icon: 'share', label: 'Share this day', onPress: shareDay },
+      { icon: 'plus', label: 'Add to-do', primary: true, onPress: () => setAdding(true) },
+    ]} />}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <DiaryCalendar month={month} today={today} selected={date}
       monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}
@@ -74,7 +81,7 @@ export function DiaryScreen() {
           <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
         </View>} /> : <Card><Text color="secondaryLabel">Nothing planned.</Text><Button title="Add to-do" variant="plain" onPress={() => setAdding(true)} /></Card>}
       <JournalEditor key={date} date={date} initial={data.journal} />
-      <Text align="center" variant="subheadline" color="secondaryLabel">Spent {formatMoney(spend)} · {done} of {active.length} habits done</Text>
+      <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
     </>}
     {adding && <TodoSheet {...addingTransition} date={date} onClose={() => setAdding(false)} />}
   </LargeTitleScreen>;
