@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
@@ -52,6 +53,14 @@ export function ExpensesScreen() {
   const today = useToday();
   const [date, setDate] = useState(today);
   const [period, setPeriod] = useState<Period>('Day');
+  // Links such as Today's "Spent today" open a specific day; `at` changes on every link,
+  // so repeated taps still jump back even when the day itself is the same.
+  const { day, at } = useLocalSearchParams<{ day?: string; at?: string }>();
+  const [handledLink, setHandledLink] = useState<string>();
+  if (at && at !== handledLink) {
+    setHandledLink(at);
+    if (typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= today) { setPeriod('Day'); setDate(day); }
+  }
   useEffect(preloadCategories, []);
   const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new'>();
   const [budgetEditor, setBudgetEditor, budgetTransition] = useSheetState<BudgetKey>();

@@ -33,7 +33,7 @@ import { haptics } from '@/lib/haptics';
 import { formatMoney } from '@/lib/money';
 import { dataColors } from '@/lib/dataColors';
 import { listTodos } from '@/lib/repos/diary';
-import { listCategories, listExpenses } from '@/lib/repos/expenses';
+import { listCategories, listExpenses, type Expense } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits, tickHabit } from '@/lib/repos/habits';
 import { getSettings } from '@/lib/repos/settings';
 
@@ -46,6 +46,9 @@ export function TodayScreen() {
   const today = useToday();
   const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
+  const [editing, setEditing] = useState<Expense | undefined>();
+  const addExpense = (meal?: number) => { setEditing(undefined); setMealId(meal); setSheet('expense'); };
+  const openTodaysExpenses = () => router.navigate({ pathname: '/expenses', params: { day: today, at: String(Date.now()) } });
   useEffect(preloadCategories, []);
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [expenses, categories, habits, logs, todos, settings] = await Promise.all([
@@ -73,26 +76,29 @@ export function TodayScreen() {
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-          <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={() => router.navigate('/expenses')} style={{ flex: 1, gap: theme.spacing.sm }}>
+          <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={openTodaysExpenses} style={{ flex: 1, gap: theme.spacing.sm }}>
             <Text color="secondaryLabel">Spent today</Text>
             <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
           </PressableScale>
           {/* A sibling, not a child, of the summary so both stay separate accessible buttons. */}
-          <PressableScale accessibilityLabel="Add expense" haptic="tap" onPress={() => { setMealId(undefined); setSheet('expense'); }}
+          <PressableScale accessibilityLabel="Add expense" haptic="tap" onPress={() => addExpense()}
             style={{ width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, borderRadius: theme.sizes.touchTarget / 2,
               alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill }}>
             <Icon name="plus" color="accent" strokeWidth={2.6} />
           </PressableScale>
         </View>
-        {budget > 0 && <PressableScale accessibilityLabel="Daily budget, view today's expenses" haptic="tap" onPress={() => router.navigate('/expenses')}>
+        {budget > 0 && <PressableScale accessibilityLabel="Daily budget, view today's expenses" haptic="tap" onPress={openTodaysExpenses}>
           <BudgetMeter spent={spent} budget={budget} />
         </PressableScale>}
         <Separator />
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           {data.categories.filter((c) => c.type === 'MEAL').map((category) => {
             const logged = data.expenses.filter((e) => e.date === today && e.categoryId === category.id);
-            return <PressableScale key={category.id} accessibilityLabel={`${category.name}, ${logged.length ? 'view expenses' : 'add expense'}`}
-              onPress={() => { if (logged.length) router.navigate('/expenses'); else { setMealId(category.id); setSheet('expense'); } }}
+            return <PressableScale key={category.id} accessibilityLabel={`${category.name}, ${logged.length ? 'edit expense' : 'add expense'}`}
+              onPress={() => {
+                // A logged meal opens today's entry for it (the latest, if several); an empty one adds it.
+                if (logged.length) { setEditing(logged[0]); setSheet('expense'); } else addExpense(category.id);
+              }}
               style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: theme.colors.fill, alignItems: 'center' }}>
               <Text variant="footnote" color="secondaryLabel">{category.name}</Text><Text variant="headline" color={logged.length ? 'label' : 'accent'}>{logged.length ? formatMoney(logged.reduce((sum, e) => sum + e.amount, 0)) : '+ Add'}</Text>
             </PressableScale>;
@@ -123,11 +129,11 @@ export function TodayScreen() {
       if (noteAfterDismissal.current) { noteAfterDismissal.current = false; newNote(); }
     }} visible={sheet === 'quick' && sheetTransition.visible} onClose={() => setSheet(null)} detents={['content']} background="grouped">
       <SheetHeader title="Add" trailing={<SheetIconButton icon="close" accessibilityLabel="Close" onPress={() => setSheet(null)} />} />
-      <GroupedList><ListRow title="Expense" subtitle="A meal or anything you paid for" icon={{ icon: 'wallet', color: 'orange' }} accessory="chevron" onPress={() => { setMealId(undefined); setSheet('expense'); }} />
+      <GroupedList><ListRow title="Expense" subtitle="A meal or anything you paid for" icon={{ icon: 'wallet', color: 'orange' }} accessory="chevron" onPress={() => addExpense()} />
         <ListRow title="To-do" subtitle="Adds to today in your diary" icon={{ icon: 'todo', color: 'indigo' }} accessory="chevron" onPress={() => setSheet('todo')} />
         <ListRow title="Note" subtitle="Text, photos or a voice memo" icon={{ icon: 'note', color: 'yellow' }} accessory="chevron" onPress={() => { noteAfterDismissal.current = true; setSheet(null); }} /></GroupedList>
     </BottomSheet>
-    {sheet === 'expense' && <ExpenseSheet {...sheetTransition} mealId={mealId} onClose={() => setSheet(null)} />}
+    {sheet === 'expense' && <ExpenseSheet {...sheetTransition} initial={editing} mealId={mealId} onClose={() => setSheet(null)} />}
     {sheet === 'todo' && <TodoSheet {...sheetTransition} date={today} onClose={() => setSheet(null)} />}
   </LargeTitleScreen>;
 }
