@@ -13,13 +13,13 @@ Tick each box (`[x]`) only after that part is finished, type-checked and committ
 ---
 
 ## Phase 1 — Analyse (no code)
-- [ ] Study every image in `design/` and read `spec.md` fully
-- [ ] Write `docs/UI-ANALYSIS.md`:
-  - [ ] Screen inventory (every screen / sheet / state + file name)
-  - [ ] Per screen: layout top→bottom, components, states (empty, filled, pressed, selected, over-budget, recording, dark), interactions/animations
-  - [ ] Reusable component list (anything used twice = a component)
-  - [ ] Inconsistencies between screens + the single rule used to resolve each
-- [ ] Show a short summary, then continue
+- [x] Study every image in `design/` and read `spec.md` fully
+- [x] Write `docs/UI-ANALYSIS.md`:
+  - [x] Screen inventory (every screen / sheet / state + file name)
+  - [x] Per screen: layout top→bottom, components, states (empty, filled, pressed, selected, over-budget, recording, dark), interactions/animations
+  - [x] Reusable component list (anything used twice = a component)
+  - [x] Inconsistencies between screens + the single rule used to resolve each
+- [x] Show a short summary, then continue
 
 ## Phase 2 — Design system (`constants/`, tokens only — never hard-code in screens)
 - [ ] Typography: Inter via `@expo-google-fonts/inter` (SF Pro substitute), slight negative tracking on large sizes
