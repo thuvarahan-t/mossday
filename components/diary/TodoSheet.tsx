@@ -5,6 +5,7 @@ import { DateSelector } from '@/components/ui/DateSelector';
 import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
+import { TimeField } from '@/components/ui/TimeField';
 import { Toggle } from '@/components/ui/Toggle';
 import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
@@ -36,7 +37,7 @@ export function TodoSheet({ date: initialDate, onClose, ...transition }: { date:
     <View style={row}>
       <DateSelector date={date} onChange={setDate} />
       <View style={{ flex: 1 }}>
-        <TextField value={time} onChangeText={setTime} placeholder="Time (14:30)" accessibilityLabel="Optional time in 24-hour format" maxLength={5} />
+        <TimeField value={time} onChange={setTime} onClear={() => setTime('')} label="To-do time" />
       </View>
     </View>
     <View style={row}>
