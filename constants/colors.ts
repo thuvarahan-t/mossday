@@ -58,6 +58,9 @@ const light = {
   glassHighlight: 'rgba(255, 255, 255, 0.9)',
   glassBorder: 'rgba(0, 0, 0, 0.05)',
   glassFallback: 'rgba(249, 249, 251, 0.94)',
+  /** Screen header bar: a lighter tint so more of the blurred content shows through. */
+  glassBarTint: 'rgba(255, 255, 255, 0.34)',
+  glassBarFallback: 'rgba(242, 242, 247, 0.86)',
   /** Active tab lens and the raised action button's rim. */
   glassLens: 'rgba(52, 199, 89, 0.16)',
   glassRim: 'rgba(255, 255, 255, 0.75)',
@@ -110,6 +113,8 @@ const dark: ColorTokens = {
   glassHighlight: 'rgba(255, 255, 255, 0.16)',
   glassBorder: 'rgba(255, 255, 255, 0.08)',
   glassFallback: 'rgba(30, 30, 32, 0.94)',
+  glassBarTint: 'rgba(28, 28, 30, 0.3)',
+  glassBarFallback: 'rgba(0, 0, 0, 0.82)',
   glassLens: 'rgba(48, 209, 88, 0.2)',
   glassRim: 'rgba(255, 255, 255, 0.28)',
   hudTint: 'rgba(58, 58, 60, 0.88)',

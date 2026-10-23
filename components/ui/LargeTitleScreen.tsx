@@ -67,7 +67,7 @@ export function LargeTitleScreen({
       </BlurTargetContent>
       <View style={styles.header} onLayout={(event) => setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))}>
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, glassStyle]}>
-          <GlassSurface radius={0} flat style={styles.fill} />
+          <GlassSurface material="bar" radius={0} flat style={styles.fill} />
           <View style={[styles.separator, { height: theme.sizes.hairline, backgroundColor: theme.colors.separator }]} />
         </Animated.View>
         {/* Controls on the bar use solid, shadowless glass: a second blur layer or a floating

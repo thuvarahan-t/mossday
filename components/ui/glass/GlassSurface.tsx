@@ -8,12 +8,13 @@ import { useTheme } from '@/hooks/useTheme';
 import { useBlurTarget } from './BlurTarget';
 
 /**
- * - `regular`: translucent bars and buttons.
+ * - `regular`: translucent buttons and floating bars.
+ * - `bar`: the screen header, lighter and clearer than `regular`.
  * - `hud`: always-dark material for toasts (UI-ANALYSIS R14).
  * - `sheet` / `groupedSheet`: the near-opaque sheet materials from the design, still with
  *   the glass edge highlight.
  */
-export type GlassMaterial = 'regular' | 'hud' | 'sheet' | 'groupedSheet';
+export type GlassMaterial = 'regular' | 'bar' | 'hud' | 'sheet' | 'groupedSheet';
 
 export type GlassSurfaceProps = {
   children?: ReactNode;
@@ -78,7 +79,9 @@ export function GlassSurface({
 
   const tint = opaqueToken
     ? colors[opaqueToken]
-    : isHud ? colors.hudTint : canBlur ? colors.glassTint : colors.glassFallback;
+    : isHud ? colors.hudTint
+      : material === 'bar' ? (canBlur ? colors.glassBarTint : colors.glassBarFallback)
+        : canBlur ? colors.glassTint : colors.glassFallback;
   const blurTint = isHud || theme.isDark ? 'dark' : 'light';
 
   const pressedStyle = useAnimatedStyle(() => ({ opacity: pressProgress?.get() ?? 0 }));
