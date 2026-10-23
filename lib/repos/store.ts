@@ -1,21 +1,21 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../db';
 
-const listeners = new Set<() => void>();
+const listeners = new Set<(topic: string) => void>();
 let pending: Promise<unknown> = Promise.resolve();
 
-export function subscribeToStore(listener: () => void) {
+export function subscribeToStore(listener: (topic: string) => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
 
 /** Serialize writes: SQLite transactions on one shared connection must not overlap. */
-export function write<T>(operation: (db: SQLiteDatabase) => Promise<T>): Promise<T> {
+export function write<T>(operation: (db: SQLiteDatabase) => Promise<T>, topic = 'data'): Promise<T> {
   const result = pending.then(async () => {
     const db = await getDatabase();
     let value!: T;
     await db.withTransactionAsync(async () => { value = await operation(db); });
-    listeners.forEach((listener) => listener());
+    listeners.forEach((listener) => listener(topic));
     return value;
   });
   pending = result.catch(() => undefined);
