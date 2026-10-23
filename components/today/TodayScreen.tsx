@@ -17,6 +17,7 @@ import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { HabitTickButton } from '@/components/habits/HabitTickButton';
+import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { BottomSheet } from '@/components/ui/sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from '@/components/ui/sheet/SheetHeader';
@@ -70,11 +71,21 @@ export function TodayScreen() {
     contentContainerStyle={{ gap: theme.spacing.md }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
-        <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={() => router.navigate('/expenses')} style={{ gap: theme.spacing.sm }}>
-          <Text color="secondaryLabel">Spent today</Text>
-          <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
-          {budget > 0 && <BudgetMeter spent={spent} budget={budget} />}
-        </PressableScale>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+          <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={() => router.navigate('/expenses')} style={{ flex: 1, gap: theme.spacing.sm }}>
+            <Text color="secondaryLabel">Spent today</Text>
+            <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
+          </PressableScale>
+          {/* A sibling, not a child, of the summary so both stay separate accessible buttons. */}
+          <PressableScale accessibilityLabel="Add expense" haptic="tap" onPress={() => { setMealId(undefined); setSheet('expense'); }}
+            style={{ width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, borderRadius: theme.sizes.touchTarget / 2,
+              alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill }}>
+            <Icon name="plus" color="accent" strokeWidth={2.6} />
+          </PressableScale>
+        </View>
+        {budget > 0 && <PressableScale accessibilityLabel="Daily budget, view today's expenses" haptic="tap" onPress={() => router.navigate('/expenses')}>
+          <BudgetMeter spent={spent} budget={budget} />
+        </PressableScale>}
         <Separator />
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           {data.categories.filter((c) => c.type === 'MEAL').map((category) => {
