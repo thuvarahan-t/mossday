@@ -46,7 +46,7 @@ export const restoreHabit = (snapshot: Awaited<ReturnType<typeof deleteHabit>>) 
 
 /** Inactive weekdays pause a streak. Today's incomplete goal does not erase yesterday's streak. */
 export function habitStats(habit: Habit, counts: Readonly<Record<string, number>>, today = todayLocalDate()) {
-  const first = habit.createdAt.slice(0, 10);
+  const first = todayLocalDate(new Date(habit.createdAt));
   let current = 0, best = 0, run = 0, eligible = 0, completed = 0, total = 0;
   const start = first > today ? today : first;
   for (let day = start; day <= today; day = addDays(day, 1)) {

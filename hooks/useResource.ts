@@ -6,13 +6,13 @@ import { useToast } from '@/components/ui/Toast';
 
 /** Refresh on focus, local writes, and returning from background; ignore stale requests. */
 export function useResource<T>(load: () => Promise<T>) {
-  const [data, setData] = useState<T | null>(null);
+  const [result, setResult] = useState<{ load: () => Promise<T>; value: T } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);
   const refresh = useCallback(() => {
     const request = ++generation.current;
     void load().then((value) => {
-      if (request === generation.current) { setData(value); setError(null); }
+      if (request === generation.current) { setResult({ load, value }); setError(null); }
     }, (failure: unknown) => {
       if (request === generation.current) setError(failure instanceof Error ? failure.message : 'Could not load your data.');
     });
@@ -23,7 +23,7 @@ export function useResource<T>(load: () => Promise<T>) {
     const appState = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
     return () => { generation.current += 1; unsubscribe(); appState.remove(); };
   }, [refresh]));
-  return { data, error, refresh };
+  return { data: result?.load === load ? result.value : null, error, refresh };
 }
 
 export function useAction() {
