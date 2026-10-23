@@ -67,9 +67,17 @@ async function main() {
   await assert.rejects(expenses.deleteCategory(lunch.id), /Only custom/);
   await assert.rejects(expenses.deleteCategory(otherIds[0]), /Only custom/, 'Built-in Other categories are protected too');
   await expenses.saveExpense({ amount: 200, categoryId: newCategoryId, title: null, note: null, date: yesterday, paymentMethod: 'CASH', isOneTime: 0 });
+  await expenses.updateCategory(newCategoryId, '  Morning coffee  ', 'purple');
+  const editedCategory = (await expenses.listCategories()).find((category) => category.id === newCategoryId);
+  assert.equal(editedCategory.name, 'Morning coffee');
+  assert.equal(editedCategory.color, 'purple');
+  assert.equal((await expenses.listExpenses(yesterday))[0].categoryId, newCategoryId, 'Edits preserve expense links');
+  assert.throws(() => expenses.updateCategory(newCategoryId, ' ', 'blue'));
+  await assert.rejects(expenses.updateCategory(99999, 'Missing', 'blue'));
   await expenses.deleteCategory(newCategoryId);
   assert.equal((await expenses.listCategories()).some((category) => category.id === newCategoryId), false);
-  assert.equal((await expenses.listExpenses(yesterday))[0].categoryName, 'Coffee', 'Deleting a category preserves historical expense labels');
+  assert.equal((await expenses.listExpenses(yesterday))[0].categoryName, 'Morning coffee', 'Deleting a category preserves historical expense labels');
+  await assert.rejects(expenses.updateCategory(newCategoryId, 'Archived', 'blue'), /no longer exists/);
   assert.equal((await expenses.listExpenses(yesterday))[0].amount, 200);
   await expenses.restoreCategory(newCategoryId);
   assert.equal((await expenses.listCategories()).some((category) => category.id === newCategoryId), true, 'Undo restores custom categories');

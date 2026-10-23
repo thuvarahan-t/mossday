@@ -24,6 +24,7 @@ import { addCategory, deleteCategory, deleteExpense, listCategories, reorderCate
 import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
+import { CategoryEditor } from './CategoryEditor';
 
 /** Window height taken by the Add Expense sheet apart from the keypad rows and optional rows. */
 const KEYPAD_FREE_SPACE = 416;
@@ -54,6 +55,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const toast = useToast();
   const [categories, setCategories] = useState<Category[] | null>(categoryCache);
   const [draggingCategory, setDraggingCategory] = useState(false);
+  const [editingCategory, setEditingCategory, categoryEditorTransition] = useSheetState<Category>();
   const categoryOrderSaving = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
@@ -184,6 +186,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
     {other && <FormSheet {...otherTransition} title="Categories" size="fit" dense scrollEnabled={!draggingCategory} onClose={() => setOther(false)}>
       <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
         disabled={busy} onReorder={saveCategoryOrder} onDraggingChange={setDraggingCategory}
+        onEdit={(id) => { const category = categories?.find((row) => row.id === id); if (category) setEditingCategory(category); }}
         onDelete={(id) => { const category = categories?.find((row) => row.id === id); if (category?.isUserCreated) removeCategory(category); }}
         selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setOther(false); }} onCreate={() => setNewCategory(true)} />
       {newCategory && <>
@@ -195,6 +198,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
           void action(async () => { const id = await addCategory(categoryName, 'tag', color); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
         }} />
       </>}
+      {editingCategory && <CategoryEditor {...categoryEditorTransition} category={editingCategory} onSaved={refreshCategories} onClose={() => setEditingCategory(null)} />}
     </FormSheet>}
   </FormSheet>;
 }

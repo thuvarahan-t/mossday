@@ -43,7 +43,7 @@ function DayButton({ index, selected, onPress }: { index: number; selected: bool
 
 /** Habit colour choices (Add Habit "COLOUR"); selected swatch gets a ring in its own colour. */
 export function SwatchPicker({ colors, selected, onSelect }: {
-  colors: readonly AccentName[]; selected: AccentName; onSelect: (color: AccentName) => void;
+  colors: readonly AccentName[]; selected: string; onSelect: (color: AccentName) => void;
 }) {
   return (
     <View style={[styles.row, { justifyContent: 'space-between' }]} accessibilityRole="radiogroup">

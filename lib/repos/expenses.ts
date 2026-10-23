@@ -17,6 +17,14 @@ export const deleteCategory = (id: number) => write(async (db) => {
 export const restoreCategory = (id: number) => write(async (db) => {
   await db.runAsync('UPDATE categories SET archived=0 WHERE id=? AND isUserCreated=1', id);
 });
+export function updateCategory(id: number, name: string, color: string) {
+  const cleanName = requireName(name);
+  const cleanColor = requireName(color);
+  return write(async (db) => {
+    const result = await db.runAsync('UPDATE categories SET name=?,color=? WHERE id=? AND archived=0', cleanName, cleanColor, id);
+    if (!result.changes) throw new Error('Category no longer exists.');
+  });
+}
 /** Only reorder the supplied categories; meal ordering is independent of Other. */
 export const reorderCategories = (ids: number[]) => write(async (db) => {
   if (new Set(ids).size !== ids.length) throw new Error('Category order contains duplicates.');
