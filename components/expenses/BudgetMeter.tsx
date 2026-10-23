@@ -12,12 +12,12 @@ export function budgetStatus(spent: number, budget: number): ColorToken {
 }
 
 /** Budget bar with "Rs. 750 left" / "Rs. 300 over budget" and "of Rs. 2,000" underneath. */
-export function BudgetMeter({ spent, budget }: { spent: number; budget: number }) {
+export function BudgetMeter({ spent, budget, animated }: { spent: number; budget: number; animated?: boolean }) {
   const theme = useTheme();
   const status = budgetStatus(spent, budget);
   const fill = status === 'accent' ? theme.colors.accentBar : status === 'warningText' ? theme.colors.warning : theme.colors.danger;
   return <View style={{ gap: theme.spacing.sm }}>
-    <ProgressBar progress={spent / budget} color={fill} />
+    <ProgressBar progress={spent / budget} color={fill} animated={animated} />
     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
       <Text variant="subheadline" weight="semibold" color={status}>
         {formatMoney(Math.abs(budget - spent))} {spent > budget ? 'over budget' : 'left'}

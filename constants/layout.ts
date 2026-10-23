@@ -33,6 +33,7 @@ export const sizes = {
   iconEmpty: 48,
   touchTarget: 44,
   circleButton: 44,
+  headerAction: 38, // one icon slot in the large-title action pill
   toolbarHeight: 52, // note editor floating tool pill
   tabBarHeight: 62,
   tabItemHighlight: 52,

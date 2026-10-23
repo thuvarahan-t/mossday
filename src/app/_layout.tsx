@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
+import { ShareImageProvider } from '@/components/share/ShareImage';
 import { ToastProvider } from '@/components/ui/Toast';
 import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
 import { AppSheetCover } from '@/components/ui/sheet/SheetCover';
@@ -98,6 +99,7 @@ function AppShell() {
     <AppSheetCover>
       <BlurTargetProvider root>
         <ToastProvider>
+          <ShareImageProvider>
           <RemindersBridge />
           <BlurTargetContent style={styles.fill}>
             <Stack
@@ -116,6 +118,7 @@ function AppShell() {
               <Stack.Screen name="dev/components" />
             </Stack>
           </BlurTargetContent>
+          </ShareImageProvider>
         </ToastProvider>
       </BlurTargetProvider>
     </AppSheetCover>

@@ -10,19 +10,22 @@ export type ProgressBarProps = {
   /** Raw colour; defaults to the green bar tint. */
   color?: string;
   height?: number;
+  /** `false` draws the final length immediately (shared images are captured at once). */
+  animated?: boolean;
 };
 
 /** Pill progress bar whose fill springs to its new length ("Budget bar springs"). */
-export const ProgressBar = memo(function ProgressBar({ progress, color, height }: ProgressBarProps) {
+export const ProgressBar = memo(function ProgressBar({ progress, color, height, animated = true }: ProgressBarProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const [width, setWidth] = useState(0);
   const fill = useSharedValue(0);
   const barHeight = height ?? theme.sizes.progressBar;
+  const clamped = Math.max(0, Math.min(1, progress));
 
   useEffect(() => {
-    fill.set(animateTo(Math.max(0, Math.min(1, progress)) * width, 'default', reduceMotion));
-  }, [fill, progress, reduceMotion, width]);
+    fill.set(animateTo(clamped * width, 'default', reduceMotion));
+  }, [clamped, fill, reduceMotion, width]);
 
   const fillStyle = useAnimatedStyle(() => ({ width: fill.get() }));
 
@@ -33,7 +36,8 @@ export const ProgressBar = memo(function ProgressBar({ progress, color, height }
       accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
       style={{ height: barHeight, borderRadius: theme.radii.pill, backgroundColor: theme.colors.fill, overflow: 'hidden' }}
     >
-      <Animated.View style={[{ height: barHeight, borderRadius: theme.radii.pill, backgroundColor: color ?? theme.colors.accentBar }, fillStyle]} />
+      <Animated.View style={[{ height: barHeight, borderRadius: theme.radii.pill, backgroundColor: color ?? theme.colors.accentBar },
+        animated ? fillStyle : { width: `${clamped * 100}%` }]} />
     </View>
   );
 });
