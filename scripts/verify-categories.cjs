@@ -10,9 +10,10 @@ function load(file, dependencies) {
   return exports;
 }
 const ordering = load('components/ui/categoryGridOrder.ts', {});
+const listOrder = load('components/ui/listOrder.ts', {});
 const original = Array.from({ length: 8 }, (_, index) => index);
 for (const id of original) for (const target of original) {
-  const reordered = Array.from(ordering.moveCategory(original, id, target));
+  const reordered = Array.from(listOrder.moveItem(original, id, target));
   assert.equal(reordered[target], id);
   assert.equal(new Set(reordered).size, 8);
   assert.deepEqual(reordered.filter((value) => value !== id), original.filter((value) => value !== id), 'Other categories preserve relative order');
@@ -36,7 +37,7 @@ const dependencies = {
   '@/constants/typography': { textVariants: { footnote: { lineHeight: 18 } } },
   '@/lib/animation': { animateTo: (value) => value },
   '@/lib/haptics': { haptics: { selection: () => {} } },
-  './categoryGridOrder': ordering,
+  './categoryGridOrder': ordering, './listOrder': listOrder,
   './IconTile': { IconTile: 'IconTile' }, './PressableScale': { PressableScale: 'PressableScale' }, './Text': { Text: 'Text' },
   './ContextMenu': { ContextMenu: 'ContextMenu' },
 };

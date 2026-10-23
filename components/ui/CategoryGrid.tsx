@@ -8,8 +8,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu';
-import { categoryDropIndex, moveCategory } from './categoryGridOrder';
+import { categoryDropIndex } from './categoryGridOrder';
 import { IconTile } from './IconTile';
+import { moveItem } from './listOrder';
 import type { IconName } from './Icon';
 import { PressableScale, type PressableScaleProps } from './PressableScale';
 import { Text } from './Text';
@@ -115,7 +116,7 @@ function CategoryTile({ item, selected, drag, width, height, labelHeight, gap, d
       if (!reorderable || !moved.get()) return;
       const target = categoryDropIndex(from, x.get(), y.get(), columnStep, rowStep, order.get().length);
       if (target !== order.get().indexOf(item.id)) {
-        order.set(moveCategory(order.get(), item.id, target));
+        order.set(moveItem(order.get(), item.id, target));
         scheduleOnRN(haptics.selection);
       }
     },
@@ -156,7 +157,7 @@ function CategoryTile({ item, selected, drag, width, height, labelHeight, gap, d
     onAccessibilityAction: (event) => {
       if (disabled || activeId.get() !== null) return;
       const direction = event.nativeEvent.actionName === 'moveEarlier' ? -1 : event.nativeEvent.actionName === 'moveLater' ? 1 : 0;
-      if (direction) onCommit(moveCategory(order.get(), item.id, order.get().indexOf(item.id) + direction));
+      if (direction) onCommit(moveItem(order.get(), item.id, order.get().indexOf(item.id) + direction));
     },
   };
   const select = () => { if (!suppressSelection.current) onSelect(); };

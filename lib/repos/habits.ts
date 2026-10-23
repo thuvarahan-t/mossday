@@ -2,10 +2,10 @@ import { addDays, todayLocalDate } from '../date';
 import { isActiveDay } from '../heatmap';
 import { read, write, requireDate, requireName } from './store';
 
-export type Habit = { id: number; name: string; icon: string | null; color: string; dailyGoal: number; activeDays: number; reminderTime: string | null; createdAt: string; archived: number };
+export type Habit = { id: number; name: string; icon: string | null; color: string; dailyGoal: number; activeDays: number; reminderTime: string | null; createdAt: string; archived: number; sortOrder: number };
 export type HabitInput = Pick<Habit, 'name' | 'icon' | 'color' | 'dailyGoal' | 'activeDays' | 'reminderTime'>;
 export type HabitLog = { habitId: number; date: string; count: number };
-export const listHabits = () => read((db) => db.getAllAsync<Habit>('SELECT * FROM habits WHERE archived=0 ORDER BY id'));
+export const listHabits = () => read((db) => db.getAllAsync<Habit>('SELECT * FROM habits WHERE archived=0 ORDER BY sortOrder, id'));
 export const getHabit = (id: number) => read((db) => db.getFirstAsync<Habit>('SELECT * FROM habits WHERE id=?', id));
 export const listHabitLogs = (from: string, to: string) => read((db) => db.getAllAsync<HabitLog>('SELECT * FROM habit_logs WHERE date BETWEEN ? AND ?', from, to));
 export function saveHabit(input: HabitInput, id?: number) {
@@ -16,7 +16,8 @@ export function saveHabit(input: HabitInput, id?: number) {
   return write(async (db) => {
     const values = [name, input.icon, input.color, input.dailyGoal, input.activeDays, input.reminderTime];
     if (id) await db.runAsync('UPDATE habits SET name=?,icon=?,color=?,dailyGoal=?,activeDays=?,reminderTime=? WHERE id=?', ...values, id);
-    else await db.runAsync('INSERT INTO habits(name,icon,color,dailyGoal,activeDays,reminderTime,createdAt) VALUES (?,?,?,?,?,?,?)', ...values, new Date().toISOString());
+    else await db.runAsync(`INSERT INTO habits(name,icon,color,dailyGoal,activeDays,reminderTime,createdAt,sortOrder)
+      VALUES (?,?,?,?,?,?,?,(SELECT COALESCE(MAX(sortOrder),-1)+1 FROM habits))`, ...values, new Date().toISOString());
   }, 'reminders');
 }
 export function tickHabit(id: number, date: string, delta = 1) {
@@ -32,6 +33,14 @@ export function tickHabit(id: number, date: string, delta = 1) {
         WHEN count < ? THEN count+1 ELSE count END`, id, date, Math.max(0, delta), delta, habit.dailyGoal);
   });
 }
+/** Saves the visible order; archived habits keep their position for when they return. */
+export const reorderHabits = (ids: number[]) => write(async (db) => {
+  if (new Set(ids).size !== ids.length) throw new Error('Habit order contains duplicates.');
+  for (const [index, id] of ids.entries()) {
+    const result = await db.runAsync('UPDATE habits SET sortOrder=? WHERE id=?', index, id);
+    if (!result.changes) throw new Error('This habit is no longer available.');
+  }
+});
 export const archiveHabit = (id: number, archived = true) => write(async (db) => { await db.runAsync('UPDATE habits SET archived=? WHERE id=?', archived ? 1 : 0, id); }, 'reminders');
 export async function deleteHabit(id: number) {
   return write(async (db) => {
@@ -44,8 +53,8 @@ export async function deleteHabit(id: number) {
 export const restoreHabit = (snapshot: Awaited<ReturnType<typeof deleteHabit>>) => write(async (db) => {
   const h = snapshot.habit;
   if (!h) return;
-  await db.runAsync('INSERT INTO habits(id,name,icon,color,dailyGoal,activeDays,reminderTime,createdAt,archived) VALUES (?,?,?,?,?,?,?,?,?)',
-    h.id, h.name, h.icon, h.color, h.dailyGoal, h.activeDays, h.reminderTime, h.createdAt, h.archived);
+  await db.runAsync('INSERT INTO habits(id,name,icon,color,dailyGoal,activeDays,reminderTime,createdAt,archived,sortOrder) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    h.id, h.name, h.icon, h.color, h.dailyGoal, h.activeDays, h.reminderTime, h.createdAt, h.archived, h.sortOrder);
   for (const log of snapshot.logs) await db.runAsync('INSERT INTO habit_logs(habitId,date,count) VALUES (?,?,?)', h.id, log.date, log.count);
 }, 'reminders');
 

@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
-import { ContextMenu } from '@/components/ui/ContextMenu';
+import { ContextMenu, type ContextMenuHandle } from '@/components/ui/ContextMenu';
+import { ReorderHandle, useReorderActions } from '@/components/ui/ReorderableStack';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
@@ -24,9 +25,14 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, 
   const today = useToday();
   const count = counts[today] ?? 0;
   const stats = habitStats(habit, counts, today);
+  const menu = useRef<ContextMenuHandle>(null);
+  const reorderActions = useReorderActions();
   return <Card padding="row" style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
-    <ContextMenu style={{ flex: 1 }} accessibilityLabel={habit.name} onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })} actions={[
+    {/* Like categories: hold and drag the name to move the card; hold and release for actions. */}
+    <ReorderHandle style={{ flex: 1 }} onHold={() => menu.current?.open()}>
+    <ContextMenu ref={menu} manualTrigger triggerProps={{ ...reorderActions, accessibilityHint: 'Long press for actions, or hold and drag to reorder' }}
+      accessibilityLabel={habit.name} onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })} actions={[
       { label: 'Edit', icon: 'edit', onPress: onEdit },
       { label: 'Archive', icon: 'archive', onPress: () => { void action(() => archiveHabit(habit.id), () => toast({ message: 'Habit archived', actionLabel: 'Undo', onAction: () => { void action(() => archiveHabit(habit.id, false)); } })); } },
       { label: 'Delete', icon: 'trash', destructive: true, onPress: () => { void action(async () => {
@@ -39,6 +45,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, 
         <View style={{ flex: 1 }}><Text variant="title3" numberOfLines={2} style={{ color: palette.accent }}>{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="footnote" rawColor={palette.accent} /></View>
       </View>
     </ContextMenu>
+    </ReorderHandle>
     {/* The haptic fires on touch, not after the write, so a tick feels instant. */}
     <HabitTickButton name={habit.name} count={count} goal={habit.dailyGoal} color={habit.color}
       onTick={() => { haptics.tick(); void action(() => tickHabit(habit.id, today)); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />

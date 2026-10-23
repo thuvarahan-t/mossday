@@ -63,11 +63,14 @@ async function main() {
     sqlite.exec(`DROP INDEX ${index}`);
   }
   sqlite.exec('PRAGMA user_version = 1');
-  sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived;');
+  sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; ALTER TABLE habits DROP COLUMN sortOrder;');
+  sqlite.exec("INSERT INTO habits(id,name,createdAt) VALUES (7,'Read','now'),(3,'Walk','now')");
   sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
   sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 5);
+  assert.deepEqual(sqlite.prepare('SELECT name FROM habits ORDER BY sortOrder').all().map((row) => row.name), ['Walk', 'Read'],
+    'Upgraded habits keep their previous creation order');
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE isUserCreated=1').get().n, 0, 'Seed categories remain protected after upgrade');
   assert.equal(sqlite.prepare("SELECT icon FROM categories WHERE name='Snacks'").get().icon, 'coffee');
   assert.equal(sqlite.prepare("SELECT color FROM categories WHERE name='Lunch'").get().color, 'pink', 'Preserve edited seed colours');
@@ -75,7 +78,7 @@ async function main() {
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10);
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name LIKE '%_by_%'").get().n, 5);
   sqlite.exec("INSERT INTO categories(name,icon,color,type) VALUES ('My custom category','tag','green','OTHER')");
-  sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; PRAGMA user_version=3;');
+  sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; ALTER TABLE habits DROP COLUMN sortOrder; PRAGMA user_version=3;');
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare("SELECT isUserCreated FROM categories WHERE name='My custom category'").get().isUserCreated, 1,
     'Upgrade recognizes existing user-created categories');

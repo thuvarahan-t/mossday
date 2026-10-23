@@ -19,12 +19,14 @@ export type LargeTitleScreenProps = {
   children: ReactNode; bottomInset?: 'tabBar' | 'safeArea';
   contentContainerStyle?: StyleProp<ViewStyle>; refreshControl?: React.ReactElement<RefreshControlProps>;
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
+  /** Pause scrolling while a child owns a drag gesture. */
+  scrollEnabled?: boolean;
 };
 
 /** The header lives outside the scroll view, so its title and actions never jump or disappear. */
 export function LargeTitleScreen({
   title, subtitle, titleAccessory, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
-  contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled',
+  contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true,
 }: LargeTitleScreenProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -56,7 +58,7 @@ export function LargeTitleScreen({
         {subtitle ? <Text variant="footnote" color="secondaryLabel" style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text> : null}
       </View>
       <BlurTargetContent style={styles.fill}>
-        <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} refreshControl={refreshControl}
+        <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEnabled={scrollEnabled} scrollEventThrottle={16} refreshControl={refreshControl}
           keyboardShouldPersistTaps={keyboardShouldPersistTaps} keyboardDismissMode="on-drag"
           contentContainerStyle={[{ paddingTop: theme.spacing.md, paddingBottom: bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl }, contentContainerStyle]}>
           {children}

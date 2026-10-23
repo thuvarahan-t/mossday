@@ -126,6 +126,16 @@ async function main() {
   assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 3, 'Goal 3 caps at exactly three even with rapid taps');
   await habits.tickHabit(triple.id, today, -1);
   assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 2, 'A completed goal can be undone');
+  const names = async () => (await habits.listHabits()).map((row) => row.name);
+  assert.deepEqual(await names(), ['Water', 'Three times'], 'New habits append to the saved order');
+  await habits.reorderHabits([triple.id, habit.id]);
+  assert.deepEqual(await names(), ['Three times', 'Water']);
+  await assert.rejects(habits.reorderHabits([triple.id, triple.id]));
+  await assert.rejects(habits.reorderHabits([triple.id, 99999]));
+  assert.deepEqual(await names(), ['Three times', 'Water'], 'A failed reorder rolls back');
+  const reordered = await habits.deleteHabit(triple.id);
+  await habits.restoreHabit(reordered);
+  assert.deepEqual(await names(), ['Three times', 'Water'], 'Undo restores a deleted habit to its position');
   await Promise.all(Array.from({ length: 5 }, () => habits.tickHabit(triple.id, today, -1)));
   assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 0, 'Undo stops at zero');
 
