@@ -49,8 +49,8 @@ restores it. Built-in categories cannot be deleted.
 
 Habits shows one Year tracker per card, opened on the current week, with
 previous-year navigation. Each card ticks today by default; tap a past day on its
-tracker, or grab the outlined day and drag it, to tick that day instead (the caption
-above the check names it). The detail screen works the same way. Quick controls always apply to today: taps count up to the
+tracker, or grab the outlined day and drag it, to tick that day instead (the line under
+the habit's name says which day). The detail screen works the same way. Quick controls always apply to today: taps count up to the
 daily goal, then back down to empty, then up again (0, 1, 2, 3, 2, 1, 0, 1 for a
 goal of 3). The visible Undo action, or holding the check, also removes one. Habit colours apply to cards, tracker cells, progress rings
 and Today badges in both themes.

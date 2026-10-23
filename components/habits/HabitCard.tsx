@@ -48,19 +48,19 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, anchor
     ]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
         <View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: palette.tint }}><Text variant="title2">{habit.icon || '🌱'}</Text></View>
-        <View style={{ flex: 1 }}><Text variant="title3" numberOfLines={2} style={{ color: palette.accent }}>{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="footnote" rawColor={palette.accent} /></View>
+        <View style={{ flex: 1 }}>
+          <Text variant="title3" numberOfLines={2} style={{ color: palette.accent }}>{habit.name}</Text>
+          {/* A picked past day replaces the streak line, so ticking today costs no extra row. */}
+          {selected === today ? <AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="footnote" rawColor={palette.accent} />
+            : <Text variant="footnote" weight="semibold" color="label">Ticking {formatWeekdayShortDate(selected)}</Text>}
+        </View>
       </View>
     </ContextMenu>
     </ReorderHandle>
-    <View style={{ alignItems: 'center' }}>
-      <Text variant="caption2" weight={selected === today ? 'regular' : 'semibold'} color={selected === today ? 'secondaryLabel' : 'label'}>
-        {selected === today ? 'Today' : formatWeekdayShortDate(selected)}
-      </Text>
-      {/* The haptic fires on touch, not after the write, so a tick feels instant. Keyed so
-          each day starts counting up. */}
-      <HabitTickButton key={selected} name={`${habit.name}, ${selected === today ? 'today' : formatWeekdayShortDate(selected)}`} count={count} goal={habit.dailyGoal} color={habit.color}
-        onTick={() => { haptics.tick(); void action(() => tickHabit(habit.id, selected)); }} onUndo={() => { void action(() => tickHabit(habit.id, selected, -1)); }} />
-    </View>
+    {/* The haptic fires on touch, not after the write, so a tick feels instant. Keyed so
+        each day starts counting up. */}
+    <HabitTickButton key={selected} name={`${habit.name}, ${selected === today ? 'today' : formatWeekdayShortDate(selected)}`} count={count} goal={habit.dailyGoal} color={habit.color}
+      onTick={() => { haptics.tick(); void action(() => tickHabit(habit.id, selected)); }} onUndo={() => { void action(() => tickHabit(habit.id, selected, -1)); }} />
     </View>
     <HabitTracker habit={habit} counts={counts} today={today} anchor={anchor} selected={selected}
       onSelectDate={(date) => setPicked(date === today ? null : date)} onScrubChange={onScrubChange} />
