@@ -1,6 +1,7 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useSyncExternalStore } from 'react';
 import { useColorScheme } from 'react-native';
 import { themes, type ColorScheme, type Theme } from '@/constants/theme';
+import { getAppearancePreference, subscribeAppearance } from '@/lib/appearance';
 
 /**
  * Forces a colour scheme for a subtree. Only the dev component gallery uses it, to show
@@ -12,5 +13,6 @@ export const ColorSchemeOverride = createContext<ColorScheme | null>(null);
 export function useTheme(): Theme {
   const system = useColorScheme();
   const override = useContext(ColorSchemeOverride);
-  return (override ?? system) === 'dark' ? themes.dark : themes.light;
+  const preference = useSyncExternalStore(subscribeAppearance, getAppearancePreference, getAppearancePreference);
+  return (override ?? (preference === 'system' ? system : preference)) === 'dark' ? themes.dark : themes.light;
 }

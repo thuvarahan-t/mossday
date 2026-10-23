@@ -4,7 +4,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Stack, TransitionPresets } from 'expo-router/js-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { RemindersBridge } from '@/components/RemindersBridge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
@@ -14,6 +15,8 @@ import { AppSheetCover } from '@/components/ui/sheet/SheetCover';
 import { useTheme } from '@/hooks/useTheme';
 import { getDatabase } from '@/lib/db';
 import { collectMedia } from '@/lib/media';
+import { getSettings } from '@/lib/repos/settings';
+import { applyAppearance } from '@/lib/appearance';
 
 export default function RootLayout() {
   const theme = useTheme();
@@ -26,7 +29,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     let active = true;
-    getDatabase().then(() => collectMedia()).then(
+    getDatabase().then(async () => {
+      const settings = await getSettings();
+      applyAppearance(settings.appearance);
+      if (Platform.OS !== 'web') await collectMedia().catch(() => undefined);
+    }).then(
       () => { if (active) setReady(true); },
       (failure: unknown) => { if (active) setError(failure); },
     );
@@ -53,6 +60,7 @@ export default function RootLayout() {
             <Text accessibilityRole="alert" align="center">
               {fontError ? 'Mossday could not load its fonts. Please reopen the app.' : 'Mossday could not open its local database.'}
             </Text>
+            {__DEV__ && error ? <Text variant="footnote" color="secondaryLabel" align="center">{error instanceof Error ? error.message : String(error)}</Text> : null}
             {!fontError && (
               <PressableScale
                 onPress={() => { setError(null); setAttempt((value) => value + 1); }}
@@ -85,6 +93,7 @@ function AppShell() {
     <AppSheetCover>
       <BlurTargetProvider root>
         <ToastProvider>
+          <RemindersBridge />
           <BlurTargetContent style={styles.fill}>
             <Stack
               screenOptions={{
@@ -96,6 +105,10 @@ function AppShell() {
               }}
             >
               <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="habit/[id]" />
+              <Stack.Screen name="note/[id]" />
+              <Stack.Screen name="settings" />
+              <Stack.Screen name="dev/components" />
             </Stack>
           </BlurTargetContent>
         </ToastProvider>

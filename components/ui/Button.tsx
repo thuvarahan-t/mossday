@@ -7,6 +7,7 @@ import { Text } from './Text';
 
 export type ButtonProps = {
   title: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   /** filled = green with white text, tinted = soft green, plain = text only. */
   variant?: 'filled' | 'tinted' | 'plain';
@@ -23,7 +24,7 @@ const TEXT_COLOR: Record<NonNullable<ButtonProps['variant']>, ColorToken> = {
 };
 
 export function Button({
-  title, onPress, variant = 'filled', size = 'large', fullWidth, disabled, haptic = 'tap', style,
+  title, accessibilityLabel, onPress, variant = 'filled', size = 'large', fullWidth, disabled, haptic = 'tap', style,
 }: ButtonProps) {
   const theme = useTheme();
   const background = variant === 'filled' ? theme.colors.accent : variant === 'tinted' ? theme.colors.accentFill : 'transparent';
@@ -33,7 +34,7 @@ export function Button({
       onPress={onPress}
       disabled={disabled}
       haptic={disabled ? undefined : haptic}
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       style={[
         styles.base,
         {
