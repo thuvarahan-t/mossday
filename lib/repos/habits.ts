@@ -6,6 +6,8 @@ export type Habit = { id: number; name: string; icon: string | null; color: stri
 export type HabitInput = Pick<Habit, 'name' | 'icon' | 'color' | 'dailyGoal' | 'activeDays' | 'reminderTime'>;
 export type HabitLog = { habitId: number; date: string; count: number };
 export const listHabits = () => read((db) => db.getAllAsync<Habit>('SELECT * FROM habits WHERE archived=0 ORDER BY sortOrder, id'));
+/** Archived habits, in the order they would return to the list. */
+export const listArchivedHabits = () => read((db) => db.getAllAsync<Habit>('SELECT * FROM habits WHERE archived=1 ORDER BY sortOrder, id'));
 export const getHabit = (id: number) => read((db) => db.getFirstAsync<Habit>('SELECT * FROM habits WHERE id=?', id));
 export const listHabitLogs = (from: string, to: string) => read((db) => db.getAllAsync<HabitLog>('SELECT * FROM habit_logs WHERE date BETWEEN ? AND ?', from, to));
 export function saveHabit(input: HabitInput, id?: number) {

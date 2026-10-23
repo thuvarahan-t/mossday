@@ -136,6 +136,12 @@ async function main() {
   const reordered = await habits.deleteHabit(triple.id);
   await habits.restoreHabit(reordered);
   assert.deepEqual(await names(), ['Three times', 'Water'], 'Undo restores a deleted habit to its position');
+  await habits.archiveHabit(triple.id);
+  assert.deepEqual(await names(), ['Water']);
+  assert.deepEqual((await habits.listArchivedHabits()).map((row) => row.name), ['Three times'], 'Archived habits stay listed for restore');
+  await habits.archiveHabit(triple.id, false);
+  assert.deepEqual(await names(), ['Three times', 'Water'], 'Restoring returns a habit to its old position');
+  assert.equal((await habits.listArchivedHabits()).length, 0);
   await Promise.all(Array.from({ length: 5 }, () => habits.tickHabit(triple.id, today, -1)));
   assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 0, 'Undo stops at zero');
 

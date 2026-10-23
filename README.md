@@ -54,7 +54,8 @@ daily goal, then back down to empty, then up again (0, 1, 2, 3, 2, 1, 0, 1 for a
 goal of 3). The visible Undo action, or holding the check, also removes one. Habit colours apply to cards, tracker cells, progress rings
 and Today badges in both themes.
 Hold a habit's name and drag to reorder the cards, like categories; holding
-without dragging opens Edit / Archive / Delete. The order persists (`habits.sortOrder`,
+without dragging opens Edit / Archive / Delete. Archived habits appear under
+"Archived habits" at the end of the list, where Restore returns them to their old place. The order persists (`habits.sortOrder`,
 schema v5), new habits append, and accessibility actions move a habit up or down.
 
 ## Verify
