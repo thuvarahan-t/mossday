@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useToday } from '@/hooks/useToday';
 import { useSheetState } from '@/hooks/useSheetState';
 import { addDays, formatLongDate, startOfWeek, todayLocalDate } from '@/lib/date';
 import { getHabit, habitStats, listHabitLogs, tickHabit } from '@/lib/repos/habits';
@@ -21,7 +22,9 @@ export function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const action = useAction();
-  const today = todayLocalDate();
+  const today = useToday();
+  const history = useRef<ComponentRef<typeof ScrollView>>(null);
+  const scrolledInitially = useRef(false);
   const [selected, setSelected] = useState(today);
   const [editing, selectEditing, editingTransition] = useSheetState<true>();
   const setEditing = (open: boolean) => selectEditing(open ? true : null);
@@ -36,7 +39,9 @@ export function HabitDetailScreen() {
       <View style={{ alignItems: 'center' }}><AnimatedNumber value={stats.current} variant="display" /><Text color="secondaryLabel">day streak</Text></View>
       <Card>
         <View style={{ flexDirection: 'row' }}><HeatmapWeekdayLabels />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} ref={(scroll) => { scroll?.scrollToEnd({ animated: false }); }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} ref={history} onContentSizeChange={() => {
+            if (!scrolledInitially.current) { history.current?.scrollToEnd({ animated: false }); scrolledInitially.current = true; }
+          }}>
             <Heatmap startDate={addDays(startOfWeek(today), -52 * 7)} weeks={53} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={selected} showMonthLabels onSelectDate={setSelected} />
           </ScrollView>
         </View>

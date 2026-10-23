@@ -34,11 +34,12 @@ export function DiaryScreen() {
   const setAdding = useCallback((open: boolean) => selectAdding(open ? true : null), [selectAdding]);
   useFabAction(useCallback(() => setAdding(true), [setAdding]));
   const { data, error, refresh } = useResource(useCallback(async () => {
-    const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses] = await Promise.all([
+    const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, weekTodos] = await Promise.all([
       listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listExpenses(date), listHabits(), listHabitLogs(date, date),
       listTodos(startOfMonth(month), endOfMonth(month)), listExpenses(startOfMonth(month), endOfMonth(month)),
+      listTodos(startOfWeek(date), addDays(startOfWeek(date), 6)),
     ]);
-    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, monthlyExpenses };
+    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, weekTodos };
   }, [date, month]));
   const spend = data?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, date)) ?? [];
@@ -57,7 +58,7 @@ export function DiaryScreen() {
       <Card><Text>{formatLongDate(date)}</Text><Text color="secondaryLabel">{formatMoney(spend)} · {data.todos.filter((t) => !t.isDone).length} to-dos left</Text>
         <Button title="Open diary page" variant="plain" onPress={() => setCalendar(false)} /></Card>
     </> : <>
-      <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.monthlyTodos.map((t) => t.date))} onSelect={setDate} onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} />
+      <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.weekTodos.map((t) => t.date))} onSelect={setDate} onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} />
       {data.previous.length > 0 && <Card padding="row"><Text color="secondaryLabel">{data.previous.length} left from yesterday</Text><Button title="Move to this day" variant="plain" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} /></Card>}
       {data.todos.length ? <TodoList todos={data.todos} reorder /> : <Card><Text color="secondaryLabel">Nothing planned.</Text><Button title="Add to-do" variant="plain" onPress={() => setAdding(true)} /></Card>}
       <JournalEditor key={date} date={date} initial={data.journal} />

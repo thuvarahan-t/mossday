@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useFabAction } from '@/components/navigation/FabAction';
 import { ExpenseSheet } from '@/components/expenses/ExpenseSheet';
@@ -38,6 +38,7 @@ export function TodayScreen() {
   const theme = useTheme();
   const action = useAction();
   const newNote = useNewNote();
+  const noteAfterDismissal = useRef(false);
   const today = useToday();
   const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
@@ -86,11 +87,14 @@ export function TodayScreen() {
       <SectionTitle title="To-dos" trailing={<Button title="See All" variant="plain" size="small" onPress={() => router.navigate('/diary')} />} />
       {data.todos.length ? <TodoList todos={data.todos.slice(0, 5)} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
     </>}
-    <BottomSheet {...sheetTransition} visible={sheet === 'quick' && sheetTransition.visible} onClose={() => setSheet(null)} detents={['content']} background="grouped">
+    <BottomSheet {...sheetTransition} onDismissed={() => {
+      sheetTransition.onDismissed();
+      if (noteAfterDismissal.current) { noteAfterDismissal.current = false; newNote(); }
+    }} visible={sheet === 'quick' && sheetTransition.visible} onClose={() => setSheet(null)} detents={['content']} background="grouped">
       <SheetHeader title="Add" trailing={<SheetIconButton icon="close" accessibilityLabel="Close" onPress={() => setSheet(null)} />} />
       <GroupedList><ListRow title="Expense" subtitle="A meal or anything you paid for" icon={{ icon: 'wallet', color: 'orange' }} accessory="chevron" onPress={() => { setMealId(undefined); setSheet('expense'); }} />
         <ListRow title="To-do" subtitle="Adds to today in your diary" icon={{ icon: 'todo', color: 'indigo' }} accessory="chevron" onPress={() => setSheet('todo')} />
-        <ListRow title="Note" subtitle="Text, photos or a voice memo" icon={{ icon: 'note', color: 'yellow' }} accessory="chevron" onPress={() => { setSheet(null); newNote(); }} /></GroupedList>
+        <ListRow title="Note" subtitle="Text, photos or a voice memo" icon={{ icon: 'note', color: 'yellow' }} accessory="chevron" onPress={() => { noteAfterDismissal.current = true; setSheet(null); }} /></GroupedList>
     </BottomSheet>
     {sheet === 'expense' && <ExpenseSheet {...sheetTransition} mealId={mealId} onClose={() => setSheet(null)} />}
     {sheet === 'todo' && <TodoSheet {...sheetTransition} date={today} onClose={() => setSheet(null)} />}
