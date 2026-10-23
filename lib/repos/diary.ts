@@ -1,7 +1,8 @@
 import { read, write, requireDate, requireName } from './store';
 export type Todo = { id: number; date: string; text: string; isDone: number; time: string | null; priority: number; sortOrder: number };
 export type DiaryEntry = { date: string; text: string | null; mood: number | null };
-export const listTodos = (from: string, to = from) => read((db) => db.getAllAsync<Todo>('SELECT * FROM todos WHERE date BETWEEN ? AND ? ORDER BY sortOrder,id', from, to));
+/** Open to-dos first, then done ones, each in the saved order. */
+export const listTodos = (from: string, to = from) => read((db) => db.getAllAsync<Todo>('SELECT * FROM todos WHERE date BETWEEN ? AND ? ORDER BY isDone,sortOrder,id', from, to));
 export const getJournal = (date: string) => read((db) => db.getFirstAsync<DiaryEntry>('SELECT * FROM diary_entries WHERE date=?', date));
 export function addTodo(date: string, text: string, time: string | null, priority = 0) {
   requireDate(date);

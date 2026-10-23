@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
-import { durations, easing } from '@/constants/motion';
-import { textVariants, type TextVariant } from '@/constants/typography';
+import { StyleSheet, View, type TextLayoutEvent } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import { easing } from '@/constants/motion';
+import { type TextVariant } from '@/constants/typography';
 import { useTheme } from '@/hooks/useTheme';
 import { Text } from './Text';
 
@@ -14,49 +13,47 @@ export type StrikeTextProps = {
   numberOfLines?: number;
 };
 
+/** Long enough to read as a pen stroke, short enough that ticking stays quick. */
+export const STRIKE_DURATION = 320;
+const LINE_THICKNESS = 1.5;
+
+type Line = { start: number; width: number; top: number };
+
 /**
- * Text that gets struck through left→right when completed (to-dos, checklist items).
- * A line sweeps across the first line, then the real `line-through` takes over so wrapped
- * lines are struck too. Done text is always secondary (UI-ANALYSIS R4).
+ * Text struck through with a drawn line that sweeps left→right across exactly the text
+ * (each wrapped line in turn, never past the last word) and reverses when un-done. The
+ * drawn line stays, so there is no jump to a native strikethrough. Done text is secondary.
  */
 export function StrikeText({ children, struck, variant = 'body', numberOfLines = 2 }: StrikeTextProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
-  const [width, setWidth] = useState(0);
-  const [previousStruck, setPreviousStruck] = useState(struck);
-  const [sweeping, setSweeping] = useState(false);
-  const sweep = useSharedValue(0);
-
-  // Start the sweep when the item becomes done (adjusting state during render, not in an effect).
-  if (struck !== previousStruck) {
-    setPreviousStruck(struck);
-    setSweeping(struck && !reduceMotion);
-  }
-
+  const [lines, setLines] = useState<Line[]>([]);
+  const progress = useSharedValue(struck ? 1 : 0);
   useEffect(() => {
-    if (!sweeping) return;
-    sweep.set(0);
-    sweep.set(withTiming(1, { duration: durations.normal, easing: easing.standard }, (finished) => {
-      if (finished) scheduleOnRN(setSweeping, false);
+    progress.set(reduceMotion ? (struck ? 1 : 0) : withTiming(struck ? 1 : 0, { duration: STRIKE_DURATION, easing: easing.standard }));
+  }, [progress, reduceMotion, struck]);
+  const total = lines.reduce((sum, line) => sum + line.width, 0);
+  const onTextLayout = (event: TextLayoutEvent) => {
+    let start = 0;
+    setLines(event.nativeEvent.lines.slice(0, numberOfLines).map((line) => {
+      const measured = { start, width: line.width, top: line.y + line.height / 2 - LINE_THICKNESS / 2 };
+      start += line.width;
+      return measured;
     }));
-  }, [sweep, sweeping]);
-
-  const lineStyle = useAnimatedStyle(() => ({ width: sweep.get() * width }));
-  const lineTop = textVariants[variant].lineHeight / 2;
-
+  };
   return (
-    <View style={styles.flex} onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}>
-      <Text variant={variant} color={struck ? 'secondaryLabel' : 'label'} strikethrough={struck && !sweeping} numberOfLines={numberOfLines}>
+    <View style={styles.flex}>
+      <Text variant={variant} color={struck ? 'secondaryLabel' : 'label'} numberOfLines={numberOfLines} onTextLayout={onTextLayout}>
         {children}
       </Text>
-      {sweeping && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.line, { top: lineTop, height: 1.5, backgroundColor: theme.colors.secondaryLabel }, lineStyle]}
-        />
-      )}
+      {lines.map((line, index) => <StrikeLine key={index} line={line} total={total} progress={progress} color={theme.colors.secondaryLabel} />)}
     </View>
   );
+}
+
+function StrikeLine({ line, total, progress, color }: { line: Line; total: number; progress: SharedValue<number>; color: string }) {
+  const style = useAnimatedStyle(() => ({ width: Math.max(0, Math.min(line.width, progress.get() * total - line.start)) }));
+  return <Animated.View pointerEvents="none" style={[styles.line, { top: line.top, height: LINE_THICKNESS, backgroundColor: color }, style]} />;
 }
 
 const styles = StyleSheet.create({ flex: { flex: 1 }, line: { position: 'absolute', left: 0 } });

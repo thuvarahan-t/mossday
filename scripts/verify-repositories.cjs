@@ -147,7 +147,9 @@ async function main() {
   assert.equal(todos.length, 2);
   assert.equal(todos[0].text, 'Stay first');
   await diary.toggleTodo(todos[0]);
-  assert.equal((await diary.listTodos(today))[0].isDone, 1);
+  const ticked = await diary.listTodos(today);
+  assert.deepEqual(ticked.map((t) => t.text), ['Carry me', 'Stay first'], 'Done to-dos sort below open ones');
+  assert.equal(ticked[1].isDone, 1);
   await diary.reorderTodos(todos.map((t) => t.id).reverse());
   assert.equal((await diary.listTodos(today))[0].text, 'Carry me');
   await diary.deleteTodo(todos[0].id);
