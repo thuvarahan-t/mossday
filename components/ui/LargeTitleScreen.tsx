@@ -49,7 +49,10 @@ export function LargeTitleScreen({
         if (overlap > 0) scrollRef.current?.scrollTo({ y: scrollY.get() + overlap, animated: true });
       });
     });
-    return () => subscription.remove();
+    // A field whose keyboard was dismissed (tap outside, Android back) stays focused with a
+    // blinking cursor; blur it so editing visibly ends. Autosaving fields keep their text.
+    const hidden = Keyboard.addListener('keyboardDidHide', () => TextInput.State.currentlyFocusedInput()?.blur());
+    return () => { subscription.remove(); hidden.remove(); };
   }, [scrollRef, scrollY, theme.spacing.xl, windowTop]);
   const onScroll = useAnimatedScrollHandler((event) => { scrollY.set(event.contentOffset.y); });
   // Estimated until the header measures itself, so the first frame is already close.
