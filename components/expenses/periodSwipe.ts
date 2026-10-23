@@ -3,12 +3,12 @@ export const PERIOD_SWIPE_DISTANCE = 64;
 export const PERIOD_SWIPE_VELOCITY = 600;
 
 /**
- * As requested for Mossday: swiping right shows the next day / week / month and swiping
- * left the previous one. Short, slow drags change nothing. Returns the period offset.
+ * Page-turn direction: swiping left shows the next day / week / month and swiping right the
+ * previous one. Short, slow drags change nothing. Returns the period offset.
  */
 export function periodSwipeDelta(translationX: number, velocityX: number): -1 | 0 | 1 {
   'worklet';
-  if (translationX > PERIOD_SWIPE_DISTANCE || (translationX > 0 && velocityX > PERIOD_SWIPE_VELOCITY)) return 1;
-  if (translationX < -PERIOD_SWIPE_DISTANCE || (translationX < 0 && velocityX < -PERIOD_SWIPE_VELOCITY)) return -1;
+  if (translationX < -PERIOD_SWIPE_DISTANCE || (translationX < 0 && velocityX < -PERIOD_SWIPE_VELOCITY)) return 1;
+  if (translationX > PERIOD_SWIPE_DISTANCE || (translationX > 0 && velocityX > PERIOD_SWIPE_VELOCITY)) return -1;
   return 0;
 }

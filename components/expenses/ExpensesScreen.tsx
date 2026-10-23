@@ -83,7 +83,7 @@ export function ExpensesScreen() {
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
   return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}>
-    <PeriodSwipeArea canGoForward={selected.to < today} onShift={shift} style={{ gap: theme.spacing.lg }}>
+    <PeriodSwipeArea contentKey={view} canGoForward={selected.to < today} onShift={shift} style={{ gap: theme.spacing.lg }}>
       <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
         canGoForward={selected.to < today} onShift={shift} />
