@@ -38,11 +38,18 @@ const light = {
   accentBar: '#34C759',
   accentFill: 'rgba(52, 199, 89, 0.15)',
   onAccent: '#FFFFFF',
+  // Controls
+  segmentThumb: '#FFFFFF',
+  toggleOff: '#E9E9EA',
+  knob: '#FFFFFF',
+  chartBar: 'rgba(52, 199, 89, 0.45)',
   // Status
   danger: '#FF3B30',
   dangerText: '#D70015',
   dangerFill: 'rgba(255, 59, 48, 0.12)',
   onDanger: '#FFFFFF',
+  /** Glyphs on coloured icon tiles. */
+  onTile: '#FFFFFF',
   warning: '#FF9500',
   warningText: '#C93400',
   // Glass
@@ -84,10 +91,15 @@ const dark: ColorTokens = {
   accentFill: 'rgba(48, 209, 88, 0.18)',
   // Apple's increased-contrast green keeps black text readable on the bright dark-mode tint.
   onAccent: '#000000',
+  segmentThumb: '#636366',
+  toggleOff: '#39393D',
+  knob: '#FFFFFF',
+  chartBar: 'rgba(48, 209, 88, 0.4)',
   danger: '#FF453A',
   dangerText: '#FF6961',
   dangerFill: 'rgba(255, 69, 58, 0.18)',
   onDanger: '#FFFFFF',
+  onTile: '#FFFFFF',
   warning: '#FF9F0A',
   warningText: '#FFB340',
   glassTint: 'rgba(28, 28, 30, 0.45)',
