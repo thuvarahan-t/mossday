@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { View } from 'react-native';
 import type { AccentName } from '@/constants/colors';
+import { resolveAccent } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { Icon, type IconName } from './Icon';
 
@@ -19,7 +20,7 @@ export const IconTile = memo(function IconTile({ icon, color, size, neutral }: I
   const side = size ?? theme.sizes.iconTile;
   const background = neutral
     ? theme.colors.fill
-    : color in theme.accents ? theme.accents[color as AccentName] : color;
+    : resolveAccent(theme, color);
   return (
     <View
       style={{

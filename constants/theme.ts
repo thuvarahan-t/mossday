@@ -1,4 +1,4 @@
-import { accents, colors, heatmapColors, spendColors } from './colors';
+import { accents, colors, heatmapColors, spendColors, type AccentName } from './colors';
 import { radii, sizes, spacing } from './layout';
 import { shadows } from './shadows';
 
@@ -24,3 +24,8 @@ export const themes = { light: buildTheme('light'), dark: buildTheme('dark') } a
 
 export type Theme = ReturnType<typeof buildTheme>;
 export type ColorToken = keyof Theme['colors'];
+
+/** Data colours (categories, habits) are stored as accent names; custom rows may hold a raw hex. */
+export function resolveAccent(theme: Theme, color: AccentName | string): string {
+  return color in theme.accents ? theme.accents[color as AccentName] : color;
+}

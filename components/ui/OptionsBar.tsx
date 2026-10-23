@@ -21,7 +21,6 @@ export function OptionsBar({ cells }: { cells: OptionCell[] }) {
   return (
     <View style={[styles.bar, {
       height: theme.sizes.touchTarget, borderRadius: theme.radii.lg, backgroundColor: theme.colors.fill,
-      marginHorizontal: theme.sizes.screenInset,
     }]}>
       {cells.map((cell, index) => (
         <Fragment key={cell.label + index}>
