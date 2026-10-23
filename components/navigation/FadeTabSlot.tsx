@@ -27,7 +27,8 @@ const renderFadingScene: RenderFn = (descriptor, { isFocused, loaded, detachInac
       key={descriptor.route.key}
       enabled={detachInactiveScreens}
       activityState={isFocused ? 2 : 0}
-      style={[StyleSheet.absoluteFill, { zIndex: isFocused ? 0 : -1 }]}
+      freezeOnBlur={false}
+      style={{ flex: 1, position: 'relative', height: '100%', zIndex: isFocused ? 1 : -1, display: isFocused ? 'flex' : 'none' }}
       pointerEvents={isFocused ? 'auto' : 'none'}
     >
       <FadeIn isFocused={isFocused}>{descriptor.render()}</FadeIn>

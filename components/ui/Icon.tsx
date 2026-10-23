@@ -6,6 +6,7 @@ import {
   Trash2, Utensils, Wallet, X, type LucideIcon,
 } from 'lucide-react-native';
 import { memo } from 'react';
+import { Platform } from 'react-native';
 import type { ColorToken } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -89,7 +90,8 @@ export const Icon = memo(function Icon({ name, size, color = 'label', rawColor, 
       color={rawColor ?? theme.colors[color]}
       strokeWidth={strokeWidth}
       fill={fill ?? 'none'}
-      accessible={false}
+      accessible={Platform.OS === 'web' ? undefined : false}
+      aria-hidden
     />
   );
 });

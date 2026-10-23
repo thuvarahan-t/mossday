@@ -36,6 +36,7 @@ const OPAQUE_MATERIALS: Partial<Record<GlassMaterial, ColorToken>> = { sheet: 's
 function useReduceTransparency() {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
+    if (typeof AccessibilityInfo.isReduceTransparencyEnabled !== 'function') return;
     AccessibilityInfo.isReduceTransparencyEnabled().then(setEnabled, () => undefined);
     const subscription = AccessibilityInfo.addEventListener('reduceTransparencyChanged', setEnabled);
     return () => subscription.remove();

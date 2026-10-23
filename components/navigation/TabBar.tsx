@@ -1,5 +1,5 @@
 import type { TabTriggerSlotProps } from 'expo-router/ui';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useAnimatedStyle, useReducedMotion, useSharedValue, withSequence,
@@ -28,6 +28,7 @@ export function TabBar({ children, itemCount }: { children: ReactNode; itemCount
   const [itemWidth, setItemWidth] = useState(0);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const offset = useSharedValue(0);
+  const context = useMemo(() => ({ onFocusIndex: setFocusedIndex }), []);
 
   useEffect(() => {
     offset.set(animateTo(focusedIndex * itemWidth, 'snappy', reduceMotion));
@@ -59,16 +60,17 @@ export function TabBar({ children, itemCount }: { children: ReactNode; itemCount
             ]}
           />
         )}
-        <TabBarContext.Provider value={{ onFocusIndex: setFocusedIndex }}>{children}</TabBarContext.Provider>
+        <TabBarContext.Provider value={context}>{children}</TabBarContext.Provider>
       </View>
     </GlassSurface>
   );
 }
 
-export type TabBarItemProps = TabTriggerSlotProps & { index: number; title: string; icon: IconName };
+export type TabBarItemProps = TabTriggerSlotProps & { index: number; title: string; icon: IconName; active?: boolean };
 
 /** Receives `isFocused` / `onPress` from `<TabTrigger asChild>`. */
-export function TabBarItem({ index, title, icon, isFocused = false, onPress, onLongPress }: TabBarItemProps) {
+export function TabBarItem({ index, title, icon, isFocused: triggerFocused = false, active, onPress, onLongPress }: TabBarItemProps) {
+  const isFocused = active ?? triggerFocused;
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const tabBar = useContext(TabBarContext);
