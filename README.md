@@ -1,56 +1,40 @@
-# Welcome to your Expo app 👋
+# Mossday
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Offline Android app built with Expo, React Native, TypeScript, and Expo Router.
+The foundation includes five title-only tabs, system light/dark themes,
+local SQLite storage, 11 first-run expense categories, and date/money helpers.
 
-## Get started
+## Run
 
-1. Install dependencies
+Install Node.js LTS, then run `npm install` and `npx expo start`.
+Install Expo Go on Android, connect the phone and laptop to the same Wi-Fi,
+and scan the terminal QR code from Expo Go. If LAN fails, run
+`npx expo start --tunnel`.
 
-   ```bash
-   npm install
-   ```
+## Structure
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+app/           Root layout and five bottom-tab routes
+components/    Shared UI
+constants/     Theme tokens
+hooks/         System theme hook
+lib/           SQLite initialization, local date and money helpers
+spec.md        Product specification and progress
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+`mossday.db` lives in the app's private storage on the phone. The schema and
+11 default categories initialize atomically once, tracked by SQLite's
+`user_version`. Restarting preserves data and never reseeds deleted categories.
+Future screen data access goes through `lib/repos/` repositories.
+Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
 
-### Other setup steps
+## Verify
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Run `npx tsc --noEmit` and `npx expo-doctor`.
+On a phone, verify all five tabs and change Android's light/dark setting.
+The app should reopen offline without a second seed or a loading hang.
+Full expense, habit, diary, and note features are future modules.
 
-## Learn more
+Run `npm test` for SQLite migration, seed persistence, foreign key, cascade, local date, and money checks.
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Dependency audit: the generated SDK 58 dependency tree reports 19 high-severity advisories. npm proposes incompatible Expo/React Native downgrades; these have not been applied. Review compatible upstream fixes before release.

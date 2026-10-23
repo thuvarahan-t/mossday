@@ -348,7 +348,7 @@ Budgets & alerts, recurring expenses, reminders/notifications, home-screen widge
 ## 10. Progress
 
 - [ ] Setup (Expo project, git, Expo Go)
-- [ ] Foundation (theme, tabs, DB, helpers)
+- [x] Foundation (theme, tabs, DB, helpers)
 - [ ] Expenses module
 - [ ] Habits module
 - [ ] Diary module
@@ -356,3 +356,4 @@ Budgets & alerts, recurring expenses, reminders/notifications, home-screen widge
 - [ ] Today dashboard
 - [ ] Polish (dark mode, empty states, haptics, undo)
 - [ ] APK build
+Foundation verification: TypeScript and SQLite/helper checks passed. Expo Go installation and phone smoke test remain manual.
