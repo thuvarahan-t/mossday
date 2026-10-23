@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Keyboard, StyleSheet, TextInput, View, type LayoutChangeEvent, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
-  Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
+  Extrapolation, interpolate, useAnimatedKeyboard, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
+import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
 import { Icon } from './Icon';
 import { Text } from './Text';
 import { BlurTargetContent, BlurTargetProvider } from './glass/BlurTarget';
@@ -49,6 +50,22 @@ export function LargeTitleScreen({
   const tabBarInset = useTabBarInset();
   const scrollY = useSharedValue(0);
   const [titleBottom, setTitleBottom] = useState(0);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const keyboard = useAnimatedKeyboard();
+  const windowTop = useWindowTopOffset();
+  // Room to scroll content above the keyboard; the window is not always resized for it.
+  const keyboardSpace = useAnimatedStyle(() => ({ height: keyboard.height.get() }));
+
+  // Brings the focused field (e.g. the diary journal) above the keyboard once it is shown.
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', (event) => {
+      TextInput.State.currentlyFocusedInput()?.measureInWindow((_x, y, _width, height) => {
+        const overlap = y + windowTop + height + theme.spacing.xl - event.endCoordinates.screenY;
+        if (overlap > 0) scrollRef.current?.scrollTo({ y: scrollY.get() + overlap, animated: true });
+      });
+    });
+    return () => subscription.remove();
+  }, [scrollRef, scrollY, theme.spacing.xl, windowTop]);
 
   const hasNavRow = showBack || !!headerRight;
   const navBarHeight = insets.top + NAV_BAR_HEIGHT;
@@ -79,6 +96,7 @@ export function LargeTitleScreen({
       <View style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
         <BlurTargetContent style={styles.fill}>
           <Animated.ScrollView
+            ref={scrollRef}
             onScroll={onScroll}
             scrollEventThrottle={16}
             refreshControl={refreshControl}
@@ -103,6 +121,7 @@ export function LargeTitleScreen({
               {titleAccessory}
             </View>
             {children}
+            <Animated.View style={keyboardSpace} />
           </Animated.ScrollView>
         </BlurTargetContent>
 
