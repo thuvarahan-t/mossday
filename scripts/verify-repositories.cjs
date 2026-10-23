@@ -52,6 +52,17 @@ async function main() {
   const categories = await expenses.listCategories();
   assert.equal(categories.length, 11);
   const lunch = categories.find((category) => category.name === 'Lunch');
+  const otherIds = categories.filter((category) => category.type === 'OTHER').map((category) => category.id).reverse();
+  await expenses.reorderCategories(otherIds);
+  assert.deepEqual(Array.from(await expenses.listCategories()).filter((category) => category.type === 'OTHER').map((category) => category.id), otherIds,
+    'Category drag order persists when the picker reloads');
+  assert.equal((await expenses.listCategories()).filter((category) => category.type === 'MEAL')[1].id, lunch.id, 'Other ordering preserves meals');
+  await assert.rejects(expenses.reorderCategories([otherIds[0], 99999]));
+  assert.deepEqual(Array.from(await expenses.listCategories()).filter((category) => category.type === 'OTHER').map((category) => category.id), otherIds,
+    'Invalid reorder rolls back the whole transaction');
+  await assert.rejects(expenses.reorderCategories([otherIds[0], otherIds[0]]));
+  const newCategoryId = await expenses.addCategory('Coffee', 'tag', 'green');
+  assert.equal((await expenses.listCategories()).filter((category) => category.type === 'OTHER').at(-1).id, newCategoryId, 'New categories append after the saved order');
   const input = { amount: 45000, categoryId: lunch.id, title: null, note: 'Test', date: today, paymentMethod: 'CASH', isOneTime: 0 };
   await expenses.saveExpense(input);
   let rows = await expenses.listExpenses(today);

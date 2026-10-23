@@ -48,7 +48,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node scripts/verify-foundation.cjs && node scripts/verify-voice-recorder.cjs && node scripts/verify-repositories.cjs && node scripts/verify-services.cjs && node scripts/verify-today.cjs && node scripts/verify-sheets.cjs",
+    "test": "node scripts/verify-foundation.cjs && node scripts/verify-voice-recorder.cjs && node scripts/verify-repositories.cjs && node scripts/verify-services.cjs && node scripts/verify-today.cjs && node scripts/verify-sheets.cjs && node scripts/verify-categories.cjs",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint src components constants hooks lib scripts --max-warnings 0"
   },

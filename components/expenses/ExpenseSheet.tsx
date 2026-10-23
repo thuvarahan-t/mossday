@@ -20,7 +20,7 @@ import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { formatLongDate, formatShortDate, todayLocalDate } from '@/lib/date';
 import { amountToInput, applyKeypadKey, parseAmountInput } from '@/lib/money';
-import { addCategory, deleteExpense, listCategories, restoreExpense, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
+import { addCategory, deleteExpense, listCategories, reorderCategories, restoreExpense, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
 import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
@@ -53,6 +53,8 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const [categories, setCategories] = useState<Category[] | null>(categoryCache);
+  const [draggingCategory, setDraggingCategory] = useState(false);
+  const categoryOrderSaving = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
   const [categoryId, setCategoryId] = useState<number | null>(
@@ -81,6 +83,22 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   useEffect(load, []);
   const datePicker = useDatePicker(date, setDate);
   const selected = categories?.find((category) => category.id === categoryId);
+  const saveCategoryOrder = (ids: number[]) => {
+    if (!categories || categoryOrderSaving.current) return;
+    categoryOrderSaving.current = true;
+    setBusy(true);
+    const previous = categories;
+    const ordered = ids.map((id) => categories.find((category) => category.id === id)!);
+    setCategories([...categories.filter((category) => category.type === 'MEAL'), ...ordered]);
+    void action(async () => {
+      await reorderCategories(ids);
+      categoryCache = await listCategories();
+      setCategories(categoryCache);
+    }).then((success) => { if (!success) setCategories(previous); }).finally(() => {
+      categoryOrderSaving.current = false;
+      setBusy(false);
+    });
+  };
   const amount = parseAmountInput(input);
   // Keys shrink on short screens so the whole form fits; optional rows take their share first.
   const optionalRows = [oneTime, showNote, !!hint].filter(Boolean).length * (theme.sizes.fieldHeight + theme.spacing.sm);
@@ -146,8 +164,9 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
         <Button title={busy ? 'Saving…' : 'Save'} disabled={busy} onPress={attemptSave} fullWidth />
       </SheetRow>
     </>}
-    {other && <FormSheet {...otherTransition} title="Categories" onClose={() => setOther(false)}>
+    {other && <FormSheet {...otherTransition} title="Categories" size="fit" dense scrollEnabled={!draggingCategory} onClose={() => setOther(false)}>
       <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
+        disabled={busy} onReorder={saveCategoryOrder} onDraggingChange={setDraggingCategory}
         selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setOther(false); }} onCreate={() => setNewCategory(true)} />
       {newCategory && <>
         <TextField value={categoryName} onChangeText={setCategoryName} placeholder="Category name" accessibilityLabel="Category name" />
@@ -155,7 +174,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
         <SwatchPicker colors={['green', 'blue', 'indigo', 'orange', 'pink', 'teal']} selected={color} onSelect={setColor} />
         <Button title="Create category" disabled={!categoryName.trim() || busy} onPress={() => {
           setBusy(true);
-          void action(async () => { const id = await addCategory(categoryName, 'tag', color); setCategories(await listCategories()); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
+          void action(async () => { const id = await addCategory(categoryName, 'tag', color); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
         }} />
       </>}
     </FormSheet>}

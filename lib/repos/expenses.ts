@@ -9,6 +9,14 @@ export type Expense = {
 export type ExpenseInput = Omit<Expense, 'id' | 'createdAt' | 'categoryName' | 'categoryIcon' | 'categoryColor'>;
 
 export const listCategories = () => read((db) => db.getAllAsync<Category>('SELECT * FROM categories ORDER BY type DESC, sortOrder, id'));
+/** Only reorder the supplied categories; meal ordering is independent of Other. */
+export const reorderCategories = (ids: number[]) => write(async (db) => {
+  if (new Set(ids).size !== ids.length) throw new Error('Category order contains duplicates.');
+  for (const [index, id] of ids.entries()) {
+    const result = await db.runAsync('UPDATE categories SET sortOrder=? WHERE id=?', index, id);
+    if (!result.changes) throw new Error('Category no longer exists.');
+  }
+});
 export const listExpenses = (from: string, to = from) => read((db) => db.getAllAsync<Expense>(
   `SELECT e.*, c.name AS categoryName, c.icon AS categoryIcon, c.color AS categoryColor
    FROM expenses e LEFT JOIN categories c ON c.id = e.categoryId WHERE date BETWEEN ? AND ? ORDER BY createdAt DESC, e.id DESC`, from, to));
@@ -36,7 +44,7 @@ export const restoreExpense = (e: Expense) => write(async (db) => {
 export function addCategory(name: string, icon: string, color: string) {
   const clean = requireName(name);
   return write(async (db) => {
-    const result = await db.runAsync("INSERT INTO categories(name,icon,color,type) VALUES (?,?,?,'OTHER')", clean, icon, color);
+    const result = await db.runAsync("INSERT INTO categories(name,icon,color,type,sortOrder) VALUES (?,?,?,'OTHER',(SELECT COALESCE(MAX(sortOrder),-1)+1 FROM categories WHERE type='OTHER'))", clean, icon, color);
     return result.lastInsertRowId;
   });
 }

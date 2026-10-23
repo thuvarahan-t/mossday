@@ -1,0 +1,50 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+let gesture;
+const exportsObject = {};
+const jsx = (type, props) => ({ type, props });
+const theme = { spacing: { sm: 8 }, radii: { lg: 12 }, colors: { card: 'white', accentFill: 'green' } };
+const dependencies = {
+  react: { useState: () => [320, () => {}], useRef: (value) => ({ current: value }) },
+  'react/jsx-runtime': { jsx, jsxs: jsx },
+  'react-native': { View: 'View' },
+  'react-native-gesture-handler': { GestureDetector: 'GestureDetector', usePanGesture: (config) => { gesture = config; return config; } },
+  'react-native-reanimated': { default: { View: 'AnimatedView' }, LinearTransition: {}, useAnimatedStyle: (fn) => fn(), useReducedMotion: () => false,
+    useSharedValue: (initial) => { let value = initial; return { get: () => value, set: (next) => { value = next; } }; } },
+  'react-native-worklets': { scheduleOnRN: (fn, ...args) => fn(...args) },
+  '@/hooks/useTheme': { useTheme: () => theme },
+  '@/lib/haptics': { haptics: { selection: () => {} } },
+  './IconTile': { IconTile: 'IconTile' }, './PressableScale': { PressableScale: 'PressableScale' }, './Text': { Text: 'Text' },
+};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/ui/CategoryGrid.tsx', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+}).outputText, { exports: exportsObject, require: (name) => { assert.ok(name in dependencies, name); return dependencies[name]; } });
+const items = Array.from({ length: 8 }, (_, id) => ({ id, name: `Category ${id}`, icon: 'tag', color: 'green' }));
+let saved;
+let selections = 0;
+const dragging = [];
+const tree = exportsObject.CategoryGrid({ items, selected: 0, onSelect: () => { selections++; }, onCreate: () => {}, onReorder: (ids) => { saved = Array.from(ids); }, onDraggingChange: (active) => dragging.push(active) });
+const tile = tree.props.children[0][0];
+const rendered = tile.type(tile.props);
+const button = rendered.props.children.props.children;
+assert.equal(gesture.activateAfterLongPress, 350);
+button.props.onPress();
+assert.equal(selections, 1, 'A normal tap selects a category');
+gesture.onActivate();
+gesture.onUpdate({ translationX: 210, translationY: 100 });
+gesture.onDeactivate({ translationX: 210, translationY: 100, canceled: false });
+gesture.onFinalize();
+assert.deepEqual(saved, [1, 2, 3, 4, 5, 0, 6, 7], 'Drag across columns and rows inserts at the drop position');
+assert.deepEqual(dragging, [true, false], 'Scrolling resumes after a drag');
+button.props.onPress();
+assert.equal(selections, 1, 'Releasing a drag does not select or close the picker');
+saved = null;
+gesture.onActivate();
+gesture.onDeactivate({ translationX: 210, translationY: 100, canceled: true });
+gesture.onFinalize();
+assert.equal(saved, null, 'Canceled gestures never persist an order');
+button.props.onAccessibilityAction({ nativeEvent: { actionName: 'moveLater' } });
+assert.deepEqual(saved, [1, 0, 2, 3, 4, 5, 6, 7], 'Assistive actions can also reorder');
+console.log('Categories verified: tap, long press, cross-row drag, cancellation, selection suppression, accessibility.');

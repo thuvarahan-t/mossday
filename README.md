@@ -28,6 +28,9 @@ spec.md        Product specification and progress
 `user_version`. Restarting preserves data and never reseeds deleted categories.
 Screen data access goes through `lib/repos/` repositories.
 Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
+In Add Expense → Other, categories use a compact sheet. Long press and drag a
+tile to reorder it; the order persists across restarts. Accessibility actions
+also move categories earlier or later. New categories append to the saved order.
 
 ## Verify
 
