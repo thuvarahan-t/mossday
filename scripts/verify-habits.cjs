@@ -34,9 +34,11 @@ assert.equal(colors.dataColors(theme, '#112233').accent, '#112233');
 assert.equal(colors.dataColors(theme, 'invalid').accent, theme.colors.accent);
 assert.equal(colors.dataColors(theme, 'yellow').onAccent, '#000000', 'Bright habit fills have legible check marks');
 assert.equal(colors.dataColors({ ...theme, colors: { ...theme.colors, card: '#1C1C1E' } }, 'purple').heatmap[4], palette.accent);
+const hookState = new Map();
 const jsx = (type, props) => ({ type, props });
 const common = {
-  react: { memo: (component) => component, useEffect: () => {}, useMemo: (fn) => fn(), useRef: (value) => ({ current: value }) },
+  react: { memo: (component) => component, useEffect: () => {}, useMemo: (fn) => fn(), useRef: (value) => ({ current: value }),
+    useState: (initial) => [hookState.has('state') ? hookState.get('state') : initial, (next) => hookState.set('state', next)] },
   'react/jsx-runtime': { jsx, jsxs: jsx },
   'react-native': { View: 'View', ScrollView: 'ScrollView' },
   'react-native-reanimated': { default: { View: 'AnimatedView' }, useAnimatedStyle: (fn) => fn(), useReducedMotion: () => true,
@@ -66,6 +68,17 @@ for (let count = 0; count <= 3; count++) {
     assert.equal(removed, count === 3 ? 3 : 2, 'The visible Undo action also works');
   }
 }
+// One persistent button: taps walk 0→1→2→3→2→1→0→1 with goal 3.
+hookState.clear();
+let walk = 0;
+const visited = [walk];
+for (let tap = 0; tap < 7; tap++) {
+  const control = HabitTickButton({ name: 'Water', count: walk, goal: 3, color: 'purple', onTick: () => { walk++; }, onUndo: () => { walk--; } });
+  control.props.children[0].props.onPressIn(); control.props.children[0].props.onPress();
+  visited.push(walk);
+}
+assert.deepEqual(visited, [0, 1, 2, 3, 2, 1, 0, 1], 'After the goal, taps count back down to empty, then up again');
+hookState.clear();
 const { HabitTracker } = load('components/habits/HabitTracker.tsx', {
   ...common, '@/components/ui/Heatmap': { Heatmap: 'Heatmap', HeatmapWeekdayLabels: 'WeekdayLabels' },
   '@/lib/date': date, '@/lib/heatmap': heatmap, './habitPeriod': periods,
@@ -118,4 +131,4 @@ const ids = [1, 2, 3];
 assert.deepEqual(Array.from(stack.moveItem(ids, 1, 2)), [2, 3, 1]);
 assert.deepEqual(ids, [1, 2, 3], 'Drag previews never mutate their input');
 assert.equal(stack.moveItem(ids, 1, -5), ids, 'Moving the first row up is a no-op');
-console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, custom colors, year scrolling and bounds, and drag ordering.');
+console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, up-and-down tick cycle, custom colors, year scrolling and bounds, and drag ordering.');

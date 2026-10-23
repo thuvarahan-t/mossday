@@ -45,9 +45,9 @@ restores it. Built-in categories cannot be deleted.
 
 Habits shows one Year tracker per card, opened on the current week, with
 previous-year navigation. Tap a tracker date to adjust that day's count in the
-habit detail screen. Quick controls always apply to today: each tap adds one up
-to the daily goal; the visible Undo action removes one, and tapping a completed
-check also undoes one. Habit colours apply to cards, tracker cells, progress rings
+habit detail screen. Quick controls always apply to today: taps count up to the
+daily goal, then back down to empty, then up again (0, 1, 2, 3, 2, 1, 0, 1 for a
+goal of 3). The visible Undo action, or holding the check, also removes one. Habit colours apply to cards, tracker cells, progress rings
 and Today badges in both themes.
 Hold a habit's name and drag to reorder the cards, like categories; holding
 without dragging opens Edit / Archive / Delete. The order persists (`habits.sortOrder`,
