@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { FormSheet } from '@/components/ui/FormSheet';
+import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
 import { SwatchPicker, WeekdayPicker } from '@/components/ui/Pickers';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
@@ -13,7 +13,7 @@ import { haptics } from '@/lib/haptics';
 import { accents, type AccentName } from '@/constants/colors';
 import { ensureReminderPermission, validateTime } from '@/lib/reminders';
 
-export function HabitSheet({ initial, onClose }: { initial?: Habit; onClose: () => void }) {
+export function HabitSheet({ initial, onClose, ...transition }: { initial?: Habit; onClose: () => void } & Partial<FormSheetTransition>) {
   const action = useAction();
   const locked = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export function HabitSheet({ initial, onClose }: { initial?: Habit; onClose: () 
   const [days, setDays] = useState(initial?.activeDays ?? 127);
   const [reminder, setReminder] = useState(!!initial?.reminderTime);
   const [time, setTime] = useState(initial?.reminderTime ?? '09:00');
-  return <FormSheet title={initial ? 'Edit Habit' : 'New Habit'} onClose={() => { if (!busy) onClose(); }}>
+  return <FormSheet {...transition} title={initial ? 'Edit Habit' : 'New Habit'} onClose={() => { if (!busy) onClose(); }}>
     <TextField value={icon} onChangeText={setIcon} placeholder="Emoji" accessibilityLabel="Habit emoji" maxLength={12} />
     <TextField value={name} onChangeText={setName} placeholder="Habit name" accessibilityLabel="Habit name" maxLength={100} />
     <Text variant="footnote" color="secondaryLabel">COLOUR</Text>

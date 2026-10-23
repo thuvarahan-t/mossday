@@ -16,6 +16,7 @@ import { SearchField, TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useSheetState } from '@/hooks/useSheetState';
 import { formatRelativeTimestamp } from '@/lib/date';
 import { mediaFile, reclaimMediaLater } from '@/lib/media';
 import { createNote, deleteNote, listNotes, notePreview, restoreNote, setNoteProperty, type Note, type NoteBlock } from '@/lib/repos/notes';
@@ -33,7 +34,7 @@ export function NotesScreen() {
   const { data, error, refresh } = useResource(listNotes);
   const [search, setSearch] = useState('');
   const [folder, setFolder] = useState('All');
-  const [folderNote, setFolderNote] = useState<Note | null>(null);
+  const [folderNote, setFolderNote, folderTransition] = useSheetState<Note>();
   const [folderName, setFolderName] = useState('');
   const folders = ['All', ...new Set(['University', 'Ideas', 'Recipes', ...(data?.notes.flatMap((n) => n.folder ? [n.folder] : []) ?? [])])];
   const blocksFor = (id: number) => data?.blocks.filter((b) => b.noteId === id) ?? [];
@@ -71,7 +72,7 @@ export function NotesScreen() {
       {filtered.some((n) => n.isPinned) && <><SectionHeader title="Pinned" /><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg }}>{filtered.filter((n) => n.isPinned).map((n) => renderNote(n, true))}</View></>}
       {filtered.some((n) => !n.isPinned) && <><SectionHeader title="Others" /><GroupedList>{filtered.filter((n) => !n.isPinned).map((n) => renderNote(n, false))}</GroupedList></>}
     </>}
-    {folderNote && <FormSheet title="Move to folder" onClose={() => setFolderNote(null)}><TextField value={folderName} onChangeText={setFolderName} placeholder="Folder name (empty for none)" accessibilityLabel="Folder name" />
+    {folderNote && <FormSheet {...folderTransition} title="Move to folder" onClose={() => setFolderNote(null)}><TextField value={folderName} onChangeText={setFolderName} placeholder="Folder name (empty for none)" accessibilityLabel="Folder name" />
       <Button title="Save" onPress={() => { void action(() => setNoteProperty(folderNote.id, 'folder', folderName.trim() || null), () => setFolderNote(null)); }} /></FormSheet>}
   </LargeTitleScreen>;
 }

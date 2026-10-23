@@ -23,6 +23,7 @@ import { BottomSheet } from '@/components/ui/sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from '@/components/ui/sheet/SheetHeader';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import { formatLongDate } from '@/lib/date';
 import { isActiveDay } from '@/lib/heatmap';
@@ -38,7 +39,7 @@ export function TodayScreen() {
   const action = useAction();
   const newNote = useNewNote();
   const today = useToday();
-  const [sheet, setSheet] = useState<'quick' | 'expense' | 'todo' | null>(null);
+  const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
   useFabAction(useCallback(() => setSheet('quick'), [setSheet]));
   const { data, error, refresh } = useResource(useCallback(async () => {
@@ -85,13 +86,13 @@ export function TodayScreen() {
       <SectionTitle title="To-dos" trailing={<Button title="See All" variant="plain" size="small" onPress={() => router.navigate('/diary')} />} />
       {data.todos.length ? <TodoList todos={data.todos.slice(0, 5)} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
     </>}
-    <BottomSheet visible={sheet === 'quick'} onClose={() => setSheet(null)} detents={['content']} background="grouped">
+    <BottomSheet {...sheetTransition} visible={sheet === 'quick' && sheetTransition.visible} onClose={() => setSheet(null)} detents={['content']} background="grouped">
       <SheetHeader title="Add" trailing={<SheetIconButton icon="close" accessibilityLabel="Close" onPress={() => setSheet(null)} />} />
       <GroupedList><ListRow title="Expense" subtitle="A meal or anything you paid for" icon={{ icon: 'wallet', color: 'orange' }} accessory="chevron" onPress={() => { setMealId(undefined); setSheet('expense'); }} />
         <ListRow title="To-do" subtitle="Adds to today in your diary" icon={{ icon: 'todo', color: 'indigo' }} accessory="chevron" onPress={() => setSheet('todo')} />
         <ListRow title="Note" subtitle="Text, photos or a voice memo" icon={{ icon: 'note', color: 'yellow' }} accessory="chevron" onPress={() => { setSheet(null); newNote(); }} /></GroupedList>
     </BottomSheet>
-    {sheet === 'expense' && <ExpenseSheet mealId={mealId} onClose={() => setSheet(null)} />}
-    {sheet === 'todo' && <TodoSheet date={today} onClose={() => setSheet(null)} />}
+    {sheet === 'expense' && <ExpenseSheet {...sheetTransition} mealId={mealId} onClose={() => setSheet(null)} />}
+    {sheet === 'todo' && <TodoSheet {...sheetTransition} date={today} onClose={() => setSheet(null)} />}
   </LargeTitleScreen>;
 }

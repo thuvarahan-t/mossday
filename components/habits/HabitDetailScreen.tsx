@@ -12,6 +12,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useSheetState } from '@/hooks/useSheetState';
 import { addDays, formatLongDate, startOfWeek, todayLocalDate } from '@/lib/date';
 import { getHabit, habitStats, listHabitLogs, tickHabit } from '@/lib/repos/habits';
 import { HabitSheet } from './HabitSheet';
@@ -22,7 +23,8 @@ export function HabitDetailScreen() {
   const action = useAction();
   const today = todayLocalDate();
   const [selected, setSelected] = useState(today);
-  const [editing, setEditing] = useState(false);
+  const [editing, selectEditing, editingTransition] = useSheetState<true>();
+  const setEditing = (open: boolean) => selectEditing(open ? true : null);
   const { data, error, refresh } = useResource(useCallback(async () => ({ habit: await getHabit(Number(id)), logs: await listHabitLogs('1970-01-01', todayLocalDate()) }), [id]));
   const habit = data?.habit;
   const counts = Object.fromEntries((data?.logs ?? []).filter((l) => l.habitId === Number(id)).map((l) => [l.date, l.count]));
@@ -43,7 +45,7 @@ export function HabitDetailScreen() {
         <Stepper value={count} min={0} onChange={(value) => { void action(() => tickHabit(habit.id, selected, value > count ? 1 : -1)); }} accessibilityLabel="Ticks on selected day" />
       </Card>
       <GroupedList><ListRow title="Best streak" value={`${stats.best} days`} /><ListRow title="Completion" value={`${stats.completion}%`} /><ListRow title="Total ticks" value={String(stats.total)} /></GroupedList>
-      {editing && <HabitSheet initial={habit} onClose={() => setEditing(false)} />}
+      {editing && <HabitSheet {...editingTransition} initial={habit} onClose={() => setEditing(false)} />}
     </>}
   </LargeTitleScreen>;
 }

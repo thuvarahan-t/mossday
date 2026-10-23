@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type LayoutCha
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation, interpolate, useAnimatedKeyboard, useAnimatedReaction, useAnimatedStyle,
-  useReducedMotion, useSharedValue, withSpring, withTiming,
+  ReduceMotion, useReducedMotion, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -43,6 +43,8 @@ export function BottomSheet({
   const { height: screenHeight } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const parentCover = useSheetCover();
+  // Forms can unmount after saving. Never leave their presenter scaled down.
+  useEffect(() => () => { parentCover?.set(0); }, [parentCover]);
   const keyboard = useAnimatedKeyboard();
   const [mounted, setMounted] = useState(visible);
   const [contentHeight, setContentHeight] = useState(0);
@@ -61,6 +63,7 @@ export function BottomSheet({
   const measured = !detents.includes('content') || contentHeight > 0;
 
   const translateY = useSharedValue(screenHeight);
+  const opacity = useSharedValue(0);
   const dragStart = useSharedValue(0);
   const ownCover = useSharedValue(0);
 
@@ -74,17 +77,22 @@ export function BottomSheet({
   useEffect(() => {
     if (!mounted || !measured) return;
     if (visible) {
-      translateY.set(reduceMotion
-        ? withTiming(snapPoints[0], { duration: durations.normal, easing: easing.sheet })
-        : withSpring(snapPoints[0], spring.gentle));
+      opacity.set(withTiming(1, { duration: durations.fast, reduceMotion: ReduceMotion.Never }));
+      translateY.set(reduceMotion ? snapPoints[0] : withSpring(snapPoints[0], spring.gentle));
     } else {
-      translateY.set(withTiming(sheetHeight, { duration: durations.normal, easing: easing.sheet }, (finished) => {
-        if (finished) scheduleOnRN(finishDismiss);
-      }));
+      if (reduceMotion) {
+        opacity.set(withTiming(0, { duration: durations.fast, reduceMotion: ReduceMotion.Never }, (finished) => {
+          if (finished) scheduleOnRN(finishDismiss);
+        }));
+      } else {
+        translateY.set(withTiming(sheetHeight, { duration: durations.normal, easing: easing.sheet }, (finished) => {
+          if (finished) scheduleOnRN(finishDismiss);
+        }));
+      }
     }
     // snapPoints is derived from sheetHeight + detents; listing it would restart on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, mounted, measured, sheetHeight, reduceMotion, finishDismiss, translateY]);
+  }, [visible, mounted, measured, sheetHeight, reduceMotion, finishDismiss, translateY, opacity]);
 
   // The presenter recedes only as the sheet approaches full height (medium sheets just dim).
   useAnimatedReaction(
@@ -114,15 +122,16 @@ export function BottomSheet({
       const projected = current + event.velocityY * 0.1;
       const target = snapPoints.reduce((best, point) =>
         Math.abs(point - projected) < Math.abs(best - projected) ? point : best, snapPoints[0]);
-      translateY.set(withSpring(target, { ...spring.gentle, velocity: event.velocityY }));
+      translateY.set(reduceMotion ? target : withSpring(target, { ...spring.gentle, velocity: event.velocityY }));
     },
   });
 
   const sheetStyle = useAnimatedStyle(() => ({
+    opacity: reduceMotion ? opacity.get() : 1,
     transform: [{ translateY: translateY.get() - keyboard.height.get() }],
   }));
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateY.get(), [snapPoints[0], sheetHeight], [1, 0], Extrapolation.CLAMP),
+    opacity: reduceMotion ? opacity.get() : interpolate(translateY.get(), [snapPoints[0], sheetHeight], [1, 0], Extrapolation.CLAMP),
   }));
 
   const onContentLayout = (event: LayoutChangeEvent) => {
@@ -142,6 +151,7 @@ export function BottomSheet({
           </Animated.View>
           <GestureDetector gesture={pan}>
             <Animated.View
+              pointerEvents={visible ? 'auto' : 'none'}
               accessibilityViewIsModal
               style={[styles.sheet, { height: sizesToContent ? undefined : sheetHeight }, sheetStyle]}
             >

@@ -12,6 +12,7 @@ import { WeekStrip } from '@/components/ui/WeekStrip';
 import { GlassButton } from '@/components/ui/glass/GlassButton';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useSheetState } from '@/hooks/useSheetState';
 import { addDays, addMonths, dayOfMonth, endOfMonth, formatLongDate, monthName, startOfMonth, startOfWeek, todayLocalDate, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { getJournal, listTodos, moveIncomplete } from '@/lib/repos/diary';
@@ -29,7 +30,8 @@ export function DiaryScreen() {
   const [date, setDate] = useState(today);
   const [month, setMonth] = useState(startOfMonth(today));
   const [calendar, setCalendar] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [adding, selectAdding, addingTransition] = useSheetState<true>();
+  const setAdding = useCallback((open: boolean) => selectAdding(open ? true : null), [selectAdding]);
   useFabAction(useCallback(() => setAdding(true), [setAdding]));
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses] = await Promise.all([
@@ -61,6 +63,6 @@ export function DiaryScreen() {
       <JournalEditor key={date} date={date} initial={data.journal} />
       <Text align="center" variant="subheadline" color="secondaryLabel">Spent {formatMoney(spend)} · {done} of {active.length} habits done</Text>
     </>}
-    {adding && <TodoSheet date={date} onClose={() => setAdding(false)} />}
+    {adding && <TodoSheet {...addingTransition} date={date} onClose={() => setAdding(false)} />}
   </LargeTitleScreen>;
 }

@@ -4,7 +4,8 @@ import { AmountDisplay } from '@/components/ui/AmountDisplay';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { DateSelector } from '@/components/ui/DateSelector';
-import { FormSheet } from '@/components/ui/FormSheet';
+import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
+import { useSheetState } from '@/hooks/useSheetState';
 import { NumberKeypad } from '@/components/ui/NumberKeypad';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
@@ -18,9 +19,9 @@ import { addCategory, listCategories, saveExpense, type Category, type Expense }
 import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 
-export function ExpenseSheet({ initial, mealId, date: initialDate, onClose }: {
+export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...transition }: {
   initial?: Expense; mealId?: number; date?: string; onClose: () => void;
-}) {
+} & Partial<FormSheetTransition>) {
   const theme = useTheme();
   const action = useAction();
   const saving = useRef(false);
@@ -35,7 +36,8 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose }: {
   const [showNote, setShowNote] = useState(!!initial?.note);
   const [date, setDate] = useState(initial?.date ?? initialDate ?? todayLocalDate());
   const [payment, setPayment] = useState<Expense['paymentMethod']>(initial?.paymentMethod ?? 'CASH');
-  const [other, setOther] = useState(false);
+  const [other, setOtherValue, otherTransition] = useSheetState<true>();
+  const setOther = (open: boolean) => setOtherValue(open ? true : null);
   const [newCategory, setNewCategory] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const [color, setColor] = useState<AccentName>('blue');
@@ -57,7 +59,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose }: {
     saving.current = false; setBusy(false);
     if (success) { Keyboard.dismiss(); haptics.success(); onClose(); }
   };
-  return <FormSheet title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
+  return <FormSheet {...transition} title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
     {!categories ? <LoadState error={error} retry={load} /> : <>
       <AmountDisplay input={input} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.spacing.sm }}>
@@ -76,7 +78,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose }: {
       <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
       <Button title={busy ? 'Saving…' : 'Save'} disabled={busy || !amount || (oneTime ? !title.trim() : !categoryId)} onPress={() => { void save(); }} fullWidth />
     </>}
-    {other && <FormSheet title="Categories" onClose={() => setOther(false)}>
+    {other && <FormSheet {...otherTransition} title="Categories" onClose={() => setOther(false)}>
       <ScrollView contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
         {categories?.filter((c) => c.type === 'OTHER').map((c) => <Button key={c.id} title={c.name} size="small" variant="tinted" onPress={() => { setCategoryId(c.id); setOneTime(false); setOther(false); }} />)}
       </ScrollView>

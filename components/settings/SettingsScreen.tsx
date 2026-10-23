@@ -12,6 +12,7 @@ import { TimeField } from '@/components/ui/TimeField';
 import { Toggle } from '@/components/ui/Toggle';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useSheetState } from '@/hooks/useSheetState';
 import { exportBackup, storageBytes } from '@/lib/backup';
 import { amountToInput, applyKeypadKey, formatMoney, parseAmountInput } from '@/lib/money';
 import { getMealReminders, saveMealReminder, type MealReminder } from '@/lib/reminders';
@@ -21,10 +22,11 @@ type BudgetKey = 'dailyBudget' | 'monthlyBudget';
 export function SettingsScreen() {
   const theme = useTheme();
   const action = useAction();
-  const [budget, setBudget] = useState<BudgetKey | null>(null);
+  const [budget, setBudget, budgetTransition] = useSheetState<BudgetKey>();
   const [input, setInput] = useState('');
-  const [appearance, setAppearance] = useState(false);
-  const [reminder, setReminder] = useState<MealReminder | null>(null);
+  const [appearance, selectAppearance, appearanceTransition] = useSheetState<true>();
+  const setAppearance = (open: boolean) => selectAppearance(open ? true : null);
+  const [reminder, setReminder, reminderTransition] = useSheetState<MealReminder>();
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const { data, error, refresh } = useResource(useCallback(async () => ({ settings: await getSettings(), meals: await getMealReminders(), storage: await storageBytes() }), []));
@@ -51,14 +53,14 @@ export function SettingsScreen() {
         <ListRow title="Storage" icon={{ icon: 'storage', color: 'gray' }} value={`${(data.storage / 1024 / 1024).toFixed(1)} MB`} />
       </GroupedList>
       <Text variant="footnote" align="center" color="secondaryLabel">Mossday 1.0 · Offline and private</Text>
-      {budget && <FormSheet title={budget === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} onClose={() => setBudget(null)}><AmountDisplay input={input} />
+      {budget && <FormSheet {...budgetTransition} title={budget === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} onClose={() => setBudget(null)}><AmountDisplay input={input} />
         <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
         <Button title="Save budget" disabled={!parseAmountInput(input) || busy} onPress={() => run(() => setSetting(budget, parseAmountInput(input)!), () => setBudget(null))} />
         <Button title="Remove budget" variant="plain" disabled={busy} onPress={() => run(() => setSetting(budget, 0), () => setBudget(null))} /></FormSheet>}
-      {appearance && <FormSheet title="Appearance" onClose={() => setAppearance(false)}>{(['system', 'light', 'dark'] as const).map((value) =>
+      {appearance && <FormSheet {...appearanceTransition} title="Appearance" onClose={() => setAppearance(false)}>{(['system', 'light', 'dark'] as const).map((value) =>
         <Button key={value} title={`${value === 'system' ? 'Automatic' : value === 'light' ? 'Light' : 'Dark'}${data.settings.appearance === value ? ' ✓' : ''}`} variant="tinted" disabled={busy}
           onPress={() => run(async () => { await setSetting('appearance', value); applyAppearance(value); }, () => setAppearance(false))} />)}</FormSheet>}
-      {reminder && <FormSheet title={`${reminder.name} reminder`} onClose={() => setReminder(null)}><TimeField value={reminder.time} label="Reminder time" onChange={(time) => setReminder({ ...reminder, time })} />
+      {reminder && <FormSheet {...reminderTransition} title={`${reminder.name} reminder`} onClose={() => setReminder(null)}><TimeField value={reminder.time} label="Reminder time" onChange={(time) => setReminder({ ...reminder, time })} />
         <Button title="Save" disabled={busy} onPress={() => run(() => saveMealReminder(reminder), () => setReminder(null))} /></FormSheet>}
     </>}
   </LargeTitleScreen>;
