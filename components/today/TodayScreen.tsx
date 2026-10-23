@@ -58,6 +58,7 @@ export function TodayScreen() {
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, today)) ?? [];
   const countFor = (id: number) => data?.logs.find((l) => l.habitId === id)?.count ?? 0;
   const done = active.filter((h) => countFor(h.id) >= h.dailyGoal).length;
+  const sectionIconButton = { width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center' } as const;
   const shareImage = useShareImage();
   const shareToday = () => {
     if (!data) return;
@@ -107,7 +108,14 @@ export function TodayScreen() {
           <Text variant="subheadline" style={{ color: dataColors(theme, habit.color).accent }}>{habit.name}</Text>
         </View>) : <Button title="Add your first habit" variant="plain" onPress={() => router.navigate('/habits')} />}
       </ScrollView></Card></AnimatedListItem>
-      <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<Button title="See All" variant="plain" size="small" onPress={() => router.navigate('/diary')} />} />
+      <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<View style={{ flexDirection: 'row' }}>
+        <PressableScale accessibilityLabel="Add to-do" haptic="tap" onPress={() => setSheet('todo')} style={sectionIconButton}>
+          <Icon name="plus" color="accent" strokeWidth={2.6} />
+        </PressableScale>
+        <PressableScale accessibilityLabel="See all to-dos" haptic="tap" onPress={() => router.navigate('/diary')} style={sectionIconButton}>
+          <Icon name="chevronRight" color="secondaryLabel" />
+        </PressableScale>
+      </View>} />
       {data.todos.length ? <TodoList todos={data.todos.slice(0, 5)} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
     </>}
     <BottomSheet {...sheetTransition} onDismissed={() => {

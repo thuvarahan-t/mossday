@@ -133,5 +133,5 @@ export function SectionTitle({ title, trailing, onPress }: { title: string; trai
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   text: { flex: 1 },
-  sectionTitle: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });
