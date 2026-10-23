@@ -25,6 +25,7 @@ export const sizes = {
   hairline: 0.5,
   iconTile: 32,
   iconTileLarge: 36,
+  emojiTile: 52, // Add Habit emoji button and picker cells
   iconTileSettings: 30,
   icon: 22,
   iconSmall: 17,
