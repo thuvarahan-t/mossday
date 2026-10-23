@@ -10,14 +10,15 @@ import type { IconName } from './Icon';
 import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 
-export type CategoryGridItem = { id: number; name: string; icon: IconName; color: string };
+export type CategoryGridItem = { id: number; name: string; icon: IconName; color: string; isUserCreated?: number };
 type CategoryGridProps = {
   items: CategoryGridItem[]; selected: number | null; onSelect: (id: number) => void; onCreate: () => void;
   onReorder?: (ids: number[]) => void; onDraggingChange?: (dragging: boolean) => void; disabled?: boolean;
+  onManage?: (id: number) => void;
 };
 
 /** Compact picker. Long press a tile, drag to its destination, then release to insert. */
-export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, onDraggingChange, disabled }: CategoryGridProps) {
+export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, onDraggingChange, disabled, onManage }: CategoryGridProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const gap = theme.spacing.sm;
@@ -33,7 +34,8 @@ export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, o
   return <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap }}>
     {items.map((item, index) => <CategoryTile key={item.id} item={item} selected={item.id === selected}
       width={tileWidth} gap={gap} index={index} disabled={disabled} reorderable={!!onReorder}
-      onSelect={() => onSelect(item.id)} onMove={(target) => move(index, target)} onDraggingChange={onDraggingChange} />)}
+      onSelect={() => onSelect(item.id)} onMove={(target) => move(index, target)} onDraggingChange={onDraggingChange}
+      onManage={item.isUserCreated && onManage ? () => onManage(item.id) : undefined} />)}
     <PressableScale accessibilityLabel="New category" disabled={disabled} haptic="tap" onPress={onCreate}
       style={{ width: tileWidth, minHeight: 88, padding: gap, gap, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.lg, backgroundColor: theme.colors.card }}>
       <IconTile icon="plus" color="gray" neutral /><Text variant="footnote">New</Text>
@@ -41,10 +43,11 @@ export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, o
   </View>;
 }
 
-function CategoryTile({ item, selected, width, gap, index, disabled, reorderable, onSelect, onMove, onDraggingChange }: {
+function CategoryTile({ item, selected, width, gap, index, disabled, reorderable, onSelect, onMove, onDraggingChange, onManage }: {
   item: CategoryGridItem; selected: boolean; width: number; gap: number; index: number;
   disabled?: boolean; reorderable: boolean; onSelect: () => void; onMove: (target: number) => void;
   onDraggingChange?: (dragging: boolean) => void;
+  onManage?: () => void;
 }) {
   const theme = useTheme();
   const reduced = useReducedMotion();
@@ -58,10 +61,15 @@ function CategoryTile({ item, selected, width, gap, index, disabled, reorderable
   const gesture = usePanGesture({
     enabled: reorderable && !disabled,
     activateAfterLongPress: 350,
+    minDistance: 0,
     onActivate: () => { dragging.set(true); scheduleOnRN(activate); },
     onUpdate: (event) => { x.set(event.translationX); y.set(event.translationY); },
     onDeactivate: (event) => {
       if (event.canceled) return;
+      if (Math.abs(event.translationX) < 10 && Math.abs(event.translationY) < 10) {
+        if (onManage) scheduleOnRN(onManage);
+        return;
+      }
       const column = Math.max(0, Math.min(2, index % 3 + Math.round(event.translationX / Math.max(1, width + gap))));
       const row = Math.max(0, Math.floor(index / 3) + Math.round(event.translationY / (height.get() + gap)));
       scheduleOnRN(onMove, row * 3 + column);
@@ -77,11 +85,15 @@ function CategoryTile({ item, selected, width, gap, index, disabled, reorderable
       onLayout={(event) => height.set(Math.max(1, event.nativeEvent.layout.height))}>
       <PressableScale disabled={disabled} haptic="selection" onPressIn={() => { suppressSelection.current = false; }}
         onPress={() => { if (!suppressSelection.current) onSelect(); }} accessibilityLabel={item.name}
-        accessibilityHint={reorderable ? 'Long press and drag to reorder' : undefined} accessibilityState={{ selected }}
-        accessibilityActions={reorderable ? [{ name: 'moveEarlier', label: 'Move earlier' }, { name: 'moveLater', label: 'Move later' }] : undefined}
+        accessibilityHint={onManage ? 'Long press and release for delete options, or drag to reorder' : reorderable ? 'Long press and drag to reorder' : undefined} accessibilityState={{ selected }}
+        accessibilityActions={[
+          ...(reorderable ? [{ name: 'moveEarlier', label: 'Move earlier' }, { name: 'moveLater', label: 'Move later' }] : []),
+          ...(onManage ? [{ name: 'manage', label: 'Category options' }] : []),
+        ]}
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === 'moveEarlier') onMove(index - 1);
           if (event.nativeEvent.actionName === 'moveLater') onMove(index + 1);
+          if (event.nativeEvent.actionName === 'manage') onManage?.();
         }}
         style={{ minHeight: 88, padding: gap, gap, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.lg,
           backgroundColor: selected ? theme.colors.accentFill : theme.colors.card }}>

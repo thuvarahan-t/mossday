@@ -20,7 +20,7 @@ import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { formatLongDate, formatShortDate, todayLocalDate } from '@/lib/date';
 import { amountToInput, applyKeypadKey, parseAmountInput } from '@/lib/money';
-import { addCategory, deleteExpense, listCategories, reorderCategories, restoreExpense, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
+import { addCategory, deleteCategory, deleteExpense, listCategories, reorderCategories, restoreCategory, restoreExpense, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
 import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
@@ -54,6 +54,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const toast = useToast();
   const [categories, setCategories] = useState<Category[] | null>(categoryCache);
   const [draggingCategory, setDraggingCategory] = useState(false);
+  const [managingCategory, setManagingCategory, categoryMenuTransition] = useSheetState<Category>();
   const categoryOrderSaving = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
@@ -83,6 +84,24 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   useEffect(load, []);
   const datePicker = useDatePicker(date, setDate);
   const selected = categories?.find((category) => category.id === categoryId);
+  const refreshCategories = async () => {
+    categoryCache = await listCategories();
+    setCategories(categoryCache);
+    return categoryCache;
+  };
+  const removeCategory = (category: Category) => {
+    if (busy) return;
+    setBusy(true);
+    void action(async () => {
+      await deleteCategory(category.id);
+      const remaining = await refreshCategories();
+      if (categoryId === category.id) setCategoryId(remaining.find((row) => row.type === 'MEAL')?.id ?? null);
+      setManagingCategory(null);
+      toast({ message: 'Category deleted', actionLabel: 'Undo', onAction: () => {
+        void action(async () => { await restoreCategory(category.id); await refreshCategories(); });
+      } });
+    }).finally(() => setBusy(false));
+  };
   const saveCategoryOrder = (ids: number[]) => {
     if (!categories || categoryOrderSaving.current) return;
     categoryOrderSaving.current = true;
@@ -167,6 +186,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
     {other && <FormSheet {...otherTransition} title="Categories" size="fit" dense scrollEnabled={!draggingCategory} onClose={() => setOther(false)}>
       <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
         disabled={busy} onReorder={saveCategoryOrder} onDraggingChange={setDraggingCategory}
+        onManage={(id) => { const category = categories?.find((row) => row.id === id); if (category?.isUserCreated) setManagingCategory(category); }}
         selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setOther(false); }} onCreate={() => setNewCategory(true)} />
       {newCategory && <>
         <TextField value={categoryName} onChangeText={setCategoryName} placeholder="Category name" accessibilityLabel="Category name" />
@@ -177,6 +197,10 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
           void action(async () => { const id = await addCategory(categoryName, 'tag', color); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
         }} />
       </>}
+      {managingCategory && <FormSheet {...categoryMenuTransition} title={managingCategory.name} size="fit" dense onClose={() => { if (!busy) setManagingCategory(null); }}>
+        <Text variant="subheadline" color="secondaryLabel">Remove this category from the picker. Existing expenses will stay unchanged.</Text>
+        <Button title="Delete category" disabled={busy} variant="plain" onPress={() => removeCategory(managingCategory)} />
+      </FormSheet>}
     </FormSheet>}
   </FormSheet>;
 }

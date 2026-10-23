@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 // A shared promise prevents duplicate initialization under React Strict Mode.
 let databasePromise: Promise<SQLiteDatabase> | undefined;
 
@@ -100,7 +100,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         `);
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 3) {
       await db.withTransactionAsync(async () => {
         const display = [
           ['Breakfast', 'coffee', 'orange'], ['Lunch', 'utensils', 'orange'], ['Dinner', 'moon', 'indigo'],
@@ -115,6 +115,15 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
             name, icon, color, oldName, oldIcon, oldColor, index);
         }
         await db.execAsync('PRAGMA user_version = 3;');
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync('ALTER TABLE categories ADD COLUMN isUserCreated INTEGER NOT NULL DEFAULT 1; ALTER TABLE categories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;');
+        // Seeds were inserted once, in order, before any user categories. Names and sort
+        // positions can change, so their original IDs are the stable ownership boundary.
+        await db.runAsync('UPDATE categories SET isUserCreated=0 WHERE id<=?', initialCategories.length);
+        await db.execAsync('PRAGMA user_version = 4;');
       });
     }
     return db;

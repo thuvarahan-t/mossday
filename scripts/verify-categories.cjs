@@ -21,11 +21,12 @@ const dependencies = {
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/ui/CategoryGrid.tsx', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
 }).outputText, { exports: exportsObject, require: (name) => { assert.ok(name in dependencies, name); return dependencies[name]; } });
-const items = Array.from({ length: 8 }, (_, id) => ({ id, name: `Category ${id}`, icon: 'tag', color: 'green' }));
+const items = Array.from({ length: 8 }, (_, id) => ({ id, name: `Category ${id}`, icon: 'tag', color: 'green', isUserCreated: id === 0 ? 1 : 0 }));
 let saved;
 let selections = 0;
 const dragging = [];
-const tree = exportsObject.CategoryGrid({ items, selected: 0, onSelect: () => { selections++; }, onCreate: () => {}, onReorder: (ids) => { saved = Array.from(ids); }, onDraggingChange: (active) => dragging.push(active) });
+let managed;
+const tree = exportsObject.CategoryGrid({ items, selected: 0, onSelect: () => { selections++; }, onCreate: () => {}, onReorder: (ids) => { saved = Array.from(ids); }, onDraggingChange: (active) => dragging.push(active), onManage: (id) => { managed = id; } });
 const tile = tree.props.children[0][0];
 const rendered = tile.type(tile.props);
 const button = rendered.props.children.props.children;
@@ -47,4 +48,16 @@ gesture.onFinalize();
 assert.equal(saved, null, 'Canceled gestures never persist an order');
 button.props.onAccessibilityAction({ nativeEvent: { actionName: 'moveLater' } });
 assert.deepEqual(saved, [1, 0, 2, 3, 4, 5, 6, 7], 'Assistive actions can also reorder');
-console.log('Categories verified: tap, long press, cross-row drag, cancellation, selection suppression, accessibility.');
+saved = null;
+gesture.onActivate();
+gesture.onDeactivate({ translationX: 2, translationY: 3, canceled: false });
+gesture.onFinalize();
+assert.equal(managed, 0, 'A stationary long press opens custom category options');
+assert.equal(saved, null, 'Opening options does not reorder');
+assert.equal(tree.props.children[0][1].props.onManage, undefined, 'Built-in categories never offer deletion');
+managed = undefined;
+gesture.onActivate();
+gesture.onDeactivate({ translationX: 0, translationY: 0, canceled: true });
+gesture.onFinalize();
+assert.equal(managed, undefined, 'Canceled holds never open deletion options');
+console.log('Categories verified: tap, drag, cancellation, accessibility, custom long-press options, built-in protection.');

@@ -1,6 +1,6 @@
 import { read, write, requireDate, requireName } from './store';
 
-export type Category = { id: number; name: string; icon: string; color: string; type: 'MEAL' | 'OTHER'; lastAmount: number | null };
+export type Category = { id: number; name: string; icon: string; color: string; type: 'MEAL' | 'OTHER'; lastAmount: number | null; isUserCreated: number };
 export type Expense = {
   id: number; amount: number; categoryId: number | null; title: string | null; note: string | null;
   date: string; createdAt: string; paymentMethod: 'CASH' | 'CARD' | 'ONLINE'; isOneTime: number;
@@ -8,7 +8,15 @@ export type Expense = {
 };
 export type ExpenseInput = Omit<Expense, 'id' | 'createdAt' | 'categoryName' | 'categoryIcon' | 'categoryColor'>;
 
-export const listCategories = () => read((db) => db.getAllAsync<Category>('SELECT * FROM categories ORDER BY type DESC, sortOrder, id'));
+export const listCategories = () => read((db) => db.getAllAsync<Category>('SELECT * FROM categories WHERE archived=0 ORDER BY type DESC, sortOrder, id'));
+/** Keep the category row for historical expenses; only remove it from the picker. */
+export const deleteCategory = (id: number) => write(async (db) => {
+  const result = await db.runAsync('UPDATE categories SET archived=1 WHERE id=? AND isUserCreated=1 AND archived=0', id);
+  if (!result.changes) throw new Error('Only custom categories can be deleted.');
+});
+export const restoreCategory = (id: number) => write(async (db) => {
+  await db.runAsync('UPDATE categories SET archived=0 WHERE id=? AND isUserCreated=1', id);
+});
 /** Only reorder the supplied categories; meal ordering is independent of Other. */
 export const reorderCategories = (ids: number[]) => write(async (db) => {
   if (new Set(ids).size !== ids.length) throw new Error('Category order contains duplicates.');

@@ -63,6 +63,16 @@ async function main() {
   await assert.rejects(expenses.reorderCategories([otherIds[0], otherIds[0]]));
   const newCategoryId = await expenses.addCategory('Coffee', 'tag', 'green');
   assert.equal((await expenses.listCategories()).filter((category) => category.type === 'OTHER').at(-1).id, newCategoryId, 'New categories append after the saved order');
+  assert.equal((await expenses.listCategories()).find((category) => category.id === newCategoryId).isUserCreated, 1);
+  await assert.rejects(expenses.deleteCategory(lunch.id), /Only custom/);
+  await assert.rejects(expenses.deleteCategory(otherIds[0]), /Only custom/, 'Built-in Other categories are protected too');
+  await expenses.saveExpense({ amount: 200, categoryId: newCategoryId, title: null, note: null, date: yesterday, paymentMethod: 'CASH', isOneTime: 0 });
+  await expenses.deleteCategory(newCategoryId);
+  assert.equal((await expenses.listCategories()).some((category) => category.id === newCategoryId), false);
+  assert.equal((await expenses.listExpenses(yesterday))[0].categoryName, 'Coffee', 'Deleting a category preserves historical expense labels');
+  assert.equal((await expenses.listExpenses(yesterday))[0].amount, 200);
+  await expenses.restoreCategory(newCategoryId);
+  assert.equal((await expenses.listCategories()).some((category) => category.id === newCategoryId), true, 'Undo restores custom categories');
   const input = { amount: 45000, categoryId: lunch.id, title: null, note: 'Test', date: today, paymentMethod: 'CASH', isOneTime: 0 };
   await expenses.saveExpense(input);
   let rows = await expenses.listExpenses(today);

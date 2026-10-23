@@ -63,15 +63,23 @@ async function main() {
     sqlite.exec(`DROP INDEX ${index}`);
   }
   sqlite.exec('PRAGMA user_version = 1');
+  sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived;');
   sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
   sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE isUserCreated=1').get().n, 0, 'Seed categories remain protected after upgrade');
   assert.equal(sqlite.prepare("SELECT icon FROM categories WHERE name='Snacks'").get().icon, 'coffee');
   assert.equal(sqlite.prepare("SELECT color FROM categories WHERE name='Lunch'").get().color, 'pink', 'Preserve edited seed colours');
   assert.equal(sqlite.prepare('SELECT amount FROM expenses').get().amount, 45000);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10);
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name LIKE '%_by_%'").get().n, 5);
+  sqlite.exec("INSERT INTO categories(name,icon,color,type) VALUES ('My custom category','tag','green','OTHER')");
+  sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; PRAGMA user_version=3;');
+  await load('lib/db.ts', dependencies).getDatabase();
+  assert.equal(sqlite.prepare("SELECT isUserCreated FROM categories WHERE name='My custom category'").get().isUserCreated, 1,
+    'Upgrade recognizes existing user-created categories');
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE id<=11 AND isUserCreated=1').get().n, 0);
   sqlite.close();
 
   const { formatMoney, parseAmountInput, applyKeypadKey, amountToInput } = load('lib/money.ts');
