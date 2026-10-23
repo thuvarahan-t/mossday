@@ -87,8 +87,10 @@ export const Heatmap = memo(function Heatmap({
     onSelectDate(date);
   };
 
+  // `box-only` makes this view the touch target: locationX/Y are reported relative to the
+  // view touched, and the SVG below the month labels would shift every tap by a row.
   const grid = (
-    <View style={{ width, height: height + top }}>
+    <View pointerEvents={onSelectDate ? 'box-only' : undefined} style={{ width, height: height + top }}>
       {showMonthLabels && monthLabels.map((label) => (
         <Text key={`${label.x}`} variant="caption1" color="secondaryLabel" style={[styles.monthLabel, { left: label.x }]}>
           {label.text}

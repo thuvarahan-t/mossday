@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import { GroupedList, ListRow, Separator } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
-import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { GlassButton } from '@/components/ui/glass/GlassButton';
 import { useAction, useResource } from '@/hooks/useResource';
@@ -17,7 +16,9 @@ import { formatWeekdayShortDate, todayLocalDate } from '@/lib/date';
 import { getHabit, habitStats, listHabitLogs, tickHabit } from '@/lib/repos/habits';
 import { HabitSheet } from './HabitSheet';
 import { dataColors } from '@/lib/dataColors';
+import { haptics } from '@/lib/haptics';
 import { HabitPeriodControls } from './HabitPeriodControls';
+import { HabitTickButton } from './HabitTickButton';
 import { HabitTracker } from './HabitTracker';
 import { safeHabitDate } from './habitPeriod';
 
@@ -50,8 +51,13 @@ export function HabitDetailScreen() {
         {/* Selecting a historical date never changes the quick-tick date on the main cards. */}
         <View style={{ marginTop: theme.spacing.lg, marginHorizontal: -theme.sizes.cardPadding }}><Separator /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: theme.spacing.lg }}>
-          <View><Text>{formatWeekdayShortDate(selected)}</Text><Text variant="subheadline" color="secondaryLabel">{count}/{habit.dailyGoal} completed</Text></View>
-          <Stepper value={count} rawColor={palette.accent} min={0} max={Math.max(count, habit.dailyGoal)} onChange={(value) => { void action(() => tickHabit(habit.id, selected, value > count ? 1 : -1)); }} accessibilityLabel="Ticks on selected day" />
+          <View style={{ flex: 1 }}>
+            <Text variant="headline">{selected === today ? 'Today' : formatWeekdayShortDate(selected)}</Text>
+            <Text variant="subheadline" color="secondaryLabel">Tap a day above to tick another day</Text>
+          </View>
+          {/* Same control as the habit cards, applied to the selected day; keyed so each day starts counting up. */}
+          <HabitTickButton key={selected} name={`${habit.name}, ${formatWeekdayShortDate(selected)}`} count={count} goal={habit.dailyGoal} color={habit.color}
+            onTick={() => { haptics.tick(); void action(() => tickHabit(habit.id, selected)); }} onUndo={() => { void action(() => tickHabit(habit.id, selected, -1)); }} />
         </View>
       </Card>
       <GroupedList separatorInset={theme.sizes.rowPadding}><ListRow title="Best streak" value={`${stats.best} days`} /><ListRow title="Completion" value={`${stats.completion}%`} /><ListRow title="Total ticks" value={String(stats.total)} /></GroupedList>

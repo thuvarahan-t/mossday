@@ -110,6 +110,7 @@ const yearlyGrid = Heatmap(year.props);
 assert.equal(yearlyGrid.props.children[1].props.children.length, 365, 'The year SVG contains only days in the selected year');
 picked = undefined;
 const interactiveYear = Heatmap({ ...year.props, onSelectDate: (day) => { picked = day; } });
+assert.equal(interactiveYear.props.children.props.pointerEvents, 'box-only', 'Taps are measured on the grid, not the SVG below the month labels');
 interactiveYear.props.onPress({ nativeEvent: { locationX: 0, locationY: 18 } });
 assert.equal(picked, undefined, 'Padding days before January cannot be selected');
 const step = year.props.squareSize + year.props.gap;
