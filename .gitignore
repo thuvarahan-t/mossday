@@ -46,3 +46,6 @@ example
 build/
 *.apk
 *.aab
+
+# Design reference images (local only, not committed)
+design/
