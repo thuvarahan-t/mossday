@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AmountDisplay } from '@/components/ui/AmountDisplay';
 import { Button } from '@/components/ui/Button';
-import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
+import { SheetRow } from '@/components/ui/sheet/SheetRow';
 import { CategoryGrid } from '@/components/ui/CategoryGrid';
 import { Chip } from '@/components/ui/Chip';
 import { useDatePicker } from '@/components/ui/DateSelector';
@@ -17,16 +17,16 @@ import { LoadState } from '@/components/ui/LoadState';
 import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { formatLongDate, formatShortDate, todayLocalDate } from '@/lib/date';
-import { amountToInput, applyKeypadKey, formatMoney, parseAmountInput } from '@/lib/money';
+import { amountToInput, applyKeypadKey, parseAmountInput } from '@/lib/money';
 import { addCategory, listCategories, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
 import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
 
-/** Window height taken by the Add Expense sheet apart from the keypad rows and optional fields. */
+/** Window height taken by the Add Expense sheet apart from the keypad rows and optional rows. */
 const KEYPAD_FREE_SPACE = 416;
-/** Below this window height (small phones) the amount and spacing tighten to keep Save visible. */
-const SHORT_WINDOW = 700;
+/** Keys stay compact even on tall phones so the sheet is as small as it can be. */
+const MAX_KEY_HEIGHT = 54;
 const paymentLabels = { CASH: 'Cash', CARD: 'Card', ONLINE: 'Online' } as const;
 const nextPayment = { CASH: 'CARD', CARD: 'ONLINE', ONLINE: 'CASH' } as const;
 
@@ -53,6 +53,8 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const [newCategory, setNewCategory] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const [color, setColor] = useState<AccentName>('blue');
+  const [shake, setShake] = useState(0);
+  const [hint, setHint] = useState<string | null>(null);
   const load = () => {
     void listCategories().then((rows) => {
       setCategories(rows); setError(null);
@@ -65,11 +67,9 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const datePicker = useDatePicker(date, setDate);
   const selected = categories?.find((category) => category.id === categoryId);
   const amount = parseAmountInput(input);
-  const short = window.height < SHORT_WINDOW;
-  const showLastAmount = !input && !!selected?.lastAmount && !oneTime;
   // Keys shrink on short screens so the whole form fits; optional rows take their share first.
-  const optionalRows = [showLastAmount, oneTime, showNote].filter(Boolean).length * (theme.sizes.touchTarget + theme.spacing.md);
-  const keyHeight = Math.min(theme.sizes.keypadKeyHeight, Math.floor((window.height - KEYPAD_FREE_SPACE - optionalRows) / 4));
+  const optionalRows = [oneTime, showNote, !!hint].filter(Boolean).length * (theme.sizes.fieldHeight + theme.spacing.sm);
+  const keyHeight = Math.min(MAX_KEY_HEIGHT, Math.floor((window.height - KEYPAD_FREE_SPACE - optionalRows) / 4));
   const save = async () => {
     if (saving.current || !amount) return;
     saving.current = true; setBusy(true);
@@ -77,9 +77,24 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
     saving.current = false; setBusy(false);
     if (success) { Keyboard.dismiss(); haptics.success(); onClose(); }
   };
-  return <FormSheet {...transition} background="plain" size="fit" dense={short} title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
+  // Saving from a text field must never leave the user stuck behind the keyboard: when
+  // something is missing, the keyboard goes away so the keypad and Save are visible again.
+  const attemptSave = () => {
+    const problem = !amount ? 'Enter an amount' : oneTime && !title.trim() ? 'Say what it was' : !oneTime && !categoryId ? 'Choose a category' : null;
+    if (!problem) { void save(); return; }
+    Keyboard.dismiss();
+    haptics.warning();
+    setHint(problem);
+    if (!amount) setShake((count) => count + 1);
+  };
+  const inlineSave = <Button title="Save" size="small" disabled={busy} onPress={attemptSave} />;
+  // Categories load in a few milliseconds; presenting after that opens the sheet in one
+  // motion at its final height instead of springing to a loading row and then growing.
+  if (!categories && !error) return null;
+  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
     {!categories ? <LoadState error={error} retry={load} /> : <>
-      <AmountDisplay input={input} compact={short} />
+      <AmountDisplay input={input} compact shakeSignal={shake} />
+      {hint && <SheetRow optional><Text variant="footnote" weight="semibold" color="dangerText" align="center">{hint}</Text></SheetRow>}
       {/* Meals on the first line, Other and One-time on the second, on every screen width. */}
       <View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
         {categories.filter((c) => c.type === 'MEAL').map((c) => <Chip key={c.id} label={c.name} selected={!oneTime && c.id === categoryId} onPress={() => { setCategoryId(c.id); setOneTime(false); }} />)}
@@ -88,18 +103,24 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
         <Chip label={selected?.type === 'OTHER' && !oneTime ? `${selected.name} ›` : 'Other'} selected={!oneTime && selected?.type === 'OTHER'} onPress={() => setOther(true)} />
         <Chip label="One-time" selected={oneTime} onPress={() => setOneTime(true)} />
       </View>
-      {showLastAmount && selected?.lastAmount ? <Button title={`Same as last time · ${formatMoney(selected.lastAmount)}`} variant="tinted" size="small"
-        style={{ alignSelf: 'center' }} onPress={() => setInput(amountToInput(selected.lastAmount!))} /> : null}
-      {oneTime && <AnimatedListItem><TextField value={title} onChangeText={setTitle} placeholder="What was it?" accessibilityLabel="Expense title" /></AnimatedListItem>}
-      <OptionsBar cells={[
+      {oneTime && <SheetRow optional style={[styles.fieldRow, { gap: theme.spacing.sm }]}>
+        <View style={styles.fill}><TextField value={title} onChangeText={(value) => { setTitle(value); setHint(null); }} placeholder="What was it?" accessibilityLabel="Expense title" /></View>
+        {inlineSave}
+      </SheetRow>}
+      <SheetRow><OptionsBar cells={[
         { label: formatShortDate(date), accessibilityLabel: `Date, ${formatLongDate(date)}. Change date`, onPress: datePicker.open },
         { label: paymentLabels[payment], accessibilityLabel: `Payment, ${paymentLabels[payment]}`, onPress: () => setPayment(nextPayment[payment]) },
         { label: note.trim() || 'Add note', tinted: !note.trim(), onPress: () => setShowNote(!showNote) },
-      ]} />
+      ]} /></SheetRow>
       {datePicker.picker}
-      {showNote && <AnimatedListItem><TextField value={note} onChangeText={setNote} placeholder="Add a note" accessibilityLabel="Expense note" /></AnimatedListItem>}
-      <NumberKeypad keyHeight={keyHeight} onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
-      <Button title={busy ? 'Saving…' : 'Save'} disabled={busy || !amount || (oneTime ? !title.trim() : !categoryId)} onPress={() => { void save(); }} fullWidth />
+      {showNote && <SheetRow optional style={[styles.fieldRow, { gap: theme.spacing.sm }]}>
+        <View style={styles.fill}><TextField value={note} onChangeText={setNote} placeholder="Add a note" accessibilityLabel="Expense note" autoFocus /></View>
+        {inlineSave}
+      </SheetRow>}
+      <SheetRow style={{ gap: theme.spacing.sm }}>
+        <NumberKeypad keyHeight={keyHeight} onKey={(key) => { setHint(null); setInput((value) => applyKeypadKey(value, key)); }} onClear={() => setInput('')} />
+        <Button title={busy ? 'Saving…' : 'Save'} disabled={busy} onPress={attemptSave} fullWidth />
+      </SheetRow>
     </>}
     {other && <FormSheet {...otherTransition} title="Categories" onClose={() => setOther(false)}>
       <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
@@ -117,4 +138,8 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   </FormSheet>;
 }
 
-const styles = StyleSheet.create({ chipRow: { flexDirection: 'row', justifyContent: 'center' } });
+const styles = StyleSheet.create({
+  chipRow: { flexDirection: 'row', justifyContent: 'center' },
+  fieldRow: { flexDirection: 'row', alignItems: 'center' },
+  fill: { flex: 1 },
+});

@@ -1,15 +1,18 @@
+import { BlurView } from 'expo-blur';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import {
+  Keyboard, Modal, Platform, Pressable, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent,
+} from 'react-native';
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolation, interpolate, useAnimatedKeyboard, useAnimatedReaction, useAnimatedStyle,
+  Extrapolation, interpolate, useAnimatedReaction, useAnimatedStyle,
   ReduceMotion, useReducedMotion, useSharedValue, withSpring, withTiming,
 } from 'react-native-reanimated';
 import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { durations, easing, gestures, spring } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
-import { BlurTargetBoundary } from '../glass/BlurTarget';
+import { BlurTargetBoundary, useRootBlurTarget } from '../glass/BlurTarget';
 import { GlassSurface } from '../glass/GlassSurface';
 import { SheetCoverable, SheetCoverProvider, useSheetCover } from './SheetCover';
 
@@ -29,6 +32,8 @@ export type BottomSheetProps = {
 };
 
 const LARGE_TOP_GAP = 10;
+/** Blur of the app behind an open sheet: enough to recede, not enough to lose context. */
+const SCRIM_BLUR = 18;
 
 /**
  * iOS-style sheet: grabber, detents, `spring.gentle` presentation, drag to dismiss with
@@ -52,9 +57,27 @@ export function BottomSheet({
   const screenHeight = measuredHeight || window.height;
   const reduceMotion = useReducedMotion();
   const parentCover = useSheetCover();
+  const rootTarget = useRootBlurTarget();
   // Forms can unmount after saving. Never leave their presenter scaled down.
   useEffect(() => () => { parentCover?.set(0); }, [parentCover]);
-  const keyboard = useAnimatedKeyboard();
+  // Lifts the sheet just enough to keep the focused field (and anything beside it, like an
+  // inline Save) above the keyboard. Keyboard events also reach this modal window, which
+  // the animated keyboard hook does not track on Android.
+  const keyboardLift = useSharedValue(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (event) => {
+      TextInput.State.currentlyFocusedInput()?.measureInWindow((_x, y, _width, height) => {
+        const overlap = y + height + theme.spacing.md - event.endCoordinates.screenY;
+        keyboardLift.set(withTiming(Math.max(0, overlap), { duration: durations.normal, easing: easing.sheet }));
+      });
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      keyboardLift.set(withTiming(0, { duration: durations.normal, easing: easing.sheet }));
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [keyboardLift, theme.spacing.md]);
   const [mounted, setMounted] = useState(visible);
   const [contentHeight, setContentHeight] = useState(0);
 
@@ -66,10 +89,14 @@ export function BottomSheet({
     return Math.min(contentHeight, largeHeight);
   }, [contentHeight, largeHeight, mediumHeight]);
 
-  const sheetHeight = Math.max(...detents.map(heightOf));
+  const fitsContent = detents.includes('content');
+  // Content sheets use a full-height panel pushed down by the unused space, so a change in
+  // content height is a spring on translateY instead of a jump in the panel's height.
+  const sheetHeight = fitsContent ? largeHeight : Math.max(...detents.map(heightOf));
   // translateY is measured from the fully-open position; `sheetHeight` = hidden.
   const snapPoints = detents.map((detent) => sheetHeight - heightOf(detent));
-  const measured = !detents.includes('content') || contentHeight > 0;
+  const openPoint = snapPoints[0];
+  const measured = !fitsContent || contentHeight > 0;
 
   const translateY = useSharedValue(screenHeight);
   const opacity = useSharedValue(0);
@@ -87,7 +114,7 @@ export function BottomSheet({
     if (!mounted || !measured) return;
     if (visible) {
       opacity.set(withTiming(1, { duration: durations.fast, reduceMotion: ReduceMotion.Never }));
-      translateY.set(reduceMotion ? snapPoints[0] : withSpring(snapPoints[0], spring.gentle));
+      translateY.set(reduceMotion ? openPoint : withSpring(openPoint, spring.gentle));
     } else {
       if (reduceMotion) {
         opacity.set(withTiming(0, { duration: durations.fast, reduceMotion: ReduceMotion.Never }, (finished) => {
@@ -99,9 +126,7 @@ export function BottomSheet({
         }));
       }
     }
-    // snapPoints is derived from sheetHeight + detents; listing it would restart on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, mounted, measured, sheetHeight, reduceMotion, finishDismiss, translateY, opacity]);
+  }, [visible, mounted, measured, sheetHeight, openPoint, reduceMotion, finishDismiss, translateY, opacity]);
 
   // The presenter recedes only as the sheet approaches full height (medium sheets just dim).
   useAnimatedReaction(
@@ -122,7 +147,7 @@ export function BottomSheet({
     },
     onDeactivate: (event) => {
       const current = translateY.get();
-      const lowest = snapPoints[0];
+      const lowest = openPoint;
       const pastThreshold = current > lowest + (sheetHeight - lowest) * gestures.dismissFraction;
       if (event.velocityY > gestures.dismissVelocity || pastThreshold) {
         scheduleOnRN(onClose);
@@ -130,17 +155,17 @@ export function BottomSheet({
       }
       const projected = current + event.velocityY * 0.1;
       const target = snapPoints.reduce((best, point) =>
-        Math.abs(point - projected) < Math.abs(best - projected) ? point : best, snapPoints[0]);
+        Math.abs(point - projected) < Math.abs(best - projected) ? point : best, openPoint);
       translateY.set(reduceMotion ? target : withSpring(target, { ...spring.gentle, velocity: event.velocityY }));
     },
   });
 
   const sheetStyle = useAnimatedStyle(() => ({
     opacity: reduceMotion ? opacity.get() : 1,
-    transform: [{ translateY: translateY.get() - keyboard.height.get() }],
+    transform: [{ translateY: translateY.get() - keyboardLift.get() }],
   }));
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: reduceMotion ? opacity.get() : interpolate(translateY.get(), [snapPoints[0], sheetHeight], [1, 0], Extrapolation.CLAMP),
+    opacity: reduceMotion ? opacity.get() : interpolate(translateY.get(), [openPoint, sheetHeight], [1, 0], Extrapolation.CLAMP),
   }));
 
   const onContentLayout = (event: LayoutChangeEvent) => {
@@ -149,32 +174,35 @@ export function BottomSheet({
   };
 
   if (!mounted) return null;
-  const sizesToContent = detents.length === 1 && detents[0] === 'content';
 
   return (
     <Modal transparent visible statusBarTranslucent navigationBarTranslucent animationType="none" onRequestClose={onClose}>
       <GestureHandlerRootView style={styles.fill} onLayout={(event) => setMeasuredHeight(Math.round(event.nativeEvent.layout.height))}>
         <BlurTargetBoundary>
-          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.scrim }, scrimStyle]}>
+          <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
+            {/* The app behind softly blurs and dims as the sheet rises. */}
+            <BlurView blurTarget={rootTarget ?? undefined} blurMethod="dimezisBlurViewSdk31Plus" intensity={SCRIM_BLUR}
+              tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.scrim }]} />
             <Pressable style={styles.fill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
           </Animated.View>
           <GestureDetector gesture={pan}>
             <Animated.View
               pointerEvents={visible ? 'auto' : 'none'}
               accessibilityViewIsModal
-              style={[styles.sheet, { height: sizesToContent ? undefined : sheetHeight }, sheetStyle]}
+              style={[styles.sheet, { height: sheetHeight }, sheetStyle]}
             >
               <GlassSurface
                 material={background === 'grouped' ? 'groupedSheet' : 'sheet'}
                 radius={theme.radii.sheet}
                 topCornersOnly
-                style={sizesToContent ? undefined : styles.fill}
-                contentStyle={sizesToContent ? undefined : styles.fill}
+                style={styles.fill}
+                contentStyle={styles.fill}
               >
-                <SheetCoverable cover={ownCover} radius={theme.radii.sheet} style={sizesToContent ? styles.auto : undefined}>
+                <SheetCoverable cover={ownCover} radius={theme.radii.sheet}>
                   <SheetCoverProvider cover={ownCover}>
-                    <View onLayout={sizesToContent || detents.includes('content') ? onContentLayout : undefined}
-                      style={[{ paddingBottom: insets.bottom + theme.spacing.sm }, !sizesToContent && styles.fill]}>
+                    <View onLayout={fitsContent ? onContentLayout : undefined}
+                      style={[{ paddingBottom: insets.bottom + theme.spacing.sm }, !fitsContent && styles.fill]}>
                       <View style={[styles.grabberRow, { paddingTop: theme.spacing.sm }]}>
                         <View style={{
                           width: theme.sizes.grabberWidth, height: theme.sizes.grabberHeight,
@@ -196,7 +224,6 @@ export function BottomSheet({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  auto: { flex: 0 },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   grabberRow: { alignItems: 'center' },
 });
