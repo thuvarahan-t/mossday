@@ -68,10 +68,10 @@ Not drawn but required by spec (built from the closest drawn pattern): Expenses 
 ## 3. Per-screen analysis
 
 ### 3.1 Tab bar + app shell (`Component · Floating glass tab bar`, cover — revised)
-- **Layout (user revision, 23 Oct):** one full-width floating liquid-glass pill, 5 equal items in the order Expenses · Habits · **Today** · Diary · Notes, so Today sits in the middle. No "+" in the bar; each tab's add action is a glass "+" beside its large title (Today: Quick Add, next to the gear).
+- **Layout (user revision, 23 Oct):** one full-width floating liquid-glass pill, 5 equal items in the order Habits · Expenses · **Today** · Diary · Notes, so Today sits in the middle. No "+" in the bar; each tab's add action is a glass "+" beside its large title (Today: Quick Add, next to the gear).
 - **Glass:** blur of the scenes behind, translucent tint, specular sheen from the top edge, soft shade at the bottom, bright rim (`GlassSurface sheen`).
 - **States:** focused item = green glass lens (accent-tinted fill, bright rim, soft shadow) + icon/label in `accent`; others `secondaryLabel`.
-- **Animations:** tapping slides the lens with `spring.snappy` and a brief liquid stretch; dragging along the bar carries the lens under the finger (lifted 1.1×, selection haptic per tab crossed) and releasing opens the tab under it. Icon bounce on focus. Hidden on pushed detail screens.
+- **Animations (kept light on request):** tapping glides the lens with the critically damped `spring.gentle`; dragging along the bar carries the lens under the finger (selection haptic per tab crossed) and releasing opens the tab under it. Scenes switch instantly. Hidden on pushed detail screens.
 
 ### 3.2 Today (`A · Today`, `A · Today — Dark`, `M · Over budget`)
 Top → bottom:

@@ -4,15 +4,19 @@ import { AppState } from 'react-native';
 import { subscribeToStore } from '@/lib/repos/store';
 import { useToast } from '@/components/ui/Toast';
 
-/** Refresh on focus, local writes, and returning from background; ignore stale requests. */
+/**
+ * Refresh on focus, local writes, and returning from background; ignore stale requests.
+ * While a new query loads (another day, another period) the previous result stays on
+ * screen, so switching never flashes a spinner or an empty state.
+ */
 export function useResource<T>(load: () => Promise<T>) {
-  const [result, setResult] = useState<{ load: () => Promise<T>; value: T } | null>(null);
+  const [result, setResult] = useState<{ value: T } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);
   const refresh = useCallback(() => {
     const request = ++generation.current;
     void load().then((value) => {
-      if (request === generation.current) { setResult({ load, value }); setError(null); }
+      if (request === generation.current) { setResult({ value }); setError(null); }
     }, (failure: unknown) => {
       if (request === generation.current) setError(failure instanceof Error ? failure.message : 'Could not load your data.');
     });
@@ -23,7 +27,7 @@ export function useResource<T>(load: () => Promise<T>) {
     const appState = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
     return () => { generation.current += 1; unsubscribe(); appState.remove(); };
   }, [refresh]));
-  return { data: result?.load === load ? result.value : null, error, refresh };
+  return { data: result ? result.value : null, error, refresh };
 }
 
 export function useAction() {

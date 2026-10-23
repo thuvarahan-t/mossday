@@ -1,7 +1,7 @@
 import { TabList, Tabs, TabTrigger } from 'expo-router/ui';
 import { router, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { FadeTabSlot } from '@/components/navigation/FadeTabSlot';
+import { TabSceneSlot } from '@/components/navigation/TabSceneSlot';
 import { TabBar, TabBarItem } from '@/components/navigation/TabBar';
 import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
 import { useTabBarBottom } from '@/hooks/useTabBarInset';
@@ -33,7 +33,7 @@ export default function TabLayout() {
         </TabList>
         {/* Scenes are the blur target so the floating bar shows them blurred behind it. */}
         <BlurTargetContent>
-          <FadeTabSlot />
+          <TabSceneSlot />
         </BlurTargetContent>
         <View
           pointerEvents="box-none"
@@ -42,7 +42,7 @@ export default function TabLayout() {
           <TabBar itemCount={tabs.length} onSelect={(index) => { if (pathname !== tabs[index].href) router.navigate(tabs[index].href); }}>
             {tabs.map((tab, index) => (
               <TabTrigger key={tab.name} name={tab.name} asChild>
-                <TabBarItem index={index} title={tab.title} icon={tab.icon} active={pathname === tab.href} prominent={tab.name === 'index'} />
+                <TabBarItem index={index} title={tab.title} icon={tab.icon} active={pathname === tab.href} />
               </TabTrigger>
             ))}
           </TabBar>

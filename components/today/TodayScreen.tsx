@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { AddButton } from '@/components/navigation/AddButton';
+import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ExpenseSheet } from '@/components/expenses/ExpenseSheet';
 import { TodoList } from '@/components/diary/TodoList';
 import { TodoSheet } from '@/components/diary/TodoSheet';
@@ -15,7 +16,6 @@ import { Icon } from '@/components/ui/Icon';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { HabitTickButton } from '@/components/habits/HabitTickButton';
 import { Text } from '@/components/ui/Text';
 import { GlassButton } from '@/components/ui/glass/GlassButton';
@@ -50,7 +50,6 @@ export function TodayScreen() {
   }, [today]));
   const spent = data?.expenses.filter((e) => e.date === today).reduce((sum, e) => sum + e.amount, 0) ?? 0;
   const budget = data?.settings.dailyBudget ?? 0;
-  const status = budget && spent > budget ? 'dangerText' : budget && spent >= budget * 0.8 ? 'warningText' : 'accent';
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, today)) ?? [];
   const countFor = (id: number) => data?.logs.find((l) => l.habitId === id)?.count ?? 0;
   const done = active.filter((h) => countFor(h.id) >= h.dailyGoal).length;
@@ -63,10 +62,8 @@ export function TodayScreen() {
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
         <Text color="secondaryLabel">Spent today</Text>
-        <AnimatedNumber value={spent} format={formatMoney} color={status === 'dangerText' ? 'dangerText' : 'label'} />
-        {budget > 0 && <><ProgressBar progress={spent / budget} color={theme.colors[status === 'accent' ? 'accentBar' : status === 'warningText' ? 'warning' : 'danger']} /><View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text variant="subheadline" color={status}>{formatMoney(Math.abs(budget - spent))} {spent > budget ? 'over budget' : 'left'}</Text><Text variant="subheadline" color="secondaryLabel">of {formatMoney(budget)}</Text>
-        </View></>}
+        <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
+        {budget > 0 && <BudgetMeter spent={spent} budget={budget} />}
         <Separator />
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           {data.categories.filter((c) => c.type === 'MEAL').map((category) => {

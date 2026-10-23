@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { View } from 'react-native';
 import { AddButton } from '@/components/navigation/AddButton';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
@@ -23,6 +24,8 @@ import {
 } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { deleteExpense, listExpenses, restoreExpense, type Expense } from '@/lib/repos/expenses';
+import { getSettings } from '@/lib/repos/settings';
+import { BudgetMeter } from './BudgetMeter';
 import { ExpenseSheet } from './ExpenseSheet';
 import { PeriodHeader } from './PeriodHeader';
 import { categoryStyle, type CategoryStyle } from './categoryStyle';
@@ -42,8 +45,9 @@ export function ExpensesScreen() {
   const to = period === 'Day' ? date : period === 'Week' ? addDays(from, 6) : endOfMonth(date);
   const previousFrom = period === 'Month' ? addMonths(from, -1) : addDays(from, -(daysBetween(from, to) + 1));
   const { data: result, error, refresh } = useResource(useCallback(async () => ({
-    current: await listExpenses(from, to), previous: await listExpenses(previousFrom, addDays(from, -1)),
+    current: await listExpenses(from, to), previous: await listExpenses(previousFrom, addDays(from, -1)), settings: await getSettings(),
   }), [from, to, previousFrom]));
+  const dailyBudget = period === 'Day' ? result?.settings.dailyBudget ?? 0 : 0;
   const data = result?.current;
   const total = sum(data ?? []);
   const days = dateRange(from, to);
@@ -62,6 +66,7 @@ export function ExpensesScreen() {
     <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
     <PeriodHeader label={periodLabel(period, date, from, today)} total={total} summary={summary.text} summaryColor={summary.color}
       canGoForward={to < today} onShift={shift} />
+    {dailyBudget > 0 && <View style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></View>}
     {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
       <EmptyState icon="wallet" title={period === 'Day' && date === today ? 'No expenses today' : `Nothing spent this ${period.toLowerCase()}`}
         message="Tap here to add one." onPress={() => setEditor('new')} /> : period === 'Day' ?

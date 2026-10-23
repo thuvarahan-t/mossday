@@ -10,12 +10,12 @@ does not establish visual quality or frame rate.
 | Colour/day/mood pickers | Selection ring, colour or opacity transition | Light/dark selections remain legible |
 | Input fields | Animated focus border | Keyboard focus does not shift the field |
 | Segments/toggles | Spring thumb | Repeated changes remain smooth |
-| Tab bar/scenes | Sliding highlight, one icon bounce, haptic and focus fade | No repeated bounce on data writes |
+| Tab bar/scenes | Lens glides without overshoot (tap or drag), tick per tab while dragging; scenes switch instantly | Lens never lags the finger; no flash when switching |
 | Large titles | Scroll-driven glass header fade | Track finger without clipping |
 | Push navigation | iOS card slide and edge-back | Cancel back gesture without blank content |
 | Sheets | Spring open, detents, velocity close, scrim and presenter recession | Save/Cancel finish exit; nested forms restore presenter |
 | Quick Add | Dismiss before replacing sheet/opening note | No leftover modal or blocked screen |
-| Feature lists | Entry, exit and layout animation | Delete/Undo/reorder retain identity |
+| Feature lists | 150 ms fade in/out and spring layout moves; reloads keep the previous data until new data arrives | Delete/Undo/reorder retain identity; no spinner flash |
 | Numbers | Tabular digit roll | Totals retain line height |
 | Spending bars | Animate from current heights | Unrelated renders do not replay chart |
 | Habit ticks | Button/square pop, colour transition, rolling streak | Fast taps preserve counts and settle at scale 1 |

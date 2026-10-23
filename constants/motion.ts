@@ -10,9 +10,9 @@ export const spring = {
   default: { damping: 20, stiffness: 220, mass: 1 },
   /** Buttons, chips, toggles, press feedback. */
   snappy: { damping: 18, stiffness: 320, mass: 1 },
-  /** Sheets and large transitions. */
-  gentle: { damping: 26, stiffness: 160, mass: 1 },
-  /** Success moments: habit tick, tab icon bounce. */
+  /** Sheets and large transitions: critically damped (no bounce), settles in ~0.35 s. */
+  gentle: { damping: 34, stiffness: 300, mass: 1 },
+  /** Success moments: habit tick. */
   bouncy: { damping: 12, stiffness: 260, mass: 1 },
 } as const satisfies Record<string, WithSpringConfig>;
 
@@ -27,7 +27,6 @@ export const easing = {
 export const scales = {
   pressed: 0.96,
   pop: 1.15,
-  tabIconBounce: 1.12,
   /** Screen behind a presented sheet. */
   sheetBackdrop: 0.94,
   contextMenuLift: 1.03,
