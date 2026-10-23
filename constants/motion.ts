@@ -44,4 +44,4 @@ export const gestures = {
   edgeSwipeWidth: 24,
 } as const;
 
-export const toastDuration = 4000;
+export const toastDuration = 6000;

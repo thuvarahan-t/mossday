@@ -22,7 +22,11 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { ha
   const today = useToday();
   const count = counts[today] ?? 0;
   const [width, setWidth] = useState(0);
-  const weeks = Math.max(1, Math.floor((width + theme.sizes.heatmapGap) / (theme.sizes.heatmapSquare + theme.sizes.heatmapGap)));
+  const gap = theme.sizes.heatmapGap;
+  const weeks = Math.max(1, Math.floor((width + gap) / (theme.sizes.heatmapSquare + gap)));
+  // Squares stretch slightly so the grid ends flush with the card edge (UI analysis R15);
+  // floored to whole pixels' worth so rounding never clips the last column.
+  const squareSize = Math.floor(((width - (weeks - 1) * gap) / weeks) * 10) / 10;
   const stats = habitStats(habit, counts, today);
   return <Card padding="row">
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingBottom: theme.spacing.lg }}>
@@ -43,7 +47,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { ha
       onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
     </View>
     <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {width > 0 && <Heatmap startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={today} />}
+      {width > 0 && <Heatmap startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={today} />}
     </View>
   </Card>;
 });

@@ -173,7 +173,7 @@ Top → bottom:
 
 ### 3.14 Empty, over-budget, toasts (`M · *`)
 - EmptyState block: icon 48 `secondaryLabel` (stroke 2) · gap 16 · title3 bold title · gap 6 · body secondary centred, max width 300 · optional Button.
-- Toast: pill 50, message body, trailing "Undo" tinted pill (headline, `accentOnDark` on white-12 % fill). Auto-dismiss 4 s; swipe down dismisses.
+- Toast: pill 50, message body, trailing "Undo" tinted pill (headline, `accentOnDark` on white-12 % fill). Auto-dismiss 6 s (long enough to reach Undo one-handed); swipe down dismisses.
 - Over budget: see 3.2.
 
 ### 3.15 Home-screen widget (`N`)

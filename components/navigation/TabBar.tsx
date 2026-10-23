@@ -109,7 +109,7 @@ export function TabBarItem({ index, title, icon, isFocused: triggerFocused = fal
           fill={isFocused ? theme.colors.accentFill : undefined}
         />
       </Animated.View>
-      <Text variant="caption2" weight={isFocused ? 'semibold' : 'medium'} color={isFocused ? 'accent' : 'label'} numberOfLines={1}>
+      <Text variant="caption2" weight={isFocused ? 'semibold' : 'medium'} color={isFocused ? 'accent' : 'label'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {title}
       </Text>
     </PressableScale>
