@@ -9,8 +9,8 @@ import { useTheme } from '@/hooks/useTheme';
 
 // Today sits in the middle of the bar, within thumb reach from either side.
 const tabs = [
-  { name: 'expenses', href: '/expenses', title: 'Expenses', icon: 'wallet' },
   { name: 'habits', href: '/habits', title: 'Habits', icon: 'habits' },
+  { name: 'expenses', href: '/expenses', title: 'Expenses', icon: 'wallet' },
   { name: 'index', href: '/', title: 'Today', icon: 'home' },
   { name: 'diary', href: '/diary', title: 'Diary', icon: 'calendar' },
   { name: 'notes', href: '/notes', title: 'Notes', icon: 'note' },
@@ -27,7 +27,7 @@ export default function TabLayout() {
       <Tabs style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
         {/* Route registration must be a direct child of Tabs (SDK 58). The first trigger is the
             initial route, so Today registers first even though it sits in the middle of the bar;
-            otherwise Expenses mounts first and Today's cards start animating while hidden. */}
+            otherwise Habits mounts first and Today's cards start animating while hidden. */}
         <TabList style={{ display: 'none' }}>
           {routeOrder.map((tab) => <TabTrigger key={tab.name} name={tab.name} href={tab.href} />)}
         </TabList>
@@ -42,7 +42,7 @@ export default function TabLayout() {
           <TabBar itemCount={tabs.length} onSelect={(index) => { if (pathname !== tabs[index].href) router.navigate(tabs[index].href); }}>
             {tabs.map((tab, index) => (
               <TabTrigger key={tab.name} name={tab.name} asChild>
-                <TabBarItem index={index} title={tab.title} icon={tab.icon} active={pathname === tab.href} />
+                <TabBarItem index={index} title={tab.title} icon={tab.icon} active={pathname === tab.href} prominent={tab.name === 'index'} />
               </TabTrigger>
             ))}
           </TabBar>

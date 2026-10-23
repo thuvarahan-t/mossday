@@ -118,10 +118,14 @@ export function TabBar({ children, itemCount, onSelect }: {
   );
 }
 
-export type TabBarItemProps = TabTriggerSlotProps & { index: number; title: string; icon: IconName; active?: boolean };
+export type TabBarItemProps = TabTriggerSlotProps & {
+  index: number; title: string; icon: IconName; active?: boolean;
+  /** Home tab in the middle: its icon sits on a small green disc so it reads as the centre. */
+  prominent?: boolean;
+};
 
 /** Receives `isFocused` / `onPress` from `<TabTrigger asChild>`. */
-export function TabBarItem({ index, title, icon, isFocused: triggerFocused = false, active, onPress, onLongPress }: TabBarItemProps) {
+export function TabBarItem({ index, title, icon, isFocused: triggerFocused = false, active, prominent, onPress, onLongPress }: TabBarItemProps) {
   const isFocused = active ?? triggerFocused;
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
@@ -153,13 +157,17 @@ export function TabBarItem({ index, title, icon, isFocused: triggerFocused = fal
       }}
       onLongPress={onLongPress}
     >
-      <Animated.View style={iconStyle}>
+      <Animated.View style={[iconStyle, prominent && [styles.disc, {
+        width: theme.sizes.tabProminentIcon, height: theme.sizes.tabProminentIcon, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent,
+        // Overhangs the icon row so all labels stay on one baseline.
+        marginVertical: (theme.sizes.icon - theme.sizes.tabProminentIcon) / 2,
+      }]]}>
         <Icon
           name={icon}
-          size={theme.sizes.icon}
-          color={isFocused ? 'accent' : 'secondaryLabel'}
-          strokeWidth={isFocused ? 2.3 : 2}
-          fill={isFocused ? theme.colors.accentFill : undefined}
+          size={prominent ? theme.sizes.iconSmall + 2 : theme.sizes.icon}
+          color={prominent ? 'onTile' : isFocused ? 'accent' : 'secondaryLabel'}
+          strokeWidth={isFocused || prominent ? 2.3 : 2}
+          fill={isFocused && !prominent ? theme.colors.accentFill : undefined}
         />
       </Animated.View>
       <Text variant="caption2" weight={isFocused ? 'semibold' : 'medium'} color={isFocused ? 'accent' : 'secondaryLabel'}
@@ -175,4 +183,5 @@ const styles = StyleSheet.create({
   row: { flex: 1, flexDirection: 'row' },
   lens: { position: 'absolute', borderCurve: 'continuous' },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  disc: { borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
 });

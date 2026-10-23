@@ -10,6 +10,8 @@ export type AmountDisplayProps = {
   input: string;
   /** Increment to shake the amount (rejected key). */
   shakeSignal?: number;
+  /** Smaller 48 pt amount for short screens. */
+  compact?: boolean;
 };
 
 function groupThousands(input: string) {
@@ -19,7 +21,7 @@ function groupThousands(input: string) {
 }
 
 /** "Rs." + the big 64 pt amount at the top of the Add Expense sheet. */
-export function AmountDisplay({ input, shakeSignal = 0 }: AmountDisplayProps) {
+export function AmountDisplay({ input, shakeSignal = 0, compact }: AmountDisplayProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shake = useSharedValue(0);
@@ -47,7 +49,7 @@ export function AmountDisplay({ input, shakeSignal = 0 }: AmountDisplayProps) {
       <View style={{ paddingBottom: theme.spacing.sm }}>
         <Text variant="title1" color="secondaryLabel">Rs.</Text>
       </View>
-      <Text variant="display" tabular color={empty ? 'tertiaryLabel' : 'label'} numberOfLines={1} adjustsFontSizeToFit style={styles.amount}>
+      <Text variant={compact ? 'hero' : 'display'} tabular color={empty ? 'tertiaryLabel' : 'label'} numberOfLines={1} adjustsFontSizeToFit style={styles.amount}>
         {empty ? '0' : groupThousands(input)}
       </Text>
     </Animated.View>

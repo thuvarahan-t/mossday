@@ -18,8 +18,8 @@ export type NumberKeypadProps = {
 };
 
 export type NumberKeypadLayoutProps = NumberKeypadProps & {
-  /** Fill the remaining height, shrinking keys (down to a touch target) on short screens. */
-  fill?: boolean;
+  /** Row height; forms on short screens pass less than the default (never below a touch target). */
+  keyHeight?: number;
 };
 
 const Key = memo(function Key({ value, onKey, onClear }: { value: KeypadKey } & NumberKeypadProps) {
@@ -50,13 +50,11 @@ const Key = memo(function Key({ value, onKey, onClear }: { value: KeypadKey } & 
 });
 
 /** Phone-style amount keypad (no key backgrounds, a soft circle highlights the pressed key). */
-export function NumberKeypad({ onKey, onClear, fill }: NumberKeypadLayoutProps) {
+export function NumberKeypad({ onKey, onClear, keyHeight }: NumberKeypadLayoutProps) {
   const theme = useTheme();
-  const rowHeight = fill
-    ? { flex: 1, maxHeight: theme.sizes.keypadKeyHeight, minHeight: theme.sizes.touchTarget }
-    : { height: theme.sizes.keypadKeyHeight };
+  const rowHeight = { height: Math.max(theme.sizes.touchTarget, keyHeight ?? theme.sizes.keypadKeyHeight) };
   return (
-    <View style={[{ paddingHorizontal: theme.spacing.xxl }, fill && styles.fill]}>
+    <View style={{ paddingHorizontal: theme.spacing.xxl }}>
       {ROWS.map((row) => (
         <View key={row.join('')} style={[styles.row, rowHeight]}>
           {row.map((value) => <Key key={value} value={value} onKey={onKey} onClear={onClear} />)}
@@ -69,6 +67,5 @@ export function NumberKeypad({ onKey, onClear, fill }: NumberKeypadLayoutProps) 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   key: { flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
-  fill: { flex: 1, justifyContent: 'flex-end' },
   highlight: { position: 'absolute' },
 });

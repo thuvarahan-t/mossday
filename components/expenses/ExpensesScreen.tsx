@@ -64,13 +64,16 @@ export function ExpensesScreen() {
       canGoForward={to < today} onShift={shift} />
     {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
       <EmptyState icon="wallet" title={period === 'Day' && date === today ? 'No expenses today' : `Nothing spent this ${period.toLowerCase()}`}
-        message="Nice! Tap + when you spend." /> : period === 'Day' ?
+        message="Tap here to add one." onPress={() => setEditor('new')} /> : period === 'Day' ?
       <GroupedList>{[...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((expense) => <AnimatedListItem key={expense.id}>
         <SwipeableRow onDelete={() => remove(expense)}>
           <ListRow title={expense.title || expense.categoryName || 'One-time'} subtitle={expenseDetail(expense)} valueColor="label"
             value={formatMoney(expense.amount)} onPress={() => setEditor(expense)} icon={categoryStyle(expense.categoryIcon, expense.categoryColor)} />
         </SwipeableRow>
-      </AnimatedListItem>)}</GroupedList> : <>
+      </AnimatedListItem>)}
+        {/* The next expense is one tap away at the end of the day's list. */}
+        <ListRow key="add" title="Add expense" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />
+      </GroupedList> : <>
         <Card>
           <BarChart values={amounts.map((amount, index) => days[index] > today ? null : amount)} highlightIndex={days.indexOf(today)}
             labels={chartLabels(period, days, days.indexOf(today))}

@@ -1,27 +1,37 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { BottomSheet, type BottomSheetProps } from './sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from './sheet/SheetHeader';
 
 export type FormSheetTransition = Pick<BottomSheetProps, 'visible' | 'onDismissed'>;
 
-/** Large sheet with a close button and scrolling content; `plain` matches the white Add Expense sheet. */
-export function FormSheet({ title, onClose, children, visible = true, onDismissed, background = 'grouped', trailing, scroll = true }: {
+/** Room kept above a `fit` sheet's scroll area for the status bar, grabber and header. */
+const FIT_CHROME = 120;
+
+/**
+ * Sheet with a close button and scrolling content. `large` fills most of the screen; `fit`
+ * is only as tall as its content, so it grows when a field appears (Add Expense's note).
+ */
+export function FormSheet({ title, onClose, children, visible = true, onDismissed, background = 'grouped', trailing, size = 'large', dense }: {
   title: string; onClose: () => void; children: ReactNode; background?: BottomSheetProps['background'];
   /** Header action on the right, e.g. the Add Habit sheet's "Add" button. */
   trailing?: ReactNode;
-  /** `false` lays children out in the fixed sheet height (keypad forms that must fit on screen). */
-  scroll?: boolean;
+  size?: 'large' | 'fit';
+  /** Tighter spacing for dense forms on short screens. */
+  dense?: boolean;
 } & Partial<FormSheetTransition>) {
   const theme = useTheme();
-  const content = { padding: theme.spacing.lg, gap: theme.spacing.md };
-  return <BottomSheet visible={visible} onClose={onClose} onDismissed={onDismissed} background={background}>
+  const window = useWindowDimensions();
+  const content = { padding: theme.spacing.lg, gap: dense ? theme.spacing.sm : theme.spacing.md };
+  const fit = size === 'fit';
+  return <BottomSheet visible={visible} onClose={onClose} onDismissed={onDismissed} background={background} detents={[fit ? 'content' : 'large']}>
     <SheetHeader title={title} leading={<SheetIconButton icon="close" accessibilityLabel="Close" onPress={onClose} />} trailing={trailing} />
-    {scroll
-      ? <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.grow, content]}>{children}</ScrollView>
-      : <View style={[styles.fill, content]}>{children}</View>}
+    <ScrollView keyboardShouldPersistTaps="handled" style={fit && { flexGrow: 0, maxHeight: window.height - FIT_CHROME }}
+      contentContainerStyle={[!fit && styles.grow, content]}>
+      {children}
+    </ScrollView>
   </BottomSheet>;
 }
 
-const styles = StyleSheet.create({ grow: { flexGrow: 1 }, fill: { flex: 1 } });
+const styles = StyleSheet.create({ grow: { flexGrow: 1 } });
