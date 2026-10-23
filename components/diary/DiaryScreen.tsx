@@ -1,24 +1,27 @@
-import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { BackHandler, View } from 'react-native';
 import { useFabAction } from '@/components/navigation/FabAction';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
-import { MonthGrid } from '@/components/ui/MonthGrid';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
 import { WeekStrip } from '@/components/ui/WeekStrip';
 import { GlassButton } from '@/components/ui/glass/GlassButton';
+import { GlassSurface } from '@/components/ui/glass/GlassSurface';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
-import { addDays, addMonths, dayOfMonth, endOfMonth, formatLongDate, monthName, startOfMonth, startOfWeek, todayLocalDate, weekdayName } from '@/lib/date';
+import { useToday } from '@/hooks/useToday';
+import { addDays, addMonths, dayOfMonth, endOfMonth, monthName, startOfMonth, startOfWeek, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { getJournal, listTodos, moveIncomplete } from '@/lib/repos/diary';
 import { listExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits } from '@/lib/repos/habits';
 import { isActiveDay } from '@/lib/heatmap';
+import { DiaryCalendar } from './DiaryCalendar';
 import { JournalEditor } from './JournalEditor';
 import { TodoList } from './TodoList';
 import { TodoSheet } from './TodoSheet';
@@ -26,7 +29,7 @@ import { TodoSheet } from './TodoSheet';
 export function DiaryScreen() {
   const theme = useTheme();
   const action = useAction();
-  const today = todayLocalDate();
+  const today = useToday();
   const [date, setDate] = useState(today);
   const [month, setMonth] = useState(startOfMonth(today));
   const [calendar, setCalendar] = useState(false);
@@ -44,23 +47,30 @@ export function DiaryScreen() {
   const spend = data?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, date)) ?? [];
   const done = active.filter((h) => (data?.logs.find((l) => l.habitId === h.id)?.count ?? 0) >= h.dailyGoal).length;
-  const monthlyAmounts = (data?.monthlyExpenses ?? []).reduce<Record<string, number>>((result, e) => { result[e.date] = (result[e.date] ?? 0) + e.amount; return result; }, {});
-  const maxSpend = Math.max(1, ...Object.values(monthlyAmounts));
-  return <LargeTitleScreen title={calendar ? `${monthName(month)} ${month.slice(0, 4)}` : `${dayOfMonth(date)} ${monthName(date)}`}
-    subtitle={calendar ? 'Choose a day' : `${weekdayName(date)}, ${date.slice(0, 4)}`}
-    titleAccessory={<GlassButton accessibilityLabel={calendar ? 'Return to diary' : 'Open calendar'} onPress={() => { setMonth(startOfMonth(date)); setCalendar(!calendar); }}><Icon name={calendar ? 'chevronLeft' : 'calendar'} /></GlassButton>}
+  const closeCalendar = useCallback(() => setCalendar(false), []);
+  useEffect(() => {
+    if (!calendar) return;
+    // Android back leaves the calendar mode before it leaves the tab.
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => { closeCalendar(); return true; });
+    return () => subscription.remove();
+  }, [calendar, closeCalendar]);
+  const monthNavigation = <GlassSurface contentStyle={{ flexDirection: 'row', height: theme.sizes.circleButton, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.xl, alignItems: 'center' }}>
+    <PressableScale haptic="selection" accessibilityLabel="Previous month" hitSlop={theme.spacing.sm} onPress={() => setMonth(addMonths(month, -1))}><Icon name="chevronLeft" size={theme.sizes.iconLarge} /></PressableScale>
+    <PressableScale haptic="selection" accessibilityLabel="Next month" hitSlop={theme.spacing.sm} onPress={() => setMonth(addMonths(month, 1))}><Icon name="chevronRight" size={theme.sizes.iconLarge} /></PressableScale>
+  </GlassSurface>;
+  return <LargeTitleScreen title={calendar ? `${monthName(month)}${month.slice(0, 4) === today.slice(0, 4) ? '' : ` ${month.slice(0, 4)}`}` : `${dayOfMonth(date)} ${monthName(date)}`}
+    subtitle={calendar ? undefined : `${weekdayName(date)}, ${date.slice(0, 4)}`} showBack={calendar} onBack={closeCalendar} headerRight={calendar ? monthNavigation : undefined}
+    titleAccessory={calendar ? undefined : <GlassButton accessibilityLabel="Open calendar" onPress={() => { setMonth(startOfMonth(date)); setCalendar(true); }}><Icon name="calendar" /></GlassButton>}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
-    {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}><Button title="‹ Previous" variant="plain" onPress={() => setMonth(addMonths(month, -1))} /><Button title="Next ›" variant="plain" onPress={() => setMonth(addMonths(month, 1))} /></View>
-      <Card><MonthGrid month={month} today={today} selected={date} onSelect={setDate}
-        spendLevels={Object.fromEntries(Object.entries(monthlyAmounts).map(([day, amount]) => [day, Math.ceil(amount / maxSpend * 4)]))}
-        todoDates={new Set(data.monthlyTodos.map((t) => t.date))} /></Card>
-      <Card><Text>{formatLongDate(date)}</Text><Text color="secondaryLabel">{formatMoney(spend)} · {data.todos.filter((t) => !t.isDone).length} to-dos left</Text>
-        <Button title="Open diary page" variant="plain" onPress={() => setCalendar(false)} /></Card>
-    </> : <>
+    {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <DiaryCalendar month={month} today={today} selected={date}
+      monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}
+      onSelect={setDate} onOpenDay={closeCalendar} /> : <>
       <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.weekTodos.map((t) => t.date))} onSelect={setDate} onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} />
-      {data.previous.length > 0 && <Card padding="row"><Text color="secondaryLabel">{data.previous.length} left from yesterday</Text><Button title="Move to this day" variant="plain" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} /></Card>}
-      {data.todos.length ? <TodoList todos={data.todos} reorder /> : <Card><Text color="secondaryLabel">Nothing planned.</Text><Button title="Add to-do" variant="plain" onPress={() => setAdding(true)} /></Card>}
+      {data.todos.length || data.previous.length ? <TodoList todos={data.todos} reorder header={data.previous.length > 0 &&
+        <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
+          <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
+          <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
+        </View>} /> : <Card><Text color="secondaryLabel">Nothing planned.</Text><Button title="Add to-do" variant="plain" onPress={() => setAdding(true)} /></Card>}
       <JournalEditor key={date} date={date} initial={data.journal} />
       <Text align="center" variant="subheadline" color="secondaryLabel">Spent {formatMoney(spend)} · {done} of {active.length} habits done</Text>
     </>}

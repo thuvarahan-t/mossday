@@ -20,6 +20,8 @@ export type LargeTitleScreenProps = {
   titleAccessory?: ReactNode;
   /** Pushed screens: shows the glass back button and reserves a nav bar row. */
   showBack?: boolean;
+  /** Back action for in-screen modes (Diary calendar); defaults to popping the route. */
+  onBack?: () => void;
   /** Fixed controls on the right of the nav bar (Edit, pin/share). */
   headerRight?: ReactNode;
   /** Content directly under the title (segmented control, search) that scrolls with it. */
@@ -39,7 +41,7 @@ const NAV_BAR_HEIGHT = 44;
  * the scroll position on the UI thread, so it tracks the finger exactly.
  */
 export function LargeTitleScreen({
-  title, subtitle, titleAccessory, showBack, headerRight, children, bottomInset = 'tabBar',
+  title, subtitle, titleAccessory, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
   contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled',
 }: LargeTitleScreenProps) {
   const theme = useTheme();
@@ -115,7 +117,7 @@ export function LargeTitleScreen({
           >
             <View style={styles.navSide}>
               {showBack && (
-                <GlassButton accessibilityLabel="Back" haptic="tap" onPress={() => router.back()}>
+                <GlassButton accessibilityLabel="Back" haptic="tap" onPress={onBack}>
                   <Icon name="chevronLeft" size={theme.sizes.iconLarge} />
                 </GlassButton>
               )}

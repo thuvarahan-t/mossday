@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
@@ -12,11 +13,13 @@ import { useTheme } from '@/hooks/useTheme';
 import { deleteTodo, reorderTodos, restoreTodo, toggleTodo, type Todo } from '@/lib/repos/diary';
 import { haptics } from '@/lib/haptics';
 
-export function TodoList({ todos, reorder = false }: { todos: Todo[]; reorder?: boolean }) {
+/** Grouped to-do rows; `header` is an optional first row such as the diary carry-over banner. */
+export function TodoList({ todos, reorder = false, header }: { todos: Todo[]; reorder?: boolean; header?: ReactNode }) {
   const theme = useTheme();
   const action = useAction();
   const toast = useToast();
   return <GroupedList separatorInset={theme.sizes.rowPadding + theme.sizes.checkbox + theme.spacing.md}>
+    {header}
     {todos.map((todo, index) => {
       const row = <SwipeableRow onDelete={() => { void action(() => deleteTodo(todo.id), () => toast({ message: 'To-do deleted', actionLabel: 'Undo', onAction: () => { void action(() => restoreTodo(todo)); } })); }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', padding: theme.spacing.lg, gap: theme.spacing.md }}>
