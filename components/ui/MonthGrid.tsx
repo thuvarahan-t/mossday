@@ -1,5 +1,8 @@
-import { memo } from 'react';
+import { memo, useEffect, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { durations } from '@/constants/motion';
+import { animateTo } from '@/lib/animation';
 import { useTheme } from '@/hooks/useTheme';
 import { addDays, dayOfMonth, daysInMonth, formatLongDate, startOfMonth, WEEKDAY_LETTERS, weekdayIndex, type LocalDate } from '@/lib/date';
 import { haptics } from '@/lib/haptics';
@@ -17,6 +20,17 @@ export type MonthGridProps = {
   onSelect: (date: LocalDate) => void;
 };
 
+function DayCircle({ selected, tint, children }: { selected: boolean; tint: string; children: ReactNode }) {
+  const theme = useTheme();
+  const reduced = useReducedMotion();
+  const selection = useSharedValue(selected ? 2 : 0);
+  const fill = useSharedValue(tint);
+  useEffect(() => { selection.set(animateTo(selected ? 2 : 0, 'snappy', reduced)); }, [selection, selected, reduced]);
+  useEffect(() => { fill.set(withTiming(tint, { duration: durations.fast })); }, [fill, tint]);
+  const style = useAnimatedStyle(() => ({ borderWidth: Math.max(0, selection.get()), backgroundColor: fill.get() }));
+  return <Animated.View style={[styles.center, { width: theme.sizes.dayCircle, height: theme.sizes.dayCircle, borderRadius: theme.radii.pill, borderColor: theme.colors.accentBar }, style]}>{children}</Animated.View>;
+}
+
 /** Diary calendar month: orange tint = spending level, dot = has to-dos, green = today. */
 export const MonthGrid = memo(function MonthGrid({ month, today, selected, spendLevels, todoDates, onSelect }: MonthGridProps) {
   const theme = useTheme();
@@ -28,7 +42,6 @@ export const MonthGrid = memo(function MonthGrid({ month, today, selected, spend
   ];
   while (cells.length % 7 !== 0) cells.push(null);
   const weeks = Array.from({ length: cells.length / 7 }, (_, index) => cells.slice(index * 7, index * 7 + 7));
-  const circle = theme.sizes.dayCircle;
 
   return (
     <View style={{ gap: theme.spacing.xs }}>
@@ -53,10 +66,7 @@ export const MonthGrid = memo(function MonthGrid({ month, today, selected, spend
                 accessibilityState={{ selected: date === selected }}
                 onPress={() => { haptics.selection(); onSelect(date); }}
               >
-                <View style={[styles.center, {
-                  width: circle, height: circle, borderRadius: theme.radii.pill, backgroundColor: tint,
-                  borderWidth: isSelected ? 2 : 0, borderColor: theme.colors.accentBar,
-                }]}>
+                <DayCircle selected={isSelected} tint={tint}>
                   <Text
                     variant="title3"
                     weight={isToday ? 'semibold' : 'regular'}
@@ -65,7 +75,7 @@ export const MonthGrid = memo(function MonthGrid({ month, today, selected, spend
                   >
                     {dayOfMonth(date)}
                   </Text>
-                </View>
+                </DayCircle>
                 <View style={{
                   width: theme.sizes.dot, height: theme.sizes.dot, borderRadius: theme.radii.pill,
                   backgroundColor: todoDates.has(date) ? theme.accents.gray : 'transparent',
