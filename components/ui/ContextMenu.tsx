@@ -120,9 +120,13 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
                 onPress={() => close()} accessibilityRole="button" accessibilityLabel="Close menu" />
             </Animated.View>
 
+            {/* Grouped-list rows have no fill of their own; the card colour keeps the lifted copy legible on the blur. */}
             <Animated.View
               pointerEvents="none"
-              style={[styles.absolute, { left: frame.x, top: frame.y, width: frame.width, boxShadow: theme.shadows.lifted, borderRadius: theme.radii.card }, liftStyle]}
+              style={[styles.absolute, {
+                left: frame.x, top: frame.y, width: frame.width,
+                backgroundColor: theme.colors.card, boxShadow: theme.shadows.lifted, borderRadius: theme.radii.card,
+              }, liftStyle]}
             >
               {children}
             </Animated.View>
