@@ -106,6 +106,11 @@ async function main() {
   assert.equal(formatAmount(125000), '1,250', 'Bare amounts do not depend on currency labels');
   currency.setActiveCurrency('LKR');
   assert.throws(() => formatMoney(1.5));
+  const { recordedDayAverage } = load('components/expenses/expenseMetrics.ts');
+  assert.equal(recordedDayAverage([]).amount, 0);
+  const average = recordedDayAverage([{ date: '2026-10-01', amount: 10000 }, { date: '2026-10-01', amount: 20000 }, { date: '2026-10-15', amount: 30000 }]);
+  assert.equal(average.days, 2, 'Multiple entries on the same date count as one recorded day');
+  assert.equal(average.amount, 30000, 'Daily average divides by recorded dates, never by days in the month');
   process.env.TZ = 'Asia/Colombo';
   const date = load('lib/date.ts');
   const { todayLocalDate } = date;

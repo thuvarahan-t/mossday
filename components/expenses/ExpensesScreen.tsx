@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { GroupedList, ListRow, SectionHeader } from '@/components/ui/GroupedList';
@@ -34,6 +36,7 @@ import { ExpenseSheet, preloadCategories } from './ExpenseSheet';
 import { PeriodHeader } from './PeriodHeader';
 import { categoryStyle } from './categoryStyle';
 import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
+import { recordedDayAverage } from './expenseMetrics';
 
 type Period = 'Day' | 'Week' | 'Month';
 type PeriodRange = { period: Period; date: string; from: string; to: string };
@@ -58,7 +61,8 @@ export function ExpensesScreen() {
   const total = sum(data ?? []);
   const days = dateRange(view.from, view.to);
   const amounts = days.map((day) => sum(data?.filter((e) => e.date === day) ?? []));
-  const elapsedDays = days.filter((day) => day <= today).length;
+  const average = recordedDayAverage(data ?? []);
+  const monthlyBudget = result?.settings.monthlyBudget ?? 0;
 
   const remove = (expense: Expense) => {
     void action(() => deleteExpense(expense.id), () => toast({
@@ -66,7 +70,7 @@ export function ExpensesScreen() {
     }));
   };
   const shift = (delta: -1 | 1) => setDate(period === 'Month' ? addMonths(date, delta) : addDays(date, delta * (period === 'Week' ? 7 : 1)));
-  const summary = periodSummary(view.period, total, result ? sum(result.previous) : 0, elapsedDays, view.date === today);
+  const summary = periodSummary(view.period, total, result ? sum(result.previous) : 0, average, view.date === today);
   const label = periodLabel(view, today);
 
   const shareImage = useShareImage();
@@ -79,6 +83,11 @@ export function ExpensesScreen() {
     <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
       canGoForward={selected.to < today} onShift={shift} />
     {dailyBudget > 0 && <View style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></View>}
+    {monthlyBudget > 0 ? <Card style={{ gap: theme.spacing.sm }}>
+      <Text variant="headline">{monthName(view.date)} budget</Text>
+      <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
+      <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
+    </Card> : view.period === 'Month' ? <Card><Button title="Set monthly budget" variant="plain" onPress={() => router.push('/settings')} /></Card> : null}
     {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
       <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
         message="Add one in a few taps." action={{ label: 'Add Expense', onPress: () => setEditor('new') }} /> : view.period === 'Day' ?
@@ -111,12 +120,11 @@ function periodRange(period: Period, date: string): PeriodRange {
 async function loadPeriod(period: Period, date: string) {
   const range = periodRange(period, date);
   const previousFrom = period === 'Month' ? addMonths(range.from, -1) : addDays(range.from, -(daysBetween(range.from, range.to) + 1));
-  return {
-    range,
-    current: await listExpenses(range.from, range.to),
-    previous: await listExpenses(previousFrom, addDays(range.from, -1)),
-    settings: await getSettings(),
-  };
+  const [current, previous, settings, monthExpenses] = await Promise.all([
+    listExpenses(range.from, range.to), listExpenses(previousFrom, addDays(range.from, -1)), getSettings(),
+    period === 'Month' ? Promise.resolve(null) : listExpenses(startOfMonth(date), endOfMonth(date)),
+  ]);
+  return { range, current, previous, settings, monthlySpent: sum(monthExpenses ?? current) };
 }
 
 /** A day-list row: tap to edit, long press for Edit / Delete, or swipe left to delete. */
@@ -153,11 +161,10 @@ function periodLabel({ period, date, from }: PeriodRange, today: string) {
   return date.slice(0, 4) === today.slice(0, 4) ? monthName(date) : `${monthName(date)} ${date.slice(0, 4)}`;
 }
 
-function periodSummary(period: Period, total: number, previous: number, elapsedDays: number, isToday: boolean): { text: string; color: ColorToken } {
+function periodSummary(period: Period, total: number, previous: number, average: ReturnType<typeof recordedDayAverage>, isToday: boolean): { text: string; color: ColorToken } {
   if (period !== 'Day') {
-    // Daily average in whole rupees: cents would read as false precision here.
-    const average = elapsedDays ? Math.round(total / elapsedDays / 100) * 100 : 0;
-    return { text: `About ${formatMoney(average)} a day`, color: 'secondaryLabel' };
+    // Whole currency units: cents would read as false precision in an average.
+    return { text: `${formatMoney(Math.round(average.amount / 100) * 100)} a day · ${average.days} recorded ${average.days === 1 ? 'day' : 'days'}`, color: 'secondaryLabel' };
   }
   if (!total) return { text: isToday ? 'Nothing spent yet' : 'Nothing spent', color: 'accent' };
   if (!previous) return { text: '', color: 'secondaryLabel' };

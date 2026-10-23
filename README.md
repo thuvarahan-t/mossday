@@ -30,6 +30,8 @@ Screen data access goes through `lib/repos/` repositories.
 Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
 First launch asks for a currency (Skip keeps Rs.); Settings → Currency changes it
 later. Only the label changes; saved amounts are never converted.
+Expenses shows the month's budget as a progress line on every period. The
+"a day" average divides by days that have at least one expense, not by calendar days.
 In Add Expense → Other, categories use a compact sheet. Long press and drag a
 tile to reorder it; nearby tiles shift live and a dashed placeholder marks the
 drop position. Releasing saves the order; canceling restores it. The order
