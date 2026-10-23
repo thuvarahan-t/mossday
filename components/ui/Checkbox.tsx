@@ -31,7 +31,7 @@ export const Checkbox = memo(function Checkbox({ checked, onToggle, accessibilit
     wasChecked.current = checked;
   }, [checked, fill, reduceMotion, scale]);
 
-  const fillStyle = useAnimatedStyle(() => ({ opacity: fill.get(), transform: [{ scale: 0.5 + fill.get() * 0.5 }] }));
+  const fillStyle = useAnimatedStyle(() => ({ opacity: fill.get(), transform: [{ scale: reduceMotion ? 1 : 0.5 + fill.get() * 0.5 }] }));
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 
   return (

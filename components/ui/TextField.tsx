@@ -1,7 +1,8 @@
-import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { fontFamilies, textVariants, type TextVariant } from '@/constants/typography';
 import { useTheme } from '@/hooks/useTheme';
+import { animateTo } from '@/lib/animation';
 import { Icon } from './Icon';
 
 export type TextFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColor'> & {
@@ -11,18 +12,23 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColo
   bold?: boolean;
 };
 
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
 /** Text input styled with the type tokens; outlined fields turn green while focused. */
 export function TextField({ appearance = 'outlined', variant = 'body', bold, multiline, onFocus, onBlur, ...rest }: TextFieldProps) {
   const theme = useTheme();
-  const [focused, setFocused] = useState(false);
+  const reduced = useReducedMotion();
+  const focus = useSharedValue(0);
+  const { separator, accentBar } = theme.colors;
+  const focusStyle = useAnimatedStyle(() => ({ borderColor: interpolateColor(focus.get(), [0, 1], [separator, accentBar]) }));
   const { weight, ...metrics } = textVariants[variant];
   const framed = appearance !== 'bare';
   return (
-    <TextInput
+    <AnimatedTextInput
       {...rest}
       multiline={multiline}
-      onFocus={(event) => { setFocused(true); onFocus?.(event); }}
-      onBlur={(event) => { setFocused(false); onBlur?.(event); }}
+      onFocus={(event) => { focus.set(animateTo(1, 'snappy', reduced)); onFocus?.(event); }}
+      onBlur={(event) => { focus.set(animateTo(0, 'snappy', reduced)); onBlur?.(event); }}
       placeholderTextColor={theme.colors.tertiaryLabel}
       selectionColor={theme.colors.accentBar}
       cursorColor={theme.colors.accentBar}
@@ -42,8 +48,8 @@ export function TextField({ appearance = 'outlined', variant = 'body', bold, mul
           borderCurve: 'continuous',
           backgroundColor: appearance === 'filled' ? theme.colors.fill : theme.colors.card,
           borderWidth: appearance === 'outlined' ? 1.5 : 0,
-          borderColor: focused ? theme.colors.accentBar : theme.colors.separator,
         },
+        framed && focusStyle,
       ]}
     />
   );

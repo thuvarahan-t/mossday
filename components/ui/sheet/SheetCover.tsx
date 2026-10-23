@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { scales } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -23,10 +23,11 @@ export function SheetCoverProvider({ cover, children }: { cover: SharedValue<num
 export function SheetCoverable({ cover, children, style, radius }: {
   cover: SharedValue<number>; children: ReactNode; style?: StyleProp<ViewStyle>; radius: number;
 }) {
+  const reduced = useReducedMotion();
   const animatedStyle = useAnimatedStyle(() => {
     const progress = cover.get();
     return {
-      transform: [{ scale: interpolate(progress, [0, 1], [1, scales.sheetBackdrop]) }],
+      transform: [{ scale: reduced ? 1 : interpolate(progress, [0, 1], [1, scales.sheetBackdrop]) }],
       borderRadius: interpolate(progress, [0, 1], [0, radius]),
     };
   });

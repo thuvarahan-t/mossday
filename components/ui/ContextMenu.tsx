@@ -69,11 +69,11 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, progress.get()) }));
   const liftStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + (scales.contextMenuLift - 1) * progress.get() }],
+    transform: [{ scale: reduceMotion ? 1 : 1 + (scales.contextMenuLift - 1) * progress.get() }],
   }));
   const menuStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, progress.get()),
-    transform: [{ scale: 0.6 + 0.4 * progress.get() }],
+    transform: [{ scale: reduceMotion ? 1 : 0.6 + 0.4 * progress.get() }],
   }));
 
   const menuHeight = actions.length * MENU_ROW_HEIGHT;

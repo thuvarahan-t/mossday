@@ -4,6 +4,7 @@ import Animated, { LinearTransition, FadeIn, FadeOut, useAnimatedStyle, useReduc
 import type { ColorToken } from '@/constants/theme';
 import { textVariants, type FontWeight, type TextVariant } from '@/constants/typography';
 import { animateTo } from '@/lib/animation';
+import { durations } from '@/constants/motion';
 import { Text } from './Text';
 
 export type AnimatedNumberProps = {
@@ -33,11 +34,11 @@ const RollingDigit = memo(function RollingDigit({ digit, variant, color, weight 
 
   return (
     <View style={[styles.clip, { height: lineHeight }]}>
-      <Animated.View style={style}>
+      {reduceMotion ? <Text variant={variant} color={color} weight={weight} tabular>{digit}</Text> : <Animated.View style={style}>
         {DIGITS.map((d) => (
           <Text key={d} variant={variant} color={color} weight={weight} tabular>{d}</Text>
         ))}
-      </Animated.View>
+      </Animated.View>}
     </View>
   );
 });
@@ -50,12 +51,13 @@ export function AnimatedNumber({
   value, format = String, variant = 'hero', color = 'label', weight, accessibilityLabel,
 }: AnimatedNumberProps) {
   const text = format(value);
+  const reduceMotion = useReducedMotion();
   const characters = text.split('');
   return (
     <View accessible accessibilityRole="text" accessibilityLabel={accessibilityLabel ?? text} style={styles.row}>
       {characters.map((character, index) => {
         const key = characters.length - index;
-        const animation = { entering: FadeIn, exiting: FadeOut, layout: LinearTransition };
+        const animation = { entering: FadeIn.duration(durations.fast), exiting: FadeOut.duration(durations.fast), layout: reduceMotion ? undefined : LinearTransition.duration(durations.normal) };
         return /\d/.test(character) ? (
           <Animated.View key={`d${key}`} {...animation}>
             <RollingDigit digit={Number(character)} variant={variant} color={color} weight={weight} />

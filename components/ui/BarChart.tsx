@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import Svg, { Line, Rect } from 'react-native-svg';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
@@ -18,20 +18,25 @@ export type BarChartProps = {
 };
 
 const DASH_HEIGHT = 3;
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+const ChartBar = memo(function ChartBar({ x, width, height, chartHeight, color, radius }: {
+  x: number; width: number; height: number; chartHeight: number; color: string; radius: number;
+}) {
+  const reduced = useReducedMotion();
+  const current = useSharedValue(reduced ? height : 0);
+  useEffect(() => { current.set(animateTo(height, 'gentle', reduced)); }, [current, height, reduced]);
+  const animatedProps = useAnimatedProps(() => {
+    const visible = Math.max(0, Math.min(chartHeight, current.get()));
+    return { y: chartHeight - visible, height: visible };
+  });
+  return <AnimatedRect x={x} width={width} rx={radius} fill={color} animatedProps={animatedProps} />;
+});
 
 /** Daily spending bars (Week/Month): soft green past days, solid today, dashed average line. */
 export const BarChart = memo(function BarChart({ values, highlightIndex, labels, height = 140, accessibilityLabel }: BarChartProps) {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion();
   const [width, setWidth] = useState(0);
-  const grow = useSharedValue(0);
-
-  useEffect(() => {
-    grow.set(0);
-    grow.set(animateTo(1, 'gentle', reduceMotion));
-  }, [grow, reduceMotion, values]);
-
-  const growStyle = useAnimatedStyle(() => ({ transform: [{ scaleY: grow.get() }] }));
 
   const count = Math.max(values.length, 1);
   const slot = width / count;
@@ -44,7 +49,7 @@ export const BarChart = memo(function BarChart({ values, highlightIndex, labels,
   return (
     <View accessible accessibilityLabel={accessibilityLabel} onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}>
       {width > 0 && (
-        <Animated.View style={[{ height, transformOrigin: 'bottom' }, growStyle]}>
+        <View style={{ height }}>
           <Svg width={width} height={height}>
             {known.length > 0 && (
               <Line x1={0} x2={width} y1={averageY} y2={averageY} stroke={theme.colors.separator} strokeWidth={1} strokeDasharray="4 4" />
@@ -57,13 +62,13 @@ export const BarChart = memo(function BarChart({ values, highlightIndex, labels,
               }
               const barHeight = Math.max(DASH_HEIGHT, (value / max) * height);
               return (
-                <Rect key={index} x={x} y={height - barHeight} width={barWidth} height={barHeight}
-                  rx={Math.min(theme.radii.hairline + 1, barWidth / 2)}
-                  fill={index === highlightIndex ? theme.colors.accent : theme.colors.chartBar} />
+                <ChartBar key={index} x={x} width={barWidth} height={barHeight} chartHeight={height}
+                  radius={Math.min(theme.radii.hairline + 1, barWidth / 2)}
+                  color={index === highlightIndex ? theme.colors.accent : theme.colors.chartBar} />
               );
             })}
           </Svg>
-        </Animated.View>
+        </View>
       )}
       <View style={[styles.labels, { height: theme.spacing.xxl, marginTop: theme.spacing.sm }]}>
         {width > 0 && labels.map((label) => {
