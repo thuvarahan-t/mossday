@@ -4,10 +4,11 @@ import { Platform, View } from 'react-native';
 import { parseLocalDate, todayLocalDate } from '@/lib/date';
 import { DatePill } from './DatePill';
 
-/** Native date picker state; `picker` renders nothing until `open()` is called. */
-export function useDatePicker(date: string, onChange: (date: string) => void): { open: () => void; picker: ReactNode } {
+/** Native date picker state; `picker` renders nothing until `open()` is called. `max` caps the selectable date. */
+export function useDatePicker(date: string, onChange: (date: string) => void, max?: string): { open: () => void; picker: ReactNode } {
   const [visible, setVisible] = useState(false);
   const picker = visible && <DateTimePicker value={parseLocalDate(date)} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'default'}
+    maximumDate={max ? parseLocalDate(max) : undefined}
     onChange={(event, value) => {
       setVisible(false);
       if (event.type === 'set' && value) onChange(todayLocalDate(value));

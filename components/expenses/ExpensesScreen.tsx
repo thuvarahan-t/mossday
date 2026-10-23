@@ -35,6 +35,7 @@ import { getSettings } from '@/lib/repos/settings';
 import { BudgetMeter } from './BudgetMeter';
 import { expensesShareContent } from './expensesShare';
 import { ExpenseSheet, preloadCategories } from './ExpenseSheet';
+import { useDatePicker } from '@/components/ui/DateSelector';
 import { PeriodHeader } from './PeriodHeader';
 import { PeriodSwipeArea } from './PeriodSwipeArea';
 import { categoryStyle } from './categoryStyle';
@@ -82,6 +83,8 @@ export function ExpensesScreen() {
       message: 'Expense deleted', actionLabel: 'Undo', onAction: () => { void action(() => restoreExpense(expense)); },
     }));
   };
+  // A picked date opens that day, whichever period was showing.
+  const datePicker = useDatePicker(date, (day) => { setPeriod('Day'); setDate(day); }, today);
   const shift = (delta: -1 | 1) => setDate(period === 'Month' ? addMonths(date, delta) : addDays(date, delta * (period === 'Week' ? 7 : 1)));
   const summary = periodSummary(view.period, total, result ? sum(result.previous) : 0, average, view.date === today);
   const label = periodLabel(view, today);
@@ -97,7 +100,9 @@ export function ExpensesScreen() {
     <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
     <PeriodSwipeArea contentKey={view} canGoForward={selected.to < today} onShift={shift} style={{ gap: theme.spacing.lg }}>
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
-        canGoForward={selected.to < today} onShift={shift} />
+        canGoForward={selected.to < today} onShift={shift} onPickDate={datePicker.open} />
+      {/* iOS draws the calendar inline, right under the date it changes; Android opens a dialog. */}
+      {datePicker.picker}
       {dailyBudget > 0 && <PressableScale accessibilityLabel="Daily budget, edit" haptic="tap" onPress={() => setBudgetEditor('dailyBudget')}
         style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></PressableScale>}
       {monthlyBudget > 0 ? <PressableScale accessibilityLabel={`${monthName(view.date)} budget, edit`} haptic="tap" onPress={() => setBudgetEditor('monthlyBudget')}>

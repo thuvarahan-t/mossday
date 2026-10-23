@@ -8,12 +8,18 @@ import { useTheme } from '@/hooks/useTheme';
 import { formatMoney } from '@/lib/money';
 
 /** Centred period label, hero total between ‹ › arrows, and one summary line (design B/D). */
-export function PeriodHeader({ label, total, summary, summaryColor, canGoForward, onShift }: {
+export function PeriodHeader({ label, total, summary, summaryColor, canGoForward, onShift, onPickDate }: {
   label: string; total: number; summary: string; summaryColor: ColorToken; canGoForward: boolean; onShift: (delta: -1 | 1) => void;
+  /** Tapping the period label opens a date picker. */
+  onPickDate: () => void;
 }) {
   const theme = useTheme();
   return <View style={[styles.center, { gap: theme.spacing.xxs, paddingHorizontal: theme.sizes.screenInset }]}>
-    <Text color="secondaryLabel">{label}</Text>
+    <PressableScale haptic="tap" accessibilityLabel={`${label}. Choose a date`} hitSlop={theme.spacing.sm} onPress={onPickDate}
+      style={[styles.labelRow, { gap: theme.spacing.xs }]}>
+      <Text color="accent" weight="semibold">{label}</Text>
+      <Icon name="calendar" size={theme.sizes.icon - theme.spacing.xs} color="accent" />
+    </PressableScale>
     <View style={styles.row}>
       <PressableScale haptic="selection" accessibilityLabel="Previous period" hitSlop={theme.spacing.sm} onPress={() => onShift(-1)}>
         <Icon name="chevronLeft" size={theme.sizes.icon + theme.spacing.xs} color="accent" strokeWidth={2.4} />
@@ -34,4 +40,5 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center' },
   fill: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
+  labelRow: { flexDirection: 'row', alignItems: 'center' },
 });
