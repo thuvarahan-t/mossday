@@ -9,6 +9,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
 import { ReorderableRow } from '@/components/ui/ReorderableRow';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
+import { StrikeText } from '@/components/ui/StrikeText';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
@@ -19,6 +20,7 @@ import { useAction, useAutosave, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { formatTimestamp } from '@/lib/date';
 import { importMedia, mediaFile, reclaimMediaLater } from '@/lib/media';
+import { importNotePhoto } from '@/lib/images';
 import { checklistItems, getNote, notePreview, saveNote, type Note, type NoteBlock, type NoteDraft } from '@/lib/repos/notes';
 
 const TOOLBAR: { icon: IconName; label: string }[] = [
@@ -54,7 +56,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
       const result = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       if (result.canceled || !result.assets[0]) return;
       const asset = result.assets[0];
-      const path = importMedia(asset.uri, asset.mimeType === 'image/png' ? 'png' : 'jpg');
+      const path = await importNotePhoto(asset);
       addBlock('IMAGE', path);
     });
     setBusy(false);
@@ -104,9 +106,9 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
                 <Checkbox checked={item.done} accessibilityLabel={item.text || 'Checklist item'} onToggle={() => {
                   const items = checklistItems(block.content); items[itemIndex] = { ...item, done: !item.done }; changeBlock(block.id, JSON.stringify(items));
                 }} />
-                <View style={{ flex: 1 }}><TextField value={item.text} appearance="bare" placeholder="List item" accessibilityLabel="Checklist text" onChangeText={(text) => {
+                <View style={{ flex: 1 }}>{item.done ? <StrikeText struck>{item.text}</StrikeText> : <TextField value={item.text} appearance="bare" placeholder="List item" accessibilityLabel="Checklist text" onChangeText={(text) => {
                   const items = checklistItems(block.content); items[itemIndex] = { ...item, text }; changeBlock(block.id, JSON.stringify(items));
-                }} /></View>
+                }} />}</View>
                 <Button title="×" size="small" variant="plain" onPress={() => changeBlock(block.id, JSON.stringify(checklistItems(block.content).filter((_, i) => i !== itemIndex)))} />
               </View>)}
               <Button title="Add item" size="small" variant="plain" onPress={() => changeBlock(block.id, JSON.stringify([...checklistItems(block.content), { text: '', done: false }]))} />

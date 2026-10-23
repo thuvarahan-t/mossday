@@ -68,6 +68,32 @@ async function main() {
   await media.collectMedia([imported]);
   assert.equal(media.mediaFile(imported).exists, false, 'Unreferenced media is removed');
 
+  let resized;
+  let releasedContext = 0;
+  let releasedImage = 0;
+  let failSave = false;
+  const images = load('lib/images.ts', {
+    './media': { importMedia: (_uri, extension) => `photo.${extension}` },
+    'expo-image-manipulator': {
+      SaveFormat: { JPEG: 'jpeg' },
+      ImageManipulator: { manipulate: () => ({
+        resize: (size) => { resized = size; },
+        renderAsync: async () => ({
+          saveAsync: async () => { if (failSave) throw new Error('save failed'); return { uri: 'file:///compressed.jpg' }; },
+          release: () => { releasedImage += 1; },
+        }),
+        release: () => { releasedContext += 1; },
+      }) },
+    },
+  });
+  assert.equal(await images.importNotePhoto({ uri: 'photo', width: 2000, height: 4000 }), 'photo.jpg');
+  assert.equal(resized.height, 1600, 'Portrait photos are bounded by their longest edge');
+  failSave = true;
+  await assert.rejects(images.importNotePhoto({ uri: 'photo', width: 4000, height: 2000 }));
+  assert.equal(resized.width, 1600);
+  assert.equal(releasedContext, 2, 'Release native contexts on success and failure');
+  assert.equal(releasedImage, 2, 'Release native image buffers on success and failure');
+
   let allowed = true;
   const preferences = new Map();
   const scheduled = new Map([['mossday:obsolete', { identifier: 'mossday:obsolete' }], ['other-app', { identifier: 'other-app' }]]);
