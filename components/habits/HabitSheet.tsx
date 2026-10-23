@@ -47,7 +47,7 @@ export function HabitSheet({ initial, onClose, ...transition }: { initial?: Habi
   };
   const emojiTile = { width: theme.sizes.emojiTile, height: theme.sizes.emojiTile, borderRadius: theme.radii.lg, backgroundColor: theme.colors.fill };
   const fullWidth = { marginHorizontal: 0 };
-  return <FormSheet {...transition} title={initial ? 'Edit Habit' : 'New Habit'} onClose={() => { if (!busy) onClose(); }}
+  return <FormSheet {...transition} size="fit" dense dockToKeyboard title={initial ? 'Edit Habit' : 'New Habit'} onClose={() => { if (!busy) onClose(); }}
     trailing={<Button title={initial ? 'Save' : 'Add'} size="small" disabled={!name.trim() || busy} onPress={save} />}>
     <Card padding="row" inset={false} style={[styles.row, { gap: theme.spacing.md }]}>
       <PressableScale haptic="selection" accessibilityLabel={`Habit emoji, ${icon}. Choose another`} onPress={() => setPickingEmoji(!pickingEmoji)} style={[styles.center, emojiTile]}>
