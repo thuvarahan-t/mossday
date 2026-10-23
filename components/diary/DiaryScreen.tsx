@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, View } from 'react-native';
+import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import { durations, spring } from '@/constants/motion';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +29,10 @@ import { diaryShareContent } from './diaryShare';
 import { JournalEditor } from './JournalEditor';
 import { TodoList } from './TodoList';
 import { TodoSheet } from './TodoSheet';
+
+/** The month calendar drops in from above when the week strip is pulled down, and lifts away on close. */
+const calendarIn = FadeInUp.springify().damping(spring.gentle.damping).stiffness(spring.gentle.stiffness);
+const calendarOut = FadeOutUp.duration(durations.fast);
 
 export function DiaryScreen() {
   const theme = useTheme();
@@ -70,11 +76,13 @@ export function DiaryScreen() {
     subtitle={calendar ? undefined : `${weekdayName(date)}, ${date.slice(0, 4)}`} showBack={calendar} onBack={closeCalendar} headerRight={calendar ? monthNavigation : undefined}
     titleAccessory={calendar ? undefined : <TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg }}>
-    {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <DiaryCalendar month={month} today={today} selected={date}
-      monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}
-      onSelect={setDate} onOpenDay={closeCalendar} /> : <>
-      <Button title="Open calendar" variant="plain" size="small" onPress={() => { setMonth(startOfMonth(date)); setCalendar(true); }} />
-      <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.weekTodos.map((t) => t.date))} onSelect={setDate} onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} />
+    {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <Animated.View key="calendar" entering={calendarIn} exiting={calendarOut} style={{ gap: theme.spacing.lg }}>
+      <DiaryCalendar month={month} today={today} selected={date}
+        monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}
+        onSelect={setDate} onOpenDay={closeCalendar} />
+    </Animated.View> : <>
+      <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.weekTodos.map((t) => t.date))} onSelect={setDate}
+        onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} onOpenCalendar={() => { setMonth(startOfMonth(date)); setCalendar(true); }} />
       {data.todos.length || data.previous.length ? <TodoList todos={data.todos} onDraggingChange={setDragging} header={data.previous.length > 0 &&
         <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
           <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
