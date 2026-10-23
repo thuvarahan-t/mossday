@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 // A shared promise prevents duplicate initialization under React Strict Mode.
 let databasePromise: Promise<SQLiteDatabase> | undefined;
 
@@ -88,7 +88,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         await db.execAsync('PRAGMA user_version = 1;');
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 2) {
       await db.withTransactionAsync(async () => {
         await db.execAsync(`
           CREATE INDEX IF NOT EXISTS expenses_by_date ON expenses(date, createdAt);
@@ -98,6 +98,23 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
           CREATE INDEX IF NOT EXISTS notes_by_update ON notes(isPinned, updatedAt);
           PRAGMA user_version = 2;
         `);
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        const display = [
+          ['Breakfast', 'coffee', 'orange'], ['Lunch', 'utensils', 'orange'], ['Dinner', 'moon', 'indigo'],
+          ['Snacks', 'coffee', 'orange'], ['Transport', 'bus', 'blue'], ['Groceries', 'groceries', 'green'],
+          ['Bills', 'bills', 'yellow'], ['Shopping', 'shopping', 'pink'], ['Education', 'education', 'indigo'],
+          ['Health', 'health', 'red'], ['Fun', 'fun', 'purple'],
+        ];
+        // Only untouched seed rows change. Preserve custom categories and edited colours.
+        for (const [index, [name, icon, color]] of display.entries()) {
+          const [oldName, oldIcon, oldColor] = initialCategories[index];
+          await db.runAsync('UPDATE categories SET name=?,icon=?,color=? WHERE name=? AND icon=? AND color=? AND sortOrder=?',
+            name, icon, color, oldName, oldIcon, oldColor, index);
+        }
+        await db.execAsync('PRAGMA user_version = 3;');
       });
     }
     return db;

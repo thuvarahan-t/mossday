@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, ScrollView, View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 import { AmountDisplay } from '@/components/ui/AmountDisplay';
 import { Button } from '@/components/ui/Button';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
+import { CategoryGrid } from '@/components/ui/CategoryGrid';
+import { isIconName } from '@/components/ui/Icon';
 import { Chip } from '@/components/ui/Chip';
 import { DateSelector } from '@/components/ui/DateSelector';
 import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
@@ -80,10 +82,8 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
       <Button title={busy ? 'Saving…' : 'Save'} disabled={busy || !amount || (oneTime ? !title.trim() : !categoryId)} onPress={() => { void save(); }} fullWidth />
     </>}
     {other && <FormSheet {...otherTransition} title="Categories" onClose={() => setOther(false)}>
-      <ScrollView contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md }}>
-        {categories?.filter((c) => c.type === 'OTHER').map((c) => <Button key={c.id} title={c.name} size="small" variant="tinted" onPress={() => { setCategoryId(c.id); setOneTime(false); setOther(false); }} />)}
-      </ScrollView>
-      <Button title="New category" onPress={() => setNewCategory(true)} />
+      <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, icon: isIconName(category.icon) ? category.icon : 'tag' }))}
+        selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setOther(false); }} onCreate={() => setNewCategory(true)} />
       {newCategory && <>
         <TextField value={categoryName} onChangeText={setCategoryName} placeholder="Category name" accessibilityLabel="Category name" />
         <Text variant="footnote" color="secondaryLabel">Colour</Text>

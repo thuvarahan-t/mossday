@@ -54,7 +54,7 @@ async function main() {
   sqlite.exec("INSERT INTO notes(title,createdAt,updatedAt) VALUES ('Test','now','now'); INSERT INTO note_blocks(noteId,type,position) VALUES (1,'TEXT',0);");
   sqlite.exec('DELETE FROM notes WHERE id=1');
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM note_blocks').get().n, 0);
-  sqlite.exec("DELETE FROM categories WHERE name='Entertainment'");
+  sqlite.exec("DELETE FROM categories WHERE name='Fun'");
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10, 'Restart must not reseed deleted categories');
   // Reopen an existing v1 database: indexing must preserve records and deleted seeds.
@@ -63,8 +63,12 @@ async function main() {
     sqlite.exec(`DROP INDEX ${index}`);
   }
   sqlite.exec('PRAGMA user_version = 1');
+  sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
+  sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(sqlite.prepare("SELECT icon FROM categories WHERE name='Snacks'").get().icon, 'coffee');
+  assert.equal(sqlite.prepare("SELECT color FROM categories WHERE name='Lunch'").get().color, 'pink', 'Preserve edited seed colours');
   assert.equal(sqlite.prepare('SELECT amount FROM expenses').get().amount, 45000);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10);
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name LIKE '%_by_%'").get().n, 5);

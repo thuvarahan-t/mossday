@@ -232,7 +232,7 @@ Out of scope for v1 (spec v2). Rendered only as `WidgetPreview` in the dev route
 | R3 | Heatmap: spec level-0 #EBEDF0 / dark #161B22 vs design grey #E5E5EA / #2C2C2E and brighter dark top level | Levels 1–4 from spec (light) / design (dark: #0E4429, #006D32, #26A641, #30D158); level 0 = design greys so empty squares match iOS fills. |
 | R4 | Done to-do: Today shows grey text without strike; Diary shows strikethrough | Done = check + strikethrough + `secondaryLabel` **everywhere**. |
 | R5 | Category colour differs: Bills is yellow in the grid but teal in Month "by category" | One colour per category from the DB; the Categories grid wins (Bills = yellow). |
-| R6 | Category names: spec "Snacks/Tea", "Entertainment" vs design "Snacks", "Fun" | Design short names win for display; seed data is updated to Snacks / Fun (DB schema migration v2 rewrites icon + colour + names of untouched defaults). |
+| R6 | Category names: spec "Snacks/Tea", "Entertainment" vs design "Snacks", "Fun" | Design short names win. Schema v3 updates names, icon identifiers and semantic colours only when the old seed name, icon, colour and order are untouched; edited and custom categories are preserved. Schema v2 adds query indexes. |
 | R7 | Spec: category **donut**; design: horizontal bars list | Design wins: "BY CATEGORY" bar rows; no chart library needed (react-native-svg / Views). |
 | R8 | Spec Habit detail: "Less ▢▢▢▢▢ More" legend + current streak stat; design: no legend, streak as hero | Design wins; legend omitted, current streak = hero number. |
 | R9 | Spec Today has "Recent notes" + 7-day mini bar chart; design has neither | Design wins for v1 layout; recent notes and mini chart omitted from Today (kept out to preserve the one-answer-per-screen design). |

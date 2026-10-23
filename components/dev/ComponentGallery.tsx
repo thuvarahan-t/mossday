@@ -5,6 +5,8 @@ import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { BarChart } from '@/components/ui/BarChart';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CategoryGrid } from '@/components/ui/CategoryGrid';
+import { TimeField } from '@/components/ui/TimeField';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Chip } from '@/components/ui/Chip';
 import { ContextMenu } from '@/components/ui/ContextMenu';
@@ -86,6 +88,8 @@ function Gallery() {
   const [rows, setRows] = useState(['Bus', 'Breakfast', 'Lunch']);
   const [showRecorder, setShowRecorder] = useState(false);
   const [voice, setVoice] = useState<{ uri: string; durationMs: number } | null>(null);
+  const [category, setCategory] = useState<number | null>(1);
+  const [time, setTime] = useState('09:00');
   const counts = sampleCounts(today, 140);
 
   return (
@@ -129,6 +133,14 @@ function Gallery() {
         </Row>
         <SwatchPicker colors={SWATCHES} selected={swatch} onSelect={setSwatch} />
         <WeekdayPicker mask={mask} onChange={setMask} />
+      </Section>
+
+      <Section title="Categories & reminder time">
+        <CategoryGrid items={[
+          { id: 1, name: 'Snacks', icon: 'coffee', color: 'orange' },
+          { id: 2, name: 'Transport', icon: 'bus', color: 'blue' },
+        ]} selected={category} onSelect={setCategory} onCreate={() => showToast({ message: 'New category selected' })} />
+        <TimeField value={time} onChange={setTime} label="Sample reminder time" />
       </Section>
 
       <Section title="Numbers & progress">
