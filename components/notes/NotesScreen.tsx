@@ -26,6 +26,14 @@ export function useNewNote() {
   const action = useAction();
   return useCallback(() => { void action(async () => { const id = await createNote(); router.push({ pathname: '/note/[id]', params: { id } }); }); }, [action]);
 }
+/** Like iOS Notes: without a heading, the first line of the body becomes the title. */
+function noteSummary(note: Note, blocks: NoteBlock[]) {
+  const preview = notePreview(blocks).trim();
+  if (note.title.trim()) return { title: note.title.trim(), preview };
+  const [first = '', ...rest] = preview.split('\n');
+  return { title: first.trim() || 'New note', preview: rest.join(' ').trim() };
+}
+
 export function NotesScreen() {
   const theme = useTheme();
   const action = useAction();
@@ -49,7 +57,9 @@ export function NotesScreen() {
   const renderNote = (note: Note, pinned: boolean) => {
     const blocks: NoteBlock[] = blocksFor(note.id);
     const image = blocks.find((b) => b.type === 'IMAGE' && b.filePath);
-    return <AnimatedListItem key={note.id} style={pinned ? { width: '48%' } : undefined}><ContextMenu accessibilityLabel={note.title || 'Untitled note'}
+    const { title, preview } = noteSummary(note, blocks);
+    const time = formatRelativeTimestamp(note.updatedAt);
+    return <AnimatedListItem key={note.id} style={pinned ? { width: '48%' } : undefined}><ContextMenu accessibilityLabel={title}
       onPress={() => router.push({ pathname: '/note/[id]', params: { id: note.id } })} actions={[
         { label: note.isPinned ? 'Unpin' : 'Pin', icon: 'pin', onPress: () => { void action(() => setNoteProperty(note.id, 'isPinned', note.isPinned ? 0 : 1)); } },
         { label: 'Folder', icon: 'folder', onPress: () => { setFolderName(note.folder ?? ''); setFolderNote(note); } },
@@ -58,10 +68,10 @@ export function NotesScreen() {
       ]}>
       {pinned ? <Card inset={false} style={{ gap: theme.spacing.sm, backgroundColor: note.color ? theme.colors.accentFill : theme.colors.card }}>
         {image?.filePath && <Image source={{ uri: mediaFile(image.filePath).uri }} style={{ height: theme.sizes.habitRing * 1.6, width: '100%', borderRadius: theme.radii.md }} accessibilityLabel="Note photo" />}
-        <Text variant="headline" numberOfLines={2}>{note.title || 'Untitled'}</Text>
-        <Text color="secondaryLabel" numberOfLines={2}>{notePreview(blocks)}</Text>
-        <Text variant="footnote" color="secondaryLabel">{formatRelativeTimestamp(note.updatedAt)}</Text>
-      </Card> : <ListRow title={note.title || 'Untitled'} titleVariant="headline" subtitle={notePreview(blocks) || formatRelativeTimestamp(note.updatedAt)} />}
+        <Text variant="headline" numberOfLines={2}>{title}</Text>
+        {preview ? <Text color="secondaryLabel" numberOfLines={2}>{preview}</Text> : null}
+        <Text variant="footnote" color="secondaryLabel">{time}</Text>
+      </Card> : <ListRow title={title} titleVariant="headline" subtitle={preview ? `${time} · ${preview}` : time} />}
     </ContextMenu></AnimatedListItem>;
   };
   return <LargeTitleScreen title="Notes" contentContainerStyle={{ gap: theme.spacing.md }}>
