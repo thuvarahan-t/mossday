@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View, type AccessibilityActionEvent, type StyleProp, type ViewStyle } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated';
@@ -53,8 +53,11 @@ export function ReorderableStack<T extends { id: number }>({ items, gap, renderI
   // Rows render in normal flow until each has a height, then move to absolute positions.
   const placed = items.every((item) => measuredHeights[item.id] !== undefined);
   const total = items.reduce((sum, item) => sum + (measuredHeights[item.id] ?? 0), 0) + gap * Math.max(0, items.length - 1);
+  // React state is the source of truth. Copying the shared value on the JS thread instead
+  // lost heights when several rows measured in one frame, so rows stacked on each other.
+  const { heights } = drag;
+  useLayoutEffect(() => { heights.set(measuredHeights); }, [heights, measuredHeights]);
   const measure = (id: number, height: number) => {
-    drag.heights.set({ ...drag.heights.get(), [id]: height });
     setMeasuredHeights((current) => current[id] === height ? current : { ...current, [id]: height });
   };
   const commit = (next: number[]) => {
