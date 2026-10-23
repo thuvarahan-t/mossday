@@ -9,7 +9,8 @@ import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
 import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
-import { addDays, startOfWeek, todayLocalDate } from '@/lib/date';
+import { useToday } from '@/hooks/useToday';
+import { addDays, startOfWeek } from '@/lib/date';
 import { archiveHabit, deleteHabit, habitStats, restoreHabit, tickHabit, type Habit } from '@/lib/repos/habits';
 import { haptics } from '@/lib/haptics';
 import { HabitTickButton } from './HabitTickButton';
@@ -18,7 +19,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { ha
   const theme = useTheme();
   const action = useAction();
   const toast = useToast();
-  const today = todayLocalDate();
+  const today = useToday();
   const count = counts[today] ?? 0;
   const [width, setWidth] = useState(0);
   const weeks = Math.max(1, Math.floor((width + theme.sizes.heatmapGap) / (theme.sizes.heatmapSquare + theme.sizes.heatmapGap)));

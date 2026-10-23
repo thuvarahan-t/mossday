@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { GroupedList } from '@/components/ui/GroupedList';
 import { ReorderableRow } from '@/components/ui/ReorderableRow';
 import { StrikeText } from '@/components/ui/StrikeText';
@@ -29,7 +30,7 @@ export function TodoList({ todos, reorder = false }: { todos: Todo[]; reorder?: 
         const ids = todos.map((t) => t.id);
         ids.splice(index, 1); ids.splice(Math.max(0, Math.min(ids.length, index + offset)), 0, todo.id);
         void action(() => reorderTodos(ids));
-      }}>{row}</ReorderableRow> : <View key={todo.id}>{row}</View>;
+      }}>{row}</ReorderableRow> : <AnimatedListItem key={todo.id}>{row}</AnimatedListItem>;
     })}
   </GroupedList>;
 }

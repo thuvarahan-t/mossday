@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { Image, ScrollView, View } from 'react-native';
 import { useFabAction } from '@/components/navigation/FabAction';
 import { Button } from '@/components/ui/Button';
+import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { ContextMenu } from '@/components/ui/ContextMenu';
@@ -48,8 +49,8 @@ export function NotesScreen() {
   const renderNote = (note: Note, pinned: boolean) => {
     const blocks: NoteBlock[] = blocksFor(note.id);
     const image = blocks.find((b) => b.type === 'IMAGE' && b.filePath);
-    return <ContextMenu key={note.id} accessibilityLabel={note.title || 'Untitled note'}
-      onPress={() => router.push({ pathname: '/note/[id]', params: { id: note.id } })} style={pinned ? { width: '48%' } : undefined} actions={[
+    return <AnimatedListItem key={note.id} style={pinned ? { width: '48%' } : undefined}><ContextMenu accessibilityLabel={note.title || 'Untitled note'}
+      onPress={() => router.push({ pathname: '/note/[id]', params: { id: note.id } })} actions={[
         { label: note.isPinned ? 'Unpin' : 'Pin', icon: 'pin', onPress: () => { void action(() => setNoteProperty(note.id, 'isPinned', note.isPinned ? 0 : 1)); } },
         { label: 'Folder', icon: 'folder', onPress: () => { setFolderName(note.folder ?? ''); setFolderNote(note); } },
         { label: 'Change colour', icon: 'palette', onPress: () => { void action(() => setNoteProperty(note.id, 'color', note.color ? null : 'yellow')); } },
@@ -61,7 +62,7 @@ export function NotesScreen() {
         <Text color="secondaryLabel" numberOfLines={2}>{notePreview(blocks)}</Text>
         <Text variant="footnote" color="secondaryLabel">{formatRelativeTimestamp(note.updatedAt)}</Text>
       </Card> : <ListRow title={note.title || 'Untitled'} titleVariant="headline" subtitle={notePreview(blocks) || formatRelativeTimestamp(note.updatedAt)} />}
-    </ContextMenu>;
+    </ContextMenu></AnimatedListItem>;
   };
   return <LargeTitleScreen title="Notes" contentContainerStyle={{ gap: theme.spacing.md }}>
     <SearchField value={search} onChangeText={setSearch} />

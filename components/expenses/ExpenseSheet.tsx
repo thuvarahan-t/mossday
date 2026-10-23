@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Keyboard, ScrollView, View } from 'react-native';
 import { AmountDisplay } from '@/components/ui/AmountDisplay';
 import { Button } from '@/components/ui/Button';
+import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { Chip } from '@/components/ui/Chip';
 import { DateSelector } from '@/components/ui/DateSelector';
 import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
@@ -68,13 +69,13 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
         <Chip label="One-time" selected={oneTime} onPress={() => setOneTime(true)} />
       </View>
       {!input && selected?.lastAmount && !oneTime ? <Button title={`Same as last time · ${formatMoney(selected.lastAmount)}`} variant="tinted" size="small" onPress={() => setInput(amountToInput(selected.lastAmount!))} /> : null}
-      {oneTime && <TextField value={title} onChangeText={setTitle} placeholder="What was it?" accessibilityLabel="Expense title" />}
+      {oneTime && <AnimatedListItem><TextField value={title} onChangeText={setTitle} placeholder="What was it?" accessibilityLabel="Expense title" /></AnimatedListItem>}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm }}>
         <DateSelector date={date} onChange={setDate} />
         <Button size="small" variant="tinted" title={payment[0] + payment.slice(1).toLowerCase()} onPress={() => setPayment(payment === 'CASH' ? 'CARD' : payment === 'CARD' ? 'ONLINE' : 'CASH')} />
         <Button size="small" variant="plain" title="Add note" onPress={() => setShowNote(!showNote)} />
       </View>
-      {showNote && <TextField value={note} onChangeText={setNote} placeholder="Add a note" accessibilityLabel="Expense note" />}
+      {showNote && <AnimatedListItem><TextField value={note} onChangeText={setNote} placeholder="Add a note" accessibilityLabel="Expense note" /></AnimatedListItem>}
       <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
       <Button title={busy ? 'Saving…' : 'Save'} disabled={busy || !amount || (oneTime ? !title.trim() : !categoryId)} onPress={() => { void save(); }} fullWidth />
     </>}

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
 import { SwatchPicker, WeekdayPicker } from '@/components/ui/Pickers';
 import { Stepper } from '@/components/ui/Stepper';
@@ -33,7 +34,7 @@ export function HabitSheet({ initial, onClose, ...transition }: { initial?: Habi
     <Stepper value={goal} min={1} max={100} onChange={setGoal} accessibilityLabel="Daily goal" />
     <Text>Repeat</Text><WeekdayPicker mask={days} onChange={setDays} />
     <Text>Reminder</Text><Toggle value={reminder} onValueChange={setReminder} accessibilityLabel="Habit reminder" />
-    {reminder && <TimeField value={time} onChange={setTime} label="Habit reminder time" />}
+    {reminder && <AnimatedListItem><TimeField value={time} onChange={setTime} label="Habit reminder time" /></AnimatedListItem>}
     <Button title={busy ? 'Saving…' : initial ? 'Save changes' : 'Add Habit'} disabled={!name.trim() || busy} onPress={() => {
       if (locked.current) return;
       locked.current = true; setBusy(true);
