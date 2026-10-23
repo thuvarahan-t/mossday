@@ -46,6 +46,7 @@ export function TodayScreen() {
   const today = useToday();
   const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
+  const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState<Expense | undefined>();
   const addExpense = (meal?: number) => { setEditing(undefined); setMealId(meal); setSheet('expense'); };
   const openTodaysExpenses = () => router.navigate({ pathname: '/expenses', params: { day: today, at: String(Date.now()) } });
@@ -72,7 +73,7 @@ export function TodayScreen() {
   };
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
     titleAccessory={<TabHeaderActions shareLabel="Share today" onShare={shareToday} addLabel="Quick add" onAdd={() => setSheet('quick')} />}
-    contentContainerStyle={{ gap: theme.spacing.md }}>
+    scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
@@ -122,7 +123,7 @@ export function TodayScreen() {
           <Icon name="chevronRight" color="secondaryLabel" />
         </PressableScale>
       </View>} />
-      {data.todos.length ? <TodoList todos={data.todos.slice(0, 5)} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
+      {data.todos.length ? <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
     </>}
     <BottomSheet {...sheetTransition} onDismissed={() => {
       sheetTransition.onDismissed();

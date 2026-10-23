@@ -59,6 +59,11 @@ without dragging opens Edit / Archive / Delete. Archived habits appear under
 "Archived habits" at the end of the list, where Restore returns them to their old place. The order persists (`habits.sortOrder`,
 schema v5), new habits append, and accessibility actions move a habit up or down.
 
+To-dos (Diary and Today share one list): hold a to-do and release for Edit / Delete,
+or hold and drag to reorder it live; tap its text to edit, swipe left to delete. The
+order is saved per day, so Today shows the Diary's order. Done to-dos always sit below
+open ones, and a ticked one strikes through before gliding down.
+
 ## Verify
 
 Run `npx tsc --noEmit` and `npx expo-doctor`.

@@ -114,6 +114,11 @@ async function main() {
   const average = recordedDayAverage([{ date: '2026-10-01', amount: 10000 }, { date: '2026-10-01', amount: 20000 }, { date: '2026-10-15', amount: 30000 }]);
   assert.equal(average.days, 2, 'Multiple entries on the same date count as one recorded day');
   assert.equal(average.amount, 30000, 'Daily average divides by recorded dates, never by days in the month');
+  const { savedTodoOrder } = load('components/diary/todoOrder.ts');
+  const day = [{ id: 1, isDone: 0 }, { id: 2, isDone: 0 }, { id: 3, isDone: 1 }, { id: 4, isDone: 0 }];
+  assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1, 3, 4])), [2, 1, 4, 3], 'Open to-dos stay above done ones');
+  assert.deepEqual(Array.from(savedTodoOrder(day, [3, 1, 2, 4])), [1, 2, 4, 3], 'A done row dragged to the top falls back below');
+  assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1])), [2, 1, 4, 3], 'Rows hidden by a display limit keep their place');
   const { periodSwipeDelta } = load('components/expenses/periodSwipe.ts');
   assert.equal(periodSwipeDelta(-80, 0), 1, 'Swiping left moves to the next section (Day → Week → Month)');
   assert.equal(periodSwipeDelta(80, 0), -1, 'Swiping right moves back a section');

@@ -4,12 +4,26 @@ export type DiaryEntry = { date: string; text: string | null; mood: number | nul
 /** Open to-dos first, then done ones, each in the saved order. */
 export const listTodos = (from: string, to = from) => read((db) => db.getAllAsync<Todo>('SELECT * FROM todos WHERE date BETWEEN ? AND ? ORDER BY isDone,sortOrder,id', from, to));
 export const getJournal = (date: string) => read((db) => db.getFirstAsync<DiaryEntry>('SELECT * FROM diary_entries WHERE date=?', date));
-export function addTodo(date: string, text: string, time: string | null, priority = 0) {
+/** Shared checks for new and edited to-dos; returns the trimmed text. */
+function validTodo(date: string, text: string, time: string | null) {
   requireDate(date);
-  const clean = requireName(text);
   if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Use a time such as 14:30.');
+  return requireName(text);
+}
+export function addTodo(date: string, text: string, time: string | null, priority = 0) {
+  const clean = validTodo(date, text, time);
   return write(async (db) => {
     await db.runAsync('INSERT INTO todos(date,text,time,priority,sortOrder) VALUES (?,?,?,?,(SELECT COALESCE(MAX(sortOrder),0)+1 FROM todos WHERE date=?))', date, clean, time, priority, date);
+  });
+}
+/** Edits a to-do in place; moving it to another day puts it at the end of that day's list. */
+export function updateTodo(id: number, date: string, text: string, time: string | null, priority = 0) {
+  const clean = validTodo(date, text, time);
+  return write(async (db) => {
+    const result = await db.runAsync(`UPDATE todos SET text=?, time=?, priority=?,
+      sortOrder=CASE WHEN date=? THEN sortOrder ELSE (SELECT COALESCE(MAX(sortOrder),0)+1 FROM todos WHERE date=?) END, date=? WHERE id=?`,
+    clean, time, priority, date, date, date, id);
+    if (!result.changes) throw new Error('This to-do no longer exists.');
   });
 }
 export const toggleTodo = (todo: Todo) => write(async (db) => { await db.runAsync('UPDATE todos SET isDone=? WHERE id=?', todo.isDone ? 0 : 1, todo.id); });

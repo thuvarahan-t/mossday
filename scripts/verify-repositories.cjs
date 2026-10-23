@@ -158,6 +158,15 @@ async function main() {
   assert.equal(ticked[1].isDone, 1);
   await diary.reorderTodos(todos.map((t) => t.id).reverse());
   assert.equal((await diary.listTodos(today))[0].text, 'Carry me');
+  const editable = (await diary.listTodos(today)).find((t) => t.text === 'Carry me');
+  await diary.updateTodo(editable.id, today, '  Carried  ', '09:15', 1);
+  const edited = (await diary.listTodos(today)).find((t) => t.id === editable.id);
+  assert.deepEqual([edited.text, edited.time, edited.priority], ['Carried', '09:15', 1], 'Edits save text, time and priority');
+  assert.throws(() => diary.updateTodo(editable.id, today, 'Bad', '25:00'), 'Invalid times are refused before saving');
+  await assert.rejects(diary.updateTodo(99999, today, 'Gone', null));
+  await diary.updateTodo(editable.id, yesterday, 'Carried', null);
+  assert.equal((await diary.listTodos(yesterday))[0].id, editable.id, 'Moving a to-do to another day moves it');
+  await diary.updateTodo(editable.id, today, 'Carry me', null);
   await diary.deleteTodo(todos[0].id);
   await diary.restoreTodo(todos[0]);
   assert.equal((await diary.listTodos(today)).length, 2);

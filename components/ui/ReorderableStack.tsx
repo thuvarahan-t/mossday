@@ -42,12 +42,13 @@ export function ReorderableStack<T extends { id: number }>({ items, gap, renderI
   };
   const { order, activeId, animating } = drag;
   useEffect(() => {
-    // Additions, deletions and outside changes are placed instantly. A just-saved drag
-    // already matches `order`, so the dropped row keeps gliding into its slot.
+    // A just-saved drag already matches `order`, so the dropped row keeps gliding into its
+    // slot. Other reorders of the same rows (a to-do moving below the open ones) glide too;
+    // additions and deletions are placed instantly.
     const current = order.get();
     if (activeId.get() !== null || (ids.length === current.length && ids.every((id, index) => id === current[index]))) return;
+    animating.set(ids.length === current.length && ids.every((id) => current.includes(id)));
     order.set(ids);
-    animating.set(false);
   }, [ids, activeId, animating, order]);
   useEffect(() => () => onDraggingChange?.(false), [onDraggingChange]);
   // Rows render in normal flow until each has a height, then move to absolute positions.
