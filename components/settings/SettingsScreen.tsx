@@ -63,14 +63,14 @@ export function SettingsScreen() {
         <ListRow title="Storage" icon={{ icon: 'storage', color: 'gray' }} value={`${(data.storage / 1024 / 1024).toFixed(1)} MB`} />
       </GroupedList>
       <Text variant="footnote" align="center" color="secondaryLabel">Mossday 1.0 · Offline and private</Text>
-      {budget && <FormSheet {...budgetTransition} title={budget === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} onClose={() => setBudget(null)}><AmountDisplay input={input} />
+      {budget && <FormSheet size="fit" dense {...budgetTransition} title={budget === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} onClose={() => setBudget(null)}><AmountDisplay input={input} />
         <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
         <Button title="Save budget" disabled={!parseAmountInput(input) || busy} onPress={() => run(() => setSetting(budget, parseAmountInput(input)!), () => setBudget(null))} />
         <Button title="Remove budget" variant="plain" disabled={busy} onPress={() => run(() => setSetting(budget, 0), () => setBudget(null))} /></FormSheet>}
-      {appearance && <FormSheet {...appearanceTransition} title="Appearance" onClose={() => setAppearance(false)}>{(['system', 'light', 'dark'] as const).map((value) =>
+      {appearance && <FormSheet size="fit" dense {...appearanceTransition} title="Appearance" onClose={() => setAppearance(false)}>{(['system', 'light', 'dark'] as const).map((value) =>
         <Button key={value} title={`${appearanceLabels[value]}${data.settings.appearance === value ? ' ✓' : ''}`} variant="tinted" disabled={busy}
           onPress={() => run(async () => { await setSetting('appearance', value); applyAppearance(value); }, () => setAppearance(false))} />)}</FormSheet>}
-      {reminder && <FormSheet {...reminderTransition} title={`${reminder.name} reminder`} onClose={() => setReminder(null)}><TimeField value={reminder.time} label="Reminder time" onChange={(time) => setReminder({ ...reminder, time })} />
+      {reminder && <FormSheet size="fit" dense {...reminderTransition} title={`${reminder.name} reminder`} onClose={() => setReminder(null)}><TimeField value={reminder.time} label="Reminder time" onChange={(time) => setReminder({ ...reminder, time })} />
         <Button title="Save" disabled={busy} onPress={() => run(() => saveMealReminder(reminder), () => setReminder(null))} /></FormSheet>}
     </>}
   </LargeTitleScreen>;
