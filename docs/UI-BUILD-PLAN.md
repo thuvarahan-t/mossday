@@ -37,12 +37,12 @@ Tick each box (`[x]`) only after that part is finished, type-checked and committ
   - durations fast 150 / normal 250 / slow 400 ms; easing `Easing.bezier(0.25, 0.1, 0.25, 1)`
 
 ## Phase 3 — Glass (iOS Liquid Glass look)
-- [ ] One `<GlassSurface>` used for: tab bar, FABs, scrolled nav headers, bottom sheets, toasts, context menus, Quick Add sheet, home widget preview
-- [ ] `expo-blur` BlurView with Android blur method enabled; intensity + tint per theme
-- [ ] Layers: translucent tint (white ~55–70% light, black ~35–50% dark), 0.5–1px top-edge highlight border, very soft shadow
-- [ ] Floating pill tab bar above content with content blurred behind it
-- [ ] Fallback to solid translucent surface when blur unavailable
-- [ ] Press: scale 0.96 + highlight brighten with spring.snappy
+- [x] One `<GlassSurface>` used for: tab bar, FABs, scrolled nav headers, bottom sheets, toasts, context menus, Quick Add sheet, home widget preview
+- [x] `expo-blur` BlurView with Android blur method enabled; intensity + tint per theme
+- [x] Layers: translucent tint (white ~55–70% light, black ~35–50% dark), 0.5–1px top-edge highlight border, very soft shadow
+- [x] Floating pill tab bar above content with content blurred behind it
+- [x] Fallback to solid translucent surface when blur unavailable
+- [x] Press: scale 0.96 + highlight brighten with spring.snappy
 
 ## Phase 4 — iOS interactions & animations (app-wide)
 Reanimated + gesture-handler + expo-haptics.

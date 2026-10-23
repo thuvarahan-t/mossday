@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
@@ -13,7 +12,7 @@ import { getDatabase } from '@/lib/db';
 export default function RootLayout() {
   const theme = useTheme();
   const [fontsLoaded, fontError] = useFonts({
-    ...Ionicons.font, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
   });
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -46,7 +45,7 @@ export default function RootLayout() {
         {error || fontError ? (
           <View style={[styles.center, { padding: theme.spacing.xxl, gap: theme.spacing.lg }]}>
             <Text accessibilityRole="alert" align="center">
-              {fontError ? 'Mossday could not load its icons. Please reopen the app.' : 'Mossday could not open its local database.'}
+              {fontError ? 'Mossday could not load its fonts. Please reopen the app.' : 'Mossday could not open its local database.'}
             </Text>
             {!fontError && (
               <Pressable accessibilityRole="button"

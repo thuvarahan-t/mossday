@@ -1,39 +1,60 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router/js-tabs';
-import type { ComponentProps } from 'react';
+import { TabList, Tabs, TabTrigger } from 'expo-router/ui';
+import { StyleSheet, View } from 'react-native';
+import { FabActionProvider, useRunFabAction } from '@/components/navigation/FabAction';
+import { FadeTabSlot } from '@/components/navigation/FadeTabSlot';
+import { TabBar, TabBarItem } from '@/components/navigation/TabBar';
+import { FAB } from '@/components/ui/FAB';
+import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
+import { useTabBarBottom } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
 const tabs = [
-  { name: 'index', title: 'Today', icon: 'home', outline: 'home-outline' },
-  { name: 'expenses', title: 'Expenses', icon: 'wallet', outline: 'wallet-outline' },
-  { name: 'habits', title: 'Habits', icon: 'grid', outline: 'grid-outline' },
-  { name: 'diary', title: 'Diary', icon: 'calendar', outline: 'calendar-outline' },
-  { name: 'notes', title: 'Notes', icon: 'document-text', outline: 'document-text-outline' },
-] as const satisfies readonly {
-  name: string; title: string; icon: IconName; outline: IconName;
-}[];
+  { name: 'index', href: '/', title: 'Today', icon: 'home' },
+  { name: 'expenses', href: '/expenses', title: 'Expenses', icon: 'wallet' },
+  { name: 'habits', href: '/habits', title: 'Habits', icon: 'habits' },
+  { name: 'diary', href: '/diary', title: 'Diary', icon: 'calendar' },
+  { name: 'notes', href: '/notes', title: 'Notes', icon: 'note' },
+] as const;
+
+function TabFab() {
+  const runFabAction = useRunFabAction();
+  return <FAB onPress={runFabAction} />;
+}
 
 export default function TabLayout() {
   const theme = useTheme();
+  const bottom = useTabBarBottom();
+
   return (
-    <Tabs screenOptions={{
-      headerShown: false,
-      sceneStyle: { backgroundColor: theme.colors.groupedBackground },
-      tabBarActiveTintColor: theme.colors.accent,
-      tabBarInactiveTintColor: theme.colors.label,
-      tabBarStyle: { backgroundColor: theme.colors.card, borderTopColor: theme.colors.separator },
-      tabBarItemStyle: { minHeight: theme.sizes.touchTarget },
-    }}>
-      {tabs.map((tab) => (
-        <Tabs.Screen key={tab.name} name={tab.name} options={{
-          title: tab.title,
-          tabBarIcon: ({ size, focused }) => (
-            <Ionicons name={focused ? tab.icon : tab.outline} size={size}
-              color={focused ? theme.colors.accent : theme.colors.label} />
-          ),
-        }} />
-      ))}
-    </Tabs>
+    <FabActionProvider>
+      <BlurTargetProvider>
+        <Tabs style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
+          {/* Scenes are the blur target so the floating bar shows them blurred behind it. */}
+          <BlurTargetContent>
+            <FadeTabSlot />
+          </BlurTargetContent>
+          <View
+            pointerEvents="box-none"
+            style={[styles.bar, { bottom, left: theme.sizes.screenInset, right: theme.sizes.screenInset, gap: theme.spacing.md }]}
+          >
+            <TabList asChild>
+              <TabBar itemCount={tabs.length}>
+                {tabs.map((tab, index) => (
+                  <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
+                    <TabBarItem index={index} title={tab.title} icon={tab.icon} />
+                  </TabTrigger>
+                ))}
+              </TabBar>
+            </TabList>
+            <TabFab />
+          </View>
+        </Tabs>
+      </BlurTargetProvider>
+    </FabActionProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  bar: { position: 'absolute', flexDirection: 'row', alignItems: 'center' },
+});
