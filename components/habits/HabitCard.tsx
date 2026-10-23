@@ -13,10 +13,12 @@ import { useToday } from '@/hooks/useToday';
 import { addDays, startOfWeek } from '@/lib/date';
 import { archiveHabit, deleteHabit, habitStats, restoreHabit, tickHabit, type Habit } from '@/lib/repos/habits';
 import { haptics } from '@/lib/haptics';
+import { dataColors } from '@/lib/dataColors';
 import { HabitTickButton } from './HabitTickButton';
 
 export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { habit: Habit; counts: Record<string, number>; onEdit: () => void }) {
   const theme = useTheme();
+  const palette = dataColors(theme, habit.color);
   const action = useAction();
   const toast = useToast();
   const today = useToday();
@@ -28,7 +30,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { ha
   // floored to whole pixels' worth so rounding never clips the last column.
   const squareSize = Math.floor(((width - (weeks - 1) * gap) / weeks) * 10) / 10;
   const stats = habitStats(habit, counts, today);
-  return <Card padding="row">
+  return <Card padding="row" style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingBottom: theme.spacing.lg }}>
     <ContextMenu style={{ flex: 1 }} accessibilityLabel={habit.name} onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })} actions={[
       { label: 'Edit', icon: 'edit', onPress: onEdit },
@@ -39,15 +41,15 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { ha
       }); } },
     ]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Text variant="largeTitle">{habit.icon || '🌱'}</Text>
-        <View style={{ flex: 1 }}><Text variant="title3">{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="body" color="secondaryLabel" /></View>
+        <View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: palette.tint }}><Text variant="title2">{habit.icon || '🌱'}</Text></View>
+        <View style={{ flex: 1 }}><Text variant="title3" style={{ color: palette.accent }}>{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="body" rawColor={palette.accent} /></View>
       </View>
     </ContextMenu>
-    <HabitTickButton name={habit.name} count={count} goal={habit.dailyGoal}
+    <HabitTickButton name={habit.name} count={count} goal={habit.dailyGoal} color={habit.color}
       onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
     </View>
     <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {width > 0 && <Heatmap startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={today} />}
+      {width > 0 && <Heatmap color={habit.color} startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={today} />}
     </View>
   </Card>;
 });

@@ -29,6 +29,7 @@ import { todayShareContent } from './todayShare';
 import { isActiveDay } from '@/lib/heatmap';
 import { haptics } from '@/lib/haptics';
 import { formatMoney } from '@/lib/money';
+import { dataColors } from '@/lib/dataColors';
 import { listTodos } from '@/lib/repos/diary';
 import { listCategories, listExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits, tickHabit } from '@/lib/repos/habits';
@@ -87,8 +88,8 @@ export function TodayScreen() {
       <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
       <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around' }}>
         {active.length ? active.map((habit) => <View key={habit.id} style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-          <HabitTickButton name={habit.name} count={countFor(habit.id)} goal={habit.dailyGoal} emoji={habit.icon || '🌱'} onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
-          <Text variant="subheadline">{habit.name}</Text>
+          <HabitTickButton name={habit.name} color={habit.color} count={countFor(habit.id)} goal={habit.dailyGoal} emoji={habit.icon || '🌱'} onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
+          <Text variant="subheadline" style={{ color: dataColors(theme, habit.color).accent }}>{habit.name}</Text>
         </View>) : <Button title="Add your first habit" variant="plain" onPress={() => router.navigate('/habits')} />}
       </ScrollView></Card></AnimatedListItem>
       <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<Button title="See All" variant="plain" size="small" onPress={() => router.navigate('/diary')} />} />

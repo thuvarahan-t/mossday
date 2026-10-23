@@ -117,7 +117,8 @@ async function main() {
   assert.equal(date.formatRelativeTimestamp('2026-10-25T12:00:00', new Date(2026, 9, 23)), '25 Oct');
   const heatmap = load('lib/heatmap.ts', { './date': date });
   assert.equal(heatmap.heatLevel(0), 0);
-  assert.equal(heatmap.heatLevel(2), 2);
+  assert.equal(heatmap.heatLevel(1), 4);
+  assert.equal(heatmap.heatLevel(2), 4);
   assert.equal(heatmap.heatLevel(9), 4);
   assert.equal(heatmap.heatLevel(2, 8), 1);
   assert.equal(heatmap.heatLevel(8, 8), 4);

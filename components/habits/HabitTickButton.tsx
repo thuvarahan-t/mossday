@@ -6,18 +6,16 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/hooks/useTheme';
+import { dataColors } from '@/lib/dataColors';
 import { animateTo } from '@/lib/animation';
 import { scales } from '@/constants/motion';
 
-/**
- * Tap = +1 tick, long-press = undo. With an emoji (Today) it is a large progress ring around
- * the emoji. Without one (habit cards) it follows the list design: "+" while untouched,
- * a "5/8" ring while a multi-tick goal is in progress and a filled check once done.
- */
-export const HabitTickButton = memo(function HabitTickButton({ name, count, goal, emoji, onTick, onUndo }: {
-  name: string; count: number; goal: number; emoji?: string; onTick: () => void; onUndo: () => void;
+/** A completed check can be tapped again; Undo stays visible for every recorded tick. */
+export const HabitTickButton = memo(function HabitTickButton({ name, count, goal, emoji, color = 'green', onTick, onUndo, disabled = false }: {
+  name: string; count: number; goal: number; emoji?: string; color?: string; onTick: () => void; onUndo: () => void; disabled?: boolean;
 }) {
   const theme = useTheme();
+  const palette = dataColors(theme, color);
   const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const previous = useRef(count);
@@ -27,14 +25,30 @@ export const HabitTickButton = memo(function HabitTickButton({ name, count, goal
   }, [count, reduced, scale]);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
   const done = count >= goal;
-  const side = theme.sizes.tickButton;
+  const side = emoji ? theme.sizes.habitRing : theme.sizes.tickButton;
   const circle = { width: side, height: side, borderRadius: side / 2, alignItems: 'center', justifyContent: 'center' } as const;
-  let face;
-  if (emoji) face = <ProgressRing progress={count / goal}><Text variant="title2">{emoji}</Text></ProgressRing>;
-  else if (done) face = <View style={[circle, { backgroundColor: theme.colors.accent }]}><Icon name="check" color="onAccent" strokeWidth={3} /></View>;
-  else if (count > 0) face = <ProgressRing progress={count / goal} size={side} strokeWidth={4}><Text variant="footnote" weight="semibold" tabular>{count}/{goal}</Text></ProgressRing>;
-  else face = <View style={[circle, { backgroundColor: theme.colors.fill }]}><Icon name="plus" color="accent" strokeWidth={2.6} /></View>;
-  return <PressableScale accessibilityLabel={`Tick ${name}, ${count} of ${goal} today`} accessibilityHint="Long press to undo one tick" onPress={onTick} onLongPress={onUndo}>
-    <Animated.View style={style}>{face}</Animated.View>
-  </PressableScale>;
+  return <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
+    <PressableScale disabled={disabled} accessibilityLabel={`${done ? 'Undo' : 'Tick'} ${name}, ${count} of ${goal}`}
+      accessibilityHint={done ? 'Remove one tick' : 'Add one tick. Use Undo below to remove a tick.'}
+      onPress={done ? onUndo : onTick} onLongPress={count > 0 ? onUndo : undefined}
+      style={{ minWidth: theme.sizes.touchTarget, minHeight: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={style}>
+        {emoji ? <ProgressRing progress={count / goal} color={palette.accent}>
+          <View style={[circle, { width: side - 16, height: side - 16, backgroundColor: palette.tint }]}>
+            <Text variant="title2">{emoji}</Text>
+          </View>
+        </ProgressRing> : done ? <View style={[circle, { backgroundColor: palette.accent }]}><Icon name="check" color="onAccent" strokeWidth={3} /></View>
+          : <ProgressRing progress={count / goal} color={palette.accent} size={side} strokeWidth={4}>
+            <Icon name="plus" rawColor={palette.accent} strokeWidth={2.6} />
+          </ProgressRing>}
+      </Animated.View>
+    </PressableScale>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+      <Text variant="footnote" tabular weight="semibold" style={{ color: palette.accent }}>{count}/{goal}</Text>
+      <PressableScale disabled={disabled || count === 0} accessibilityLabel={`Undo one tick for ${name}`}
+        onPress={onUndo} haptic="tap" style={{ minHeight: theme.sizes.touchTarget, minWidth: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center', opacity: count > 0 ? 1 : 0.35 }}>
+        <Text variant="footnote" weight="semibold" style={{ color: palette.accent }}>Undo</Text>
+      </PressableScale>
+    </View>
+  </View>;
 });

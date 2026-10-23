@@ -27,7 +27,7 @@ export function habitsShareContent({ theme, habits, logs, today, subtitle }: {
           <ShareLine title={habit.name} detail={streak === 1 ? '1-day streak' : `${streak}-day streak`}
             leading={<Text variant="title2">{habit.icon || '🌱'}</Text>}
             value={`${counts[today] ?? 0}/${habit.dailyGoal}`} />
-          <Heatmap startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize}
+          <Heatmap color={habit.color} startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize}
             counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} />
         </SharePanel>;
       })}

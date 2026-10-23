@@ -3,12 +3,11 @@ import { weekdayIndex, type LocalDate } from './date';
 export type HeatLevel = 0 | 1 | 2 | 3 | 4;
 
 /**
- * Spec §5.3: one tick = one level, capped at 4; with a daily goal above 1 the levels scale
- * to the goal so reaching it is always the darkest green.
+ * Intensity scales to the daily goal; completion always uses the habit's full colour.
  */
 export function heatLevel(count: number, dailyGoal = 1): HeatLevel {
   if (count <= 0) return 0;
-  const level = dailyGoal > 1 ? Math.ceil((count / dailyGoal) * 4) : count;
+  const level = Math.ceil((count / Math.max(1, dailyGoal)) * 4);
   return Math.min(4, level) as HeatLevel;
 }
 

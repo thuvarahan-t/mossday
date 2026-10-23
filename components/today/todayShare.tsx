@@ -9,6 +9,7 @@ import { formatMoney } from '@/lib/money';
 import type { Todo } from '@/lib/repos/diary';
 import type { Category, Expense } from '@/lib/repos/expenses';
 import type { Habit } from '@/lib/repos/habits';
+import { dataColors } from '@/lib/dataColors';
 
 /** Today tab as an image: money spent against the budget, meals, habit progress and to-dos. */
 export function todayShareContent({ theme, today, spent, budget, meals, expenses, habits, countFor, todos }: {
@@ -37,7 +38,7 @@ export function todayShareContent({ theme, today, spent, budget, meals, expenses
       </SharePanel>
       {habits.length > 0 && <SharePanel>
         <Text variant="headline">Habits · {done} of {habits.length} done</Text>
-        {habits.map((habit) => <ShareLine key={habit.id} title={habit.name} leading={<Text variant="title3">{habit.icon || '🌱'}</Text>}
+        {habits.map((habit) => <ShareLine key={habit.id} title={habit.name} leading={<View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: dataColors(theme, habit.color).tint }}><Text variant="title3">{habit.icon || '🌱'}</Text></View>}
           value={countFor(habit.id) >= habit.dailyGoal ? 'Done' : `${countFor(habit.id)}/${habit.dailyGoal}`} />)}
       </SharePanel>}
       {todos.length > 0 && <SharePanel>

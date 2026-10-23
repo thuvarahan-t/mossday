@@ -8,6 +8,7 @@ export type StepperProps = {
   onChange: (value: number) => void;
   min?: number;
   max?: number;
+  rawColor?: string;
   /** Spoken name of the value, e.g. "Times a day". */
   accessibilityLabel: string;
 };
@@ -15,7 +16,7 @@ export type StepperProps = {
 const STEPPER_WIDTH = 96;
 
 /** iOS stepper: − | + on a grey pill; the − side disables at the minimum. */
-export function Stepper({ value, onChange, min = 0, max = Number.MAX_SAFE_INTEGER, accessibilityLabel }: StepperProps) {
+export function Stepper({ value, onChange, min = 0, max = Number.MAX_SAFE_INTEGER, accessibilityLabel, rawColor }: StepperProps) {
   const theme = useTheme();
   const canDecrement = value > min;
   const canIncrement = value < max;
@@ -27,7 +28,7 @@ export function Stepper({ value, onChange, min = 0, max = Number.MAX_SAFE_INTEGE
       accessibilityLabel={`${label} ${accessibilityLabel}`}
       onPress={() => onChange(next)}
     >
-      <Icon name={icon} size={theme.sizes.iconSmall + 1} color={enabled ? 'label' : 'tertiaryLabel'} strokeWidth={2.4} />
+      <Icon name={icon} size={theme.sizes.iconSmall + 1} color={enabled ? 'label' : 'tertiaryLabel'} rawColor={enabled ? rawColor : undefined} strokeWidth={2.4} />
     </PressableScale>
   );
   return (

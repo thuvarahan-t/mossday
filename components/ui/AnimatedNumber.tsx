@@ -13,14 +13,15 @@ export type AnimatedNumberProps = {
   format?: (value: number) => string;
   variant?: TextVariant;
   color?: ColorToken;
+  rawColor?: string;
   weight?: FontWeight;
   accessibilityLabel?: string;
 };
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-const RollingDigit = memo(function RollingDigit({ digit, variant, color, weight }: {
-  digit: number; variant: TextVariant; color: ColorToken; weight?: FontWeight;
+const RollingDigit = memo(function RollingDigit({ digit, variant, color, rawColor, weight }: {
+  digit: number; variant: TextVariant; color: ColorToken; rawColor?: string; weight?: FontWeight;
 }) {
   const reduceMotion = useReducedMotion();
   const lineHeight = textVariants[variant].lineHeight;
@@ -34,9 +35,9 @@ const RollingDigit = memo(function RollingDigit({ digit, variant, color, weight 
 
   return (
     <View style={[styles.clip, { height: lineHeight }]}>
-      {reduceMotion ? <Text variant={variant} color={color} weight={weight} tabular>{digit}</Text> : <Animated.View style={style}>
+      {reduceMotion ? <Text variant={variant} color={color} style={rawColor ? { color: rawColor } : undefined} weight={weight} tabular>{digit}</Text> : <Animated.View style={style}>
         {DIGITS.map((d) => (
-          <Text key={d} variant={variant} color={color} weight={weight} tabular>{d}</Text>
+          <Text key={d} variant={variant} color={color} style={rawColor ? { color: rawColor } : undefined} weight={weight} tabular>{d}</Text>
         ))}
       </Animated.View>}
     </View>
@@ -48,7 +49,7 @@ const RollingDigit = memo(function RollingDigit({ digit, variant, color, weight 
  * visibly count up after a save. Digits are keyed from the right so units stay in place.
  */
 export function AnimatedNumber({
-  value, format = String, variant = 'hero', color = 'label', weight, accessibilityLabel,
+  value, format = String, variant = 'hero', color = 'label', rawColor, weight, accessibilityLabel,
 }: AnimatedNumberProps) {
   const text = format(value);
   const reduceMotion = useReducedMotion();
@@ -60,11 +61,11 @@ export function AnimatedNumber({
         const animation = { entering: FadeIn.duration(durations.fast), exiting: FadeOut.duration(durations.fast), layout: reduceMotion ? undefined : LinearTransition.duration(durations.normal) };
         return /\d/.test(character) ? (
           <Animated.View key={`d${key}`} {...animation}>
-            <RollingDigit digit={Number(character)} variant={variant} color={color} weight={weight} />
+            <RollingDigit digit={Number(character)} variant={variant} color={color} rawColor={rawColor} weight={weight} />
           </Animated.View>
         ) : (
           <Animated.View key={`c${key}${character}`} {...animation}>
-            <Text variant={variant} color={color} weight={weight} tabular>{character}</Text>
+            <Text variant={variant} color={color} style={rawColor ? { color: rawColor } : undefined} weight={weight} tabular>{character}</Text>
           </Animated.View>
         );
       })}

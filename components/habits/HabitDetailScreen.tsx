@@ -17,6 +17,7 @@ import { useSheetState } from '@/hooks/useSheetState';
 import { addDays, formatWeekdayShortDate, startOfWeek, todayLocalDate } from '@/lib/date';
 import { getHabit, habitStats, listHabitLogs, tickHabit } from '@/lib/repos/habits';
 import { HabitSheet } from './HabitSheet';
+import { dataColors } from '@/lib/dataColors';
 
 export function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,6 +31,7 @@ export function HabitDetailScreen() {
   const setEditing = (open: boolean) => selectEditing(open ? true : null);
   const { data, error, refresh } = useResource(useCallback(async () => ({ habit: await getHabit(Number(id)), logs: await listHabitLogs('1970-01-01', todayLocalDate()) }), [id]));
   const habit = data?.habit;
+  const palette = dataColors(theme, habit?.color ?? 'green');
   const counts = Object.fromEntries((data?.logs ?? []).filter((l) => l.habitId === Number(id)).map((l) => [l.date, l.count]));
   const stats = habit ? habitStats(habit, counts, today) : null;
   const count = counts[selected] ?? 0;
@@ -38,22 +40,22 @@ export function HabitDetailScreen() {
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : !habit || !stats ? <Text align="center">This habit is no longer available.</Text> : <>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: theme.spacing.sm, paddingHorizontal: theme.sizes.titleInset }}>
-        <AnimatedNumber value={stats.current} variant="display" />
+        <AnimatedNumber value={stats.current} variant="display" rawColor={palette.accent} />
         <Text variant="title3" weight="regular" color="secondaryLabel">day streak</Text>
       </View>
-      <Card>
+      <Card style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
         <View style={{ flexDirection: 'row' }}><HeatmapWeekdayLabels />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} ref={history} onContentSizeChange={() => {
             if (!scrolledInitially.current) { history.current?.scrollToEnd({ animated: false }); scrolledInitially.current = true; }
           }}>
-            <Heatmap startDate={addDays(startOfWeek(today), -52 * 7)} weeks={53} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={selected} showMonthLabels onSelectDate={setSelected} />
+            <Heatmap color={habit.color} startDate={addDays(startOfWeek(today), -52 * 7)} weeks={53} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={selected} showMonthLabels onSelectDate={setSelected} />
           </ScrollView>
         </View>
         {/* The design omits the Less/More legend (UI analysis R8); the editor sits under a divider. */}
         <View style={{ marginTop: theme.spacing.lg, marginHorizontal: -theme.sizes.cardPadding }}><Separator /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: theme.spacing.lg }}>
           <View><Text>{formatWeekdayShortDate(selected)}</Text><Text variant="subheadline" color="secondaryLabel">{count === 1 ? '1 time' : `${count} times`}</Text></View>
-          <Stepper value={count} min={0} onChange={(value) => { void action(() => tickHabit(habit.id, selected, value > count ? 1 : -1)); }} accessibilityLabel="Ticks on selected day" />
+          <Stepper value={count} rawColor={palette.accent} min={0} max={Math.max(count, habit.dailyGoal)} onChange={(value) => { void action(() => tickHabit(habit.id, selected, value > count ? 1 : -1)); }} accessibilityLabel="Ticks on selected day" />
         </View>
       </Card>
       <GroupedList separatorInset={theme.sizes.rowPadding}><ListRow title="Best streak" value={`${stats.best} days`} /><ListRow title="Completion" value={`${stats.completion}%`} /><ListRow title="Total ticks" value={String(stats.total)} /></GroupedList>

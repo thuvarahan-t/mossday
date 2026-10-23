@@ -24,8 +24,12 @@ export function tickHabit(id: number, date: string, delta = 1) {
   if (date > todayLocalDate()) throw new Error('Future days cannot be edited.');
   if (delta !== 1 && delta !== -1) throw new Error('Invalid tick.');
   return write(async (db) => {
+    const habit = await db.getFirstAsync<Habit>('SELECT * FROM habits WHERE id=?', id);
+    if (!habit) throw new Error('This habit is no longer available.');
     await db.runAsync(`INSERT INTO habit_logs(habitId,date,count) VALUES (?,?,?)
-      ON CONFLICT(habitId,date) DO UPDATE SET count=MAX(0,count+?)`, id, date, Math.max(0, delta), delta);
+      ON CONFLICT(habitId,date) DO UPDATE SET count=CASE
+        WHEN ? < 0 THEN MAX(0,count-1)
+        WHEN count < ? THEN count+1 ELSE count END`, id, date, Math.max(0, delta), delta, habit.dailyGoal);
   });
 }
 export const archiveHabit = (id: number, archived = true) => write(async (db) => { await db.runAsync('UPDATE habits SET archived=? WHERE id=?', archived ? 1 : 0, id); }, 'reminders');

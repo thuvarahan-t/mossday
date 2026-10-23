@@ -101,17 +101,25 @@ async function main() {
   await habits.saveHabit({ name: 'Water', icon: '💧', color: 'green', dailyGoal: 2, activeDays: 127, reminderTime: null });
   const habit = (await habits.listHabits())[0];
   await Promise.all(Array.from({ length: 8 }, () => habits.tickHabit(habit.id, today)));
-  assert.equal((await habits.listHabitLogs(today, today))[0].count, 8, 'Concurrent taps preserve every tick');
+  assert.equal((await habits.listHabitLogs(today, today))[0].count, 2, 'Concurrent taps stop at the daily goal');
   await habits.tickHabit(habit.id, today, -1);
-  assert.equal((await habits.listHabitLogs(today, today))[0].count, 7);
+  assert.equal((await habits.listHabitLogs(today, today))[0].count, 1);
   const snapshot = await habits.deleteHabit(habit.id);
   assert.equal((await habits.listHabitLogs(today, today)).length, 0);
   await habits.restoreHabit(snapshot);
-  assert.equal((await habits.listHabitLogs(today, today))[0].count, 7);
+  assert.equal((await habits.listHabitLogs(today, today))[0].count, 1);
   const stats = habits.habitStats({ ...habit, createdAt: '2026-10-19T00:00:00Z', activeDays: 31 },
     { '2026-10-19': 2, '2026-10-20': 2, '2026-10-21': 2, '2026-10-22': 2, '2026-10-23': 2 }, '2026-10-25');
   assert.equal(stats.current, 5, 'Inactive weekend does not break streak');
   assert.equal(stats.best, 5);
+  await habits.saveHabit({ name: 'Three times', icon: null, color: 'purple', dailyGoal: 3, activeDays: 127, reminderTime: null });
+  const triple = (await habits.listHabits()).find((row) => row.name === 'Three times');
+  await Promise.all(Array.from({ length: 8 }, () => habits.tickHabit(triple.id, today)));
+  assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 3, 'Goal 3 caps at exactly three even with rapid taps');
+  await habits.tickHabit(triple.id, today, -1);
+  assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 2, 'A completed goal can be undone');
+  await Promise.all(Array.from({ length: 5 }, () => habits.tickHabit(triple.id, today, -1)));
+  assert.equal((await habits.listHabitLogs(today, today)).find((row) => row.habitId === triple.id).count, 0, 'Undo stops at zero');
 
   await diary.addTodo(yesterday, 'Carry me', null);
   await diary.addTodo(today, 'Stay first', '14:30', 1);

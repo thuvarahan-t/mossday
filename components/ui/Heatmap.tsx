@@ -8,6 +8,7 @@ import { animateTo } from '@/lib/animation';
 import { addDays, dayOfMonth, monthShort, WEEKDAY_LETTERS, type LocalDate } from '@/lib/date';
 import { heatLevel, isActiveDay } from '@/lib/heatmap';
 import { haptics } from '@/lib/haptics';
+import { dataColors } from '@/lib/dataColors';
 import { Text } from './Text';
 
 export type HeatmapProps = {
@@ -26,6 +27,7 @@ export type HeatmapProps = {
   gap?: number;
   showMonthLabels?: boolean;
   onSelectDate?: (date: LocalDate) => void;
+  color?: string;
 };
 
 type Square = { date: LocalDate; x: number; y: number; level: number; future: boolean; inactive: boolean };
@@ -39,9 +41,10 @@ const MONTH_LABEL_HEIGHT = 18;
  */
 export const Heatmap = memo(function Heatmap({
   startDate, weeks, counts, today, dailyGoal = 1, activeDays = 127, outlinedDate, future = 'hidden',
-  squareSize, gap, showMonthLabels, onSelectDate,
+  squareSize, gap, showMonthLabels, onSelectDate, color,
 }: HeatmapProps) {
   const theme = useTheme();
+  const palette = useMemo(() => color ? dataColors(theme, color).heatmap : theme.heatmap, [color, theme]);
   const size = squareSize ?? theme.sizes.heatmapSquare;
   const spacing = gap ?? theme.sizes.heatmapGap;
   const step = size + spacing;
@@ -91,10 +94,10 @@ export const Heatmap = memo(function Heatmap({
       <Svg width={width} height={height} style={{ marginTop: top }}>
         {squares.map((square) => {
           if (square.future && future === 'hidden') return null;
-          const color = theme.heatmap[square.future ? 0 : square.level];
+          const color = palette[square.future ? 0 : square.level];
           return square.inactive && square.level === 0 && !square.future ? (
             <Rect key={square.date} x={square.x + 0.75} y={square.y + 0.75} width={size - 1.5} height={size - 1.5}
-              rx={theme.radii.hairline} fill="none" stroke={theme.heatmap[0]} strokeWidth={1.5} />
+              rx={theme.radii.hairline} fill="none" stroke={palette[0]} strokeWidth={1.5} />
           ) : (
             <Rect key={square.date} x={square.x} y={square.y} width={size} height={size} rx={theme.radii.hairline}
               fill={color} opacity={square.future ? 0.5 : 1} />
@@ -104,7 +107,7 @@ export const Heatmap = memo(function Heatmap({
       {outlined && (
         <HeatmapSquare
           x={outlined.x} y={outlined.y + top} size={size}
-          color={theme.heatmap[outlined.level]} count={counts[outlined.date] ?? 0}
+          color={palette[outlined.level]} count={counts[outlined.date] ?? 0}
         />
       )}
     </View>
