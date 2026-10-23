@@ -82,9 +82,11 @@ export function ExpensesScreen() {
     if (!data) return;
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
-  return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}>
+  return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}
+    contentContainerStyle={{ gap: theme.spacing.lg }}>
+    {/* The Day / Week / Month switch stays put; only the period's content slides. */}
+    <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
     <PeriodSwipeArea contentKey={view} canGoForward={selected.to < today} onShift={shift} style={{ gap: theme.spacing.lg }}>
-      <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
         canGoForward={selected.to < today} onShift={shift} />
       {dailyBudget > 0 && <PressableScale accessibilityLabel="Daily budget, edit" haptic="tap" onPress={() => setBudgetEditor('dailyBudget')}
