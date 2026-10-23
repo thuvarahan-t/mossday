@@ -15,7 +15,7 @@ and scan the terminal QR code from Expo Go. If LAN fails, run
 ## Structure
 
 ```text
-app/           Root layout and five bottom-tab routes
+src/app/           Root layout and five bottom-tab routes
 components/    Shared UI
 constants/     Theme tokens
 hooks/         System theme hook

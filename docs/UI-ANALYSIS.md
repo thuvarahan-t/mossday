@@ -12,27 +12,27 @@ The design files say "DayLog"; the app is **Mossday** everywhere.
 | # | Screen / sheet / state | Design file(s) | Route / host |
 |---|---|---|---|
 | 0 | Design system cover (colours, type, components, motion, heatmap, tab bar) | `Cover · iOS colours, type & components.png` | — (tokens) |
-| 1 | Floating glass tab bar + FAB (light + dark) | `Component · Floating glass tab bar.png`, cover | `app/(tabs)/_layout.tsx` |
-| 2 | Today (light / dark) | `A · Today.png`, `A · Today — Dark.png` | `app/(tabs)/index.tsx` |
+| 1 | Floating glass tab bar + FAB (light + dark) | `Component · Floating glass tab bar.png`, cover | `src/app/(tabs)/_layout.tsx` |
+| 2 | Today (light / dark) | `A · Today.png`, `A · Today — Dark.png` | `src/app/(tabs)/index.tsx` |
 | 2b | Today — over budget + undo toast | `M · Over budget + undo toast.png` | state of #2 |
 | 3 | Quick Add sheet | `A · Quick Add sheet.png` | sheet over any tab |
 | 4 | Add Expense sheet (meal selected) | `C · Add expense.png` | sheet |
 | 4b | Other → Categories sheet (stacked) | `C(i) · Other categories.png` | nested sheet |
 | 4c | One-time expense | `C(ii) · One-time.png` | state of #4 |
-| 5 | Expenses — Day (light / dark, swipe-delete revealed) | `B · Expenses — Day.png`, `B · Expenses Day — Dark.png` | `app/(tabs)/expenses.tsx` |
+| 5 | Expenses — Day (light / dark, swipe-delete revealed) | `B · Expenses — Day.png`, `B · Expenses Day — Dark.png` | `src/app/(tabs)/expenses.tsx` |
 | 5b | Expenses — Month (Week uses the same layout) | `D · Expenses — Month.png` | segment of #5 |
 | 5c | Expenses — empty + toast | `M · Empty expenses + toast.png` | state of #5 |
-| 6 | Habits list (light / dark) | `E · Habits.png`, `E · Habits — Dark.png` | `app/(tabs)/habits.tsx` |
+| 6 | Habits list (light / dark) | `E · Habits.png`, `E · Habits — Dark.png` | `src/app/(tabs)/habits.tsx` |
 | 6b | Habits — empty | `M · Empty habits.png` | state of #6 |
 | 7 | Add Habit sheet | `G · Add habit.png` | sheet |
-| 8 | Habit detail + day editor | `F · Habit detail + day editor.png` | `app/habit/[id].tsx` |
-| 9 | Diary — day page (light / dark) | `H · Diary — Day.png`, `H · Diary — Dark.png` | `app/(tabs)/diary/index.tsx` |
-| 10 | Diary — calendar | `I · Diary — Calendar.png` | `app/(tabs)/diary/calendar.tsx` |
-| 11 | Notes list | `J · Notes.png` | `app/(tabs)/notes.tsx` |
+| 8 | Habit detail + day editor | `F · Habit detail + day editor.png` | `src/app/habit/[id].tsx` |
+| 9 | Diary — day page (light / dark) | `H · Diary — Day.png`, `H · Diary — Dark.png` | `src/app/(tabs)/diary/index.tsx` |
+| 10 | Diary — calendar | `I · Diary — Calendar.png` | `src/app/(tabs)/diary/calendar.tsx` |
+| 11 | Notes list | `J · Notes.png` | `src/app/(tabs)/notes.tsx` |
 | 11b | Notes — empty | `M · Empty notes.png` | state of #11 |
-| 12 | Note editor (keyboard up) | `K · Note editor.png` | `app/note/[id].tsx` |
+| 12 | Note editor (keyboard up) | `K · Note editor.png` | `src/app/note/[id].tsx` |
 | 12b | Note editor — recording | `K · Recording.png` | state of #12 |
-| 13 | Settings | `L · Settings.png` | `app/settings.tsx` |
+| 13 | Settings | `L · Settings.png` | `src/app/settings.tsx` |
 | 14 | Home-screen widget | `N · Home Screen widget.png` | dev preview only (native widget is spec v2) |
 
 Not drawn but required by spec (built from the closest drawn pattern): Expenses **Week** (= Month layout, 7 bars, day labels M–S), long-press **context menu** (iOS context menu), **New category** sheet (= Add Habit form pattern), **edit expense** (= Add Expense prefilled, title "Edit Expense" + Delete row), **Add to-do** sheet (= One-time title field + time pill), **Appearance** picker (iOS Settings checkmark list), budget amount entry (= NumberKeypad sheet).
@@ -244,7 +244,7 @@ Out of scope for v1 (spec v2). Rendered only as `WidgetPreview` in the dev route
 | R15 | Habit card heatmap squares (≈13 pt, 20 weeks) vs spec 10 dp / 16 weeks | Square size = 13 target, column count derived from card width so the grid always fills edge to edge. |
 | R16 | Spec week strip has dots; design strip has none | Keep dots (spec) using the same 4 pt dot as the calendar for consistency; invisible when a day has no entries, so the mock is unchanged. |
 | R17 | Cover motion note (response 0.4 / damping 0.8, sheet bezier 0.32,0.72,0,1) vs build-plan tokens | Build-plan tokens are used. response 0.4 / ζ 0.8 ≈ stiffness 247 / damping 25 — practically `spring.default`, confirming it. Timing-based sheet fallback (Reduce Motion off but no velocity) uses `easing.sheet` = bezier(0.32, 0.72, 0, 1). |
-| R18 | AGENTS.md says routes in `src/app/`; this repo (and spec §3) uses `app/` | Keep the existing `app/` root — moving it is unrelated churn. |
+| R18 | AGENTS.md requires routes in `src/app/`; older checkpoints used `app/` | Follow AGENTS.md: routes now live in `src/app/`; shared components, hooks and repositories stay outside the route directory. |
 | R19 | Spec says "Plus Jakarta Sans"; build plan says Inter | Inter (build plan is the newer instruction). |
 | R21 | Spec lists `@expo/vector-icons`; design icons are Lucide-style rounded strokes (wallet with clasp, 2×2 grid, file-text) | `lucide-react-native` (on the already-required `react-native-svg`) behind one `Icon` component with a curated name map; `@expo/vector-icons` removed. |
 | R22 | Android blur only works on content inside a `BlurTargetView` | `BlurTargetProvider` + `BlurTargetContent` wrap what sits behind glass (tab scenes, screen scroll content, the app under sheets). Glass *inside* blurred content can't blur its own parent, so it uses the solid translucent fallback, which looks the same on the flat backgrounds where those buttons sit. |
@@ -256,4 +256,4 @@ Ambiguities resolved by "closest iOS app": Appearance picker = Settings ▸ Disp
 
 ## 6. Data needed (for wiring, Phase 6)
 
-`lib/repos/` does not exist yet — each screen adds the repo functions it needs (spec §9 rule 3): `expenses.ts` (by day/range, totals, category totals, add/edit/delete/restore), `categories.ts`, `habits.ts` (list, logs range, tick/untick/set, streaks), `todos.ts`, `diary.ts`, `notes.ts`, `settings.ts`. Screens read through hooks in `hooks/` that refresh on focus and after mutations.
+`lib/repos/` is implemented: `expenses.ts` owns categories, entries and totals; `habits.ts` owns logs and streaks; `diary.ts` owns tasks and journal; `notes.ts` owns note blocks; `settings.ts` owns preferences. Screens use hooks that refresh on focus, foreground return and local writes. Routes only compose feature screens.

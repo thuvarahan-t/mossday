@@ -51,7 +51,7 @@ Always install Expo packages with `npx expo install <pkg>` so versions match the
 
 ```
 mossday/
-├─ app/                    # Expo Router routes
+├─ src/app/                    # Expo Router routes
 │  ├─ _layout.tsx          # root: theme, DB init, gesture handler
 │  ├─ (tabs)/
 │  │  ├─ _layout.tsx       # bottom tabs
