@@ -14,6 +14,7 @@ import { durations, easing, gestures, spring } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 import { BlurTargetBoundary, useRootBlurTarget } from '../glass/BlurTarget';
 import { GlassSurface } from '../glass/GlassSurface';
+import { dockedKeyboardLift } from './keyboardDock';
 import { SheetCoverable, SheetCoverProvider, useSheetCover } from './SheetCover';
 
 /** `content` sizes to the children; `medium` is half the screen; `large` leaves the status bar. */
@@ -29,6 +30,8 @@ export type BottomSheetProps = {
   background?: 'plain' | 'grouped';
   /** Called after the close animation finishes. */
   onDismissed?: () => void;
+  /** Rest the whole sheet on the keyboard (short forms), not just lift the focused field. */
+  dockToKeyboard?: boolean;
 };
 
 const LARGE_TOP_GAP = 10;
@@ -41,7 +44,7 @@ const SCRIM_BLUR = 18;
  * Rendered in a transparent `Modal` so it always covers the tab bar (UI-ANALYSIS R12).
  */
 export function BottomSheet({
-  visible, onClose, children, detents = ['large'], background = 'plain', onDismissed,
+  visible, onClose, children, detents = ['large'], background = 'plain', onDismissed, dockToKeyboard = false,
 }: BottomSheetProps) {
   const theme = useTheme();
   const contextInsets = useSafeAreaInsets();
@@ -60,24 +63,6 @@ export function BottomSheet({
   const rootTarget = useRootBlurTarget();
   // Forms can unmount after saving. Never leave their presenter scaled down.
   useEffect(() => () => { parentCover?.set(0); }, [parentCover]);
-  // Lifts the sheet just enough to keep the focused field (and anything beside it, like an
-  // inline Save) above the keyboard. Keyboard events also reach this modal window, which
-  // the animated keyboard hook does not track on Android.
-  const keyboardLift = useSharedValue(0);
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, (event) => {
-      TextInput.State.currentlyFocusedInput()?.measureInWindow((_x, y, _width, height) => {
-        const overlap = y + height + theme.spacing.md - event.endCoordinates.screenY;
-        keyboardLift.set(withTiming(Math.max(0, overlap), { duration: durations.normal, easing: easing.sheet }));
-      });
-    });
-    const hide = Keyboard.addListener(hideEvent, () => {
-      keyboardLift.set(withTiming(0, { duration: durations.normal, easing: easing.sheet }));
-    });
-    return () => { show.remove(); hide.remove(); };
-  }, [keyboardLift, theme.spacing.md]);
   const [mounted, setMounted] = useState(visible);
   const [contentHeight, setContentHeight] = useState(0);
 
@@ -88,6 +73,32 @@ export function BottomSheet({
     if (detent === 'medium') return mediumHeight;
     return Math.min(contentHeight, largeHeight);
   }, [contentHeight, largeHeight, mediumHeight]);
+
+  // Lifts the sheet just enough to keep the focused field (and anything beside it, like an
+  // inline Save) above the keyboard; docked sheets rise until they sit on the keyboard, but
+  // never past the status bar. Keyboard events also reach this modal window, which the
+  // animated keyboard hook does not track on Android.
+  const keyboardLift = useSharedValue(0);
+  const openHeight = heightOf(detents[0]);
+  const { top: topInset, bottom: bottomInset } = insets;
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (event) => {
+      const keyboardTop = event.endCoordinates.screenY;
+      const docked = dockToKeyboard
+        ? dockedKeyboardLift({ screenHeight, keyboardTop, bottomInset, topLimit: topInset + LARGE_TOP_GAP, sheetHeight: openHeight })
+        : 0;
+      const lift = (overlap: number) => keyboardLift.set(withTiming(Math.max(docked, overlap), { duration: durations.normal, easing: easing.sheet }));
+      const input = TextInput.State.currentlyFocusedInput();
+      if (!input) { lift(0); return; }
+      input.measureInWindow((_x, y, _width, height) => lift(y + height + theme.spacing.md - keyboardTop));
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      keyboardLift.set(withTiming(0, { duration: durations.normal, easing: easing.sheet }));
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [keyboardLift, theme.spacing.md, dockToKeyboard, screenHeight, topInset, bottomInset, openHeight]);
 
   const fitsContent = detents.includes('content');
   // Content sheets use a full-height panel pushed down by the unused space, so a change in

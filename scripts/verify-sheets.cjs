@@ -47,4 +47,12 @@ select('todo');
 select(null);
 render(true)[2].onDismissed();
 assert.equal(render(true)[0], null, 'Cancel also cancels a queued replacement');
-console.log('Sheets verified: deferred unmount, sequential replacement, draft updates, stale dismissal and cancellation.');
+const dock = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/ui/sheet/keyboardDock.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText, { exports: dock });
+const phone = { screenHeight: 800, keyboardTop: 500, bottomInset: 24, topLimit: 50 };
+assert.equal(dock.dockedKeyboardLift({ ...phone, sheetHeight: 250 }), 276, 'A short sheet rests on the keyboard, minus the home-indicator padding');
+assert.equal(dock.dockedKeyboardLift({ ...phone, sheetHeight: 600 }), 150, 'A tall sheet stops below the status bar');
+assert.equal(dock.dockedKeyboardLift({ ...phone, sheetHeight: 790 }), 0, 'Never pushes the sheet down');
+console.log('Sheets verified: deferred unmount, sequential replacement, draft updates, stale dismissal, cancellation and keyboard docking.');

@@ -13,7 +13,7 @@ const FIT_CHROME = 120;
  * Sheet with a close button and scrolling content. `large` fills most of the screen; `fit`
  * is only as tall as its content, so it grows when a field appears (Add Expense's note).
  */
-export function FormSheet({ title, onClose, children, visible = true, onDismissed, background = 'grouped', trailing, size = 'large', dense, scrollEnabled = true }: {
+export function FormSheet({ title, onClose, children, visible = true, onDismissed, background = 'grouped', trailing, size = 'large', dense, scrollEnabled = true, dockToKeyboard }: {
   title: string; onClose: () => void; children: ReactNode; background?: BottomSheetProps['background'];
   /** Header action on the right, e.g. the Add Habit sheet's "Add" button. */
   trailing?: ReactNode;
@@ -22,12 +22,14 @@ export function FormSheet({ title, onClose, children, visible = true, onDismisse
   dense?: boolean;
   /** Pause scrolling while a child owns a drag gesture. */
   scrollEnabled?: boolean;
+  /** Short `fit` forms: sit directly on the keyboard while typing. */
+  dockToKeyboard?: boolean;
 } & Partial<FormSheetTransition>) {
   const theme = useTheme();
   const window = useWindowDimensions();
   const content = { padding: theme.spacing.lg, gap: dense ? theme.spacing.sm : theme.spacing.md };
   const fit = size === 'fit';
-  return <BottomSheet visible={visible} onClose={onClose} onDismissed={onDismissed} background={background} detents={[fit ? 'content' : 'large']}>
+  return <BottomSheet visible={visible} onClose={onClose} onDismissed={onDismissed} background={background} detents={[fit ? 'content' : 'large']} dockToKeyboard={dockToKeyboard}>
     <SheetHeader title={title} leading={<SheetIconButton icon="close" accessibilityLabel="Close" onPress={onClose} />} trailing={trailing} />
     <ScrollView scrollEnabled={scrollEnabled} keyboardShouldPersistTaps="handled" style={fit && { flexGrow: 0, maxHeight: window.height - FIT_CHROME }}
       contentContainerStyle={[!fit && styles.grow, content]}>
