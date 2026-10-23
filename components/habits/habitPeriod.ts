@@ -1,4 +1,6 @@
-import { addDays, dateRange, daysBetween, endOfMonth, monthName, parseLocalDate, startOfMonth, startOfWeek, todayLocalDate } from '@/lib/date';
+import { dateRange, daysBetween, endOfMonth, monthName, parseLocalDate, startOfMonth, startOfWeek, todayLocalDate } from '@/lib/date';
+import { isActiveDay } from '@/lib/heatmap';
+import type { Habit } from '@/lib/repos/habits';
 
 export type HabitTrackerMode = 'Month' | 'Year';
 
@@ -10,10 +12,12 @@ export function habitPeriod(mode: HabitTrackerMode, anchor: string) {
   return { start, end, gridStart, weeks: Math.ceil((daysBetween(gridStart, end) + 1) / 7), label: mode === 'Month' ? `${monthName(anchor)} ${year}` : year };
 }
 
-export function habitMonthRows(anchor: string): (string | null)[][] {
-  const { start, end, gridStart, weeks } = habitPeriod('Month', anchor);
-  const cells = dateRange(gridStart, addDays(gridStart, weeks * 7 - 1)).map((day) => day < start || day > end ? null : day);
-  return Array.from({ length: weeks }, (_, index) => cells.slice(index * 7, index * 7 + 7));
+/** Goal-met days so far in the anchor's month, out of the active days that have started. */
+export function monthProgress(habit: Pick<Habit, 'dailyGoal' | 'activeDays'>, counts: Readonly<Record<string, number>>, anchor: string, today: string) {
+  const { start, end } = habitPeriod('Month', anchor);
+  const last = end < today ? end : today;
+  const days = start <= last ? dateRange(start, last).filter((day) => isActiveDay(habit.activeDays, day)) : [];
+  return { done: days.filter((day) => (counts[day] ?? 0) >= habit.dailyGoal).length, eligible: days.length };
 }
 
 /** URL dates may be malformed or in the future; never use them directly in the editor. */

@@ -25,7 +25,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, 
   const count = counts[today] ?? 0;
   const stats = habitStats(habit, counts, today);
   return <Card padding="row" style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingBottom: theme.spacing.lg }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
     <ContextMenu style={{ flex: 1 }} accessibilityLabel={habit.name} onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })} actions={[
       { label: 'Edit', icon: 'edit', onPress: onEdit },
       { label: 'Archive', icon: 'archive', onPress: () => { void action(() => archiveHabit(habit.id), () => toast({ message: 'Habit archived', actionLabel: 'Undo', onAction: () => { void action(() => archiveHabit(habit.id, false)); } })); } },
@@ -39,10 +39,9 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, 
         <View style={{ flex: 1 }}><Text variant="title3" numberOfLines={2} style={{ color: palette.accent }}>{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="footnote" rawColor={palette.accent} /></View>
       </View>
     </ContextMenu>
-    <View style={{ alignItems: 'center' }}><Text variant="caption2" color="secondaryLabel">Today</Text>
+    {/* The haptic fires on touch, not after the write, so a tick feels instant. */}
     <HabitTickButton name={habit.name} count={count} goal={habit.dailyGoal} color={habit.color}
-      onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
-    </View>
+      onTick={() => { haptics.tick(); void action(() => tickHabit(habit.id, today)); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
     </View>
     <HabitTracker habit={habit} counts={counts} today={today} mode={mode} anchor={anchor}
       onSelectDate={(date) => router.push({ pathname: '/habit/[id]', params: { id: habit.id, date } })} />

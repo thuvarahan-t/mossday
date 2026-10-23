@@ -10,6 +10,9 @@ import { dataColors } from '@/lib/dataColors';
 import { animateTo } from '@/lib/animation';
 import { scales } from '@/constants/motion';
 
+/** The Undo row is drawn short; its hit area still reaches the 44 pt touch target. */
+const UNDO_SLOP = 8;
+
 /** A completed check can be tapped again; Undo stays visible for every recorded tick. */
 export const HabitTickButton = memo(function HabitTickButton({ name, count, goal, emoji, color = 'green', onTick, onUndo, disabled = false }: {
   name: string; count: number; goal: number; emoji?: string; color?: string; onTick: () => void; onUndo: () => void; disabled?: boolean;
@@ -49,7 +52,8 @@ export const HabitTickButton = memo(function HabitTickButton({ name, count, goal
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
       <Text variant="footnote" tabular weight="semibold" style={{ color: palette.accent }}>{count}/{goal}</Text>
       <PressableScale disabled={disabled || count === 0} accessibilityLabel={`Undo one tick for ${name}`}
-        onPress={onUndo} haptic="tap" style={{ minHeight: theme.sizes.touchTarget, minWidth: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center', opacity: count > 0 ? 1 : 0.35 }}>
+        onPress={onUndo} haptic="tap" hitSlop={{ top: UNDO_SLOP, bottom: UNDO_SLOP }}
+        style={{ minHeight: theme.sizes.touchTarget - UNDO_SLOP * 2, minWidth: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center', opacity: count > 0 ? 1 : 0.35 }}>
         <Text variant="footnote" weight="semibold" style={{ color: palette.accent }}>Undo</Text>
       </PressableScale>
     </View>

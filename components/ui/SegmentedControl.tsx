@@ -13,10 +13,12 @@ export type SegmentedControlProps<T extends string> = {
   segments: readonly T[];
   selected: T;
   onChange: (segment: T) => void;
+  /** Keep the screen-edge margins; off when the control sits inside a row. */
+  inset?: boolean;
 };
 
 /** iOS segmented control: the raised thumb slides between segments with `spring.snappy`. */
-export function SegmentedControl<T extends string>({ segments, selected, onChange }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ segments, selected, onChange, inset = true }: SegmentedControlProps<T>) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const [segmentWidth, setSegmentWidth] = useState(0);
@@ -39,7 +41,7 @@ export function SegmentedControl<T extends string>({ segments, selected, onChang
       accessibilityRole="tablist"
       style={[styles.track, {
         height: theme.sizes.controlHeight, borderRadius: theme.radii.md, backgroundColor: theme.colors.fill,
-        padding: THUMB_INSET, marginHorizontal: theme.sizes.screenInset,
+        padding: THUMB_INSET, marginHorizontal: inset ? theme.sizes.screenInset : 0,
       }]}
     >
       {segmentWidth > 0 && (
