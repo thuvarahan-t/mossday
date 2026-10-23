@@ -43,7 +43,8 @@ import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expens
 import { recordedDayAverage } from './expenseMetrics';
 import { BudgetSheet, type BudgetKey } from '@/components/settings/BudgetSheet';
 
-type Period = 'Day' | 'Week' | 'Month';
+const periods = ['Day', 'Week', 'Month'] as const;
+type Period = typeof periods[number];
 type PeriodRange = { period: Period; date: string; from: string; to: string };
 
 export function ExpensesScreen() {
@@ -97,8 +98,8 @@ export function ExpensesScreen() {
   return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     {/* The Day / Week / Month switch stays put; only the period's content slides. */}
-    <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
-    <PeriodSwipeArea contentKey={view} canGoForward={selected.to < today} onShift={shift} style={{ gap: theme.spacing.lg }}>
+    <SegmentedControl segments={periods} selected={period} onChange={setPeriod} />
+    <PeriodSwipeArea contentKey={view} periods={periods} onSwipe={setPeriod} style={{ gap: theme.spacing.lg }}>
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
         canGoForward={selected.to < today} onShift={shift} onPickDate={datePicker.open} />
       {/* iOS draws the calendar inline, right under the date it changes; Android opens a dialog. */}

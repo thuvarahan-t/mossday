@@ -33,8 +33,9 @@ later. Only the label changes; saved amounts are never converted.
 Expenses shows the month's budget as a progress line on every period; tapping it
 (or the daily budget bar) opens one Budget sheet with a Daily / Monthly switch. The
 "a day" average divides by days that have at least one expense, not by calendar days.
-Swipe left on Expenses for the next day / week / month and right for the previous one;
-the period slides out and the new one slides in once its data is ready.
+Swipe left on Expenses to move Day → Week → Month and right to move back; the
+view slides out and the next slides in once its data is ready. The ‹ › arrows and
+the tappable date label change the date.
 In Add Expense → Other, categories use a compact sheet. Long press and drag a
 tile to reorder it; nearby tiles shift live and a dashed placeholder marks the
 drop position. Releasing saves the order; canceling restores it. The order

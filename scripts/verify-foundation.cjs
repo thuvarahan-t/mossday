@@ -115,8 +115,8 @@ async function main() {
   assert.equal(average.days, 2, 'Multiple entries on the same date count as one recorded day');
   assert.equal(average.amount, 30000, 'Daily average divides by recorded dates, never by days in the month');
   const { periodSwipeDelta } = load('components/expenses/periodSwipe.ts');
-  assert.equal(periodSwipeDelta(-80, 0), 1, 'Swiping left shows the next period');
-  assert.equal(periodSwipeDelta(80, 0), -1, 'Swiping right shows the previous period');
+  assert.equal(periodSwipeDelta(-80, 0), 1, 'Swiping left moves to the next section (Day → Week → Month)');
+  assert.equal(periodSwipeDelta(80, 0), -1, 'Swiping right moves back a section');
   assert.equal(periodSwipeDelta(30, 0), 0, 'Short, slow drags do nothing');
   assert.equal(periodSwipeDelta(30, 900), -1, 'A quick flick counts even when short');
   assert.equal(periodSwipeDelta(-30, 900), 0, 'A flick against the drag direction does nothing');
