@@ -22,14 +22,14 @@ Tick each box (`[x]`) only after that part is finished, type-checked and committ
 - [x] Show a short summary, then continue
 
 ## Phase 2 — Design system (`constants/`, tokens only — never hard-code in screens)
-- [ ] Typography: Inter via `@expo-google-fonts/inter` (SF Pro substitute), slight negative tracking on large sizes
+- [x] Typography: Inter via `@expo-google-fonts/inter` (SF Pro substitute), slight negative tracking on large sizes
   - largeTitle 34/41 bold · title1 28/34 bold · title2 22/28 bold · title3 20/25 semibold · headline 17/22 semibold · body 17/22 regular · callout 16/21 · subheadline 15/20 · footnote 13/18 · caption1 12/16 · caption2 11/13
   - Amounts use `fontVariant: ['tabular-nums']`
   - `<Text variant="headline">` component — screens use only this
-- [ ] Colours: exact values from spec/images; iOS semantic tokens (background, secondaryBackground, groupedBackground, label, secondaryLabel, tertiaryLabel, separator, fill, accent) + module colours + 5-level heatmap scale; full light + dark, following system theme
-- [ ] Spacing 4/8/12/16/20/24/32; radii (cards 16–20, sheets 28+, buttons/chips pill); `borderCurve: 'continuous'`
-- [ ] Shadows: very soft iOS style (low opacity, large radius), never harsh elevation
-- [ ] Motion tokens `constants/motion.ts` (Reanimated springs):
+- [x] Colours: exact values from spec/images; iOS semantic tokens (background, secondaryBackground, groupedBackground, label, secondaryLabel, tertiaryLabel, separator, fill, accent) + module colours + 5-level heatmap scale; full light + dark, following system theme
+- [x] Spacing 4/8/12/16/20/24/32; radii (cards 16–20, sheets 28+, buttons/chips pill); `borderCurve: 'continuous'`
+- [x] Shadows: very soft iOS style (low opacity, large radius), never harsh elevation
+- [x] Motion tokens `constants/motion.ts` (Reanimated springs):
   - spring.default `{ damping: 20, stiffness: 220, mass: 1 }` — general UI
   - spring.snappy `{ damping: 18, stiffness: 320 }` — buttons, chips, toggles
   - spring.gentle `{ damping: 26, stiffness: 160 }` — sheets, large transitions

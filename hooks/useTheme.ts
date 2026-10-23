@@ -1,10 +1,7 @@
 import { useColorScheme } from 'react-native';
-import { colors, heatmapColors, moduleColors, radii, spacing, typography } from '@/constants/theme';
+import { themes, type Theme } from '@/constants/theme';
 
-export function useTheme() {
-  const mode = useColorScheme() === 'dark' ? 'dark' : 'light';
-  return {
-    mode, isDark: mode === 'dark', colors: colors[mode], heatmap: heatmapColors[mode],
-    moduleColors, radii, spacing, typography,
-  };
+/** Follows the system theme; the Appearance setting overrides it via `Appearance.setColorScheme`. */
+export function useTheme(): Theme {
+  return useColorScheme() === 'dark' ? themes.dark : themes.light;
 }
