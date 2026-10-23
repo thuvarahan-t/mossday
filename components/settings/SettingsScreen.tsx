@@ -1,12 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { applyAppearance } from '@/lib/appearance';
-import { AmountDisplay } from '@/components/ui/AmountDisplay';
 import { Button } from '@/components/ui/Button';
 import { FormSheet } from '@/components/ui/FormSheet';
 import { GroupedList, ListRow, SectionHeader, type ListRowProps } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
-import { NumberKeypad } from '@/components/ui/NumberKeypad';
 import { Text } from '@/components/ui/Text';
 import { TimeField } from '@/components/ui/TimeField';
 import { Toggle } from '@/components/ui/Toggle';
@@ -14,13 +12,13 @@ import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
 import { exportBackup, storageBytes } from '@/lib/backup';
-import { amountToInput, applyKeypadKey, formatMoney, parseAmountInput } from '@/lib/money';
+import { formatMoney } from '@/lib/money';
 import { getMealReminders, saveMealReminder, type MealReminder } from '@/lib/reminders';
 import { getSettings, setSetting } from '@/lib/repos/settings';
 import { useCurrency } from '@/hooks/useCurrency';
+import { BudgetSheet, type BudgetKey } from './BudgetSheet';
 import { CurrencySheet } from './CurrencySheet';
 
-type BudgetKey = 'dailyBudget' | 'monthlyBudget';
 const appearanceLabels = { system: 'Automatic', light: 'Light', dark: 'Dark' } as const;
 const mealIcons: Record<string, ListRowProps['icon']> = {
   Breakfast: { icon: 'coffee', color: 'orange' }, Lunch: { icon: 'utensils', color: 'orange' }, Dinner: { icon: 'moon', color: 'indigo' },
@@ -32,7 +30,6 @@ export function SettingsScreen() {
   const [currency, setCurrency, currencyTransition] = useSheetState<true>();
   const action = useAction();
   const [budget, setBudget, budgetTransition] = useSheetState<BudgetKey>();
-  const [input, setInput] = useState('');
   const [appearance, selectAppearance, appearanceTransition] = useSheetState<true>();
   const setAppearance = (open: boolean) => selectAppearance(open ? true : null);
   const [reminder, setReminder, reminderTransition] = useSheetState<MealReminder>();
@@ -51,7 +48,7 @@ export function SettingsScreen() {
       <GroupedList>
         <ListRow title="Currency" icon={{ icon: 'currency', color: 'green' }} value={data.settings.currency} accessory="chevron" onPress={() => setCurrency(true)} />
         {(['dailyBudget', 'monthlyBudget'] as const).map((key) => <ListRow key={key} title={key === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} icon={key === 'dailyBudget' ? { icon: 'target', color: 'orange' } : { icon: 'calendar', color: 'red' }}
-          value={data.settings[key] ? formatMoney(data.settings[key]) : 'Not set'} accessory="chevron" onPress={() => { setInput(data.settings[key] ? amountToInput(data.settings[key]) : ''); setBudget(key); }} />)}
+          value={data.settings[key] ? formatMoney(data.settings[key]) : 'Not set'} accessory="chevron" onPress={() => setBudget(key)} />)}
       </GroupedList>
       <SectionHeader title="Meal reminders" />
       <GroupedList>{data.meals.map((meal) => <ListRow key={meal.name} title={meal.name} value={meal.time.replace(/^0/, '')} icon={mealIcons[meal.name]}
@@ -68,10 +65,7 @@ export function SettingsScreen() {
       </GroupedList>
       <Text variant="footnote" align="center" color="secondaryLabel">Mossday 1.0 · Offline and private</Text>
       {currency && <CurrencySheet {...currencyTransition} onClose={() => setCurrency(null)} />}
-      {budget && <FormSheet size="fit" dense {...budgetTransition} title={budget === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} onClose={() => setBudget(null)}><AmountDisplay input={input} />
-        <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
-        <Button title="Save budget" disabled={!parseAmountInput(input) || busy} onPress={() => run(() => setSetting(budget, parseAmountInput(input)!), () => setBudget(null))} />
-        <Button title="Remove budget" variant="plain" disabled={busy} onPress={() => run(() => setSetting(budget, 0), () => setBudget(null))} /></FormSheet>}
+      {budget && <BudgetSheet {...budgetTransition} initial={budget} budgets={data.settings} onClose={() => setBudget(null)} />}
       {appearance && <FormSheet size="fit" dense {...appearanceTransition} title="Appearance" onClose={() => setAppearance(false)}>{(['system', 'light', 'dark'] as const).map((value) =>
         <Button key={value} title={`${appearanceLabels[value]}${data.settings.appearance === value ? ' ✓' : ''}`} variant="tinted" disabled={busy}
           onPress={() => run(async () => { await setSetting('appearance', value); applyAppearance(value); }, () => setAppearance(false))} />)}</FormSheet>}

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { router } from 'expo-router';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
@@ -9,8 +8,10 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
 import { GroupedList, ListRow, SectionHeader } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { LoadState } from '@/components/ui/LoadState';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -37,6 +38,7 @@ import { PeriodHeader } from './PeriodHeader';
 import { categoryStyle } from './categoryStyle';
 import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
 import { recordedDayAverage } from './expenseMetrics';
+import { BudgetSheet, type BudgetKey } from '@/components/settings/BudgetSheet';
 
 type Period = 'Day' | 'Week' | 'Month';
 type PeriodRange = { period: Period; date: string; from: string; to: string };
@@ -51,6 +53,7 @@ export function ExpensesScreen() {
   const [period, setPeriod] = useState<Period>('Day');
   useEffect(preloadCategories, []);
   const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new'>();
+  const [budgetEditor, setBudgetEditor, budgetTransition] = useSheetState<BudgetKey>();
   const selected = periodRange(period, date);
   const { data: result, error, refresh } = useResource(useCallback(() => loadPeriod(period, date), [period, date]));
   // While the next period loads, draw the one the data belongs to: switching Month → Day
@@ -82,12 +85,18 @@ export function ExpensesScreen() {
     <SegmentedControl segments={['Day', 'Week', 'Month'] as const} selected={period} onChange={setPeriod} />
     <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
       canGoForward={selected.to < today} onShift={shift} />
-    {dailyBudget > 0 && <View style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></View>}
-    {monthlyBudget > 0 ? <Card style={{ gap: theme.spacing.sm }}>
-      <Text variant="headline">{monthName(view.date)} budget</Text>
-      <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
-      <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
-    </Card> : view.period === 'Month' ? <Card><Button title="Set monthly budget" variant="plain" onPress={() => router.push('/settings')} /></Card> : null}
+    {dailyBudget > 0 && <PressableScale accessibilityLabel="Daily budget, edit" haptic="tap" onPress={() => setBudgetEditor('dailyBudget')}
+      style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></PressableScale>}
+    {monthlyBudget > 0 ? <PressableScale accessibilityLabel={`${monthName(view.date)} budget, edit`} haptic="tap" onPress={() => setBudgetEditor('monthlyBudget')}>
+      <Card style={{ gap: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text variant="headline">{monthName(view.date)} budget</Text>
+          <Icon name="chevronRight" color="tertiaryLabel" />
+        </View>
+        <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
+        <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
+      </Card>
+    </PressableScale> : view.period === 'Month' ? <Card><Button title="Set a budget" variant="plain" onPress={() => setBudgetEditor('monthlyBudget')} /></Card> : null}
     {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
       <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
         message="Add one in a few taps." action={{ label: 'Add Expense', onPress: () => setEditor('new') }} /> : view.period === 'Day' ?
@@ -105,6 +114,7 @@ export function ExpensesScreen() {
         <CategoryBreakdown totals={categoryTotals(data)} total={total}
           footnote={`Highest day: ${formatMoney(Math.max(...amounts))}`} period={view.period} />
       </>}
+    {budgetEditor && result && <BudgetSheet {...budgetTransition} initial={budgetEditor} budgets={result.settings} onClose={() => setBudgetEditor(null)} />}
     {editor && <ExpenseSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} date={date} onClose={() => setEditor(null)} />}
   </LargeTitleScreen>;
 }
