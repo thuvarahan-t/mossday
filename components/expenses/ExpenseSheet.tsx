@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AmountDisplay } from '@/components/ui/AmountDisplay';
 import { Button } from '@/components/ui/Button';
+import { SheetIconButton } from '@/components/ui/sheet/SheetHeader';
 import { SheetRow } from '@/components/ui/sheet/SheetRow';
+import { useToast } from '@/components/ui/Toast';
 import { CategoryGrid } from '@/components/ui/CategoryGrid';
 import { Chip } from '@/components/ui/Chip';
 import { useDatePicker } from '@/components/ui/DateSelector';
@@ -18,7 +20,7 @@ import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { formatLongDate, formatShortDate, todayLocalDate } from '@/lib/date';
 import { amountToInput, applyKeypadKey, parseAmountInput } from '@/lib/money';
-import { addCategory, listCategories, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
+import { addCategory, deleteExpense, listCategories, restoreExpense, saveExpense, type Category, type Expense } from '@/lib/repos/expenses';
 import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
@@ -30,6 +32,17 @@ const MAX_KEY_HEIGHT = 54;
 const paymentLabels = { CASH: 'Cash', CARD: 'Card', ONLINE: 'Online' } as const;
 const nextPayment = { CASH: 'CARD', CARD: 'ONLINE', ONLINE: 'CASH' } as const;
 
+/**
+ * Categories rarely change, so the last list is kept to open the sheet instantly; it is
+ * refreshed every time the sheet opens.
+ */
+let categoryCache: Category[] | null = null;
+
+/** Warms the category cache so the first Add Expense also opens without waiting. */
+export function preloadCategories() {
+  void listCategories().then((rows) => { categoryCache = rows; }, () => undefined);
+}
+
 export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...transition }: {
   initial?: Expense; mealId?: number; date?: string; onClose: () => void;
 } & Partial<FormSheetTransition>) {
@@ -38,10 +51,12 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const action = useAction();
   const saving = useRef(false);
   const [busy, setBusy] = useState(false);
-  const [categories, setCategories] = useState<Category[] | null>(null);
+  const toast = useToast();
+  const [categories, setCategories] = useState<Category[] | null>(categoryCache);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
-  const [categoryId, setCategoryId] = useState<number | null>(initial?.categoryId ?? mealId ?? null);
+  const [categoryId, setCategoryId] = useState<number | null>(
+    initial?.categoryId ?? mealId ?? categoryCache?.find((c) => c.type === 'MEAL')?.id ?? null);
   const [oneTime, setOneTime] = useState(!!initial?.isOneTime);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
@@ -57,7 +72,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const [hint, setHint] = useState<string | null>(null);
   const load = () => {
     void listCategories().then((rows) => {
-      setCategories(rows); setError(null);
+      categoryCache = rows; setCategories(rows); setError(null);
       if (!initial && !mealId) setCategoryId((current) => current ?? rows.find((r) => r.type === 'MEAL')?.id ?? null);
     }, () => setError('Could not load categories.'));
   };
@@ -88,10 +103,19 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
     if (!amount) setShake((count) => count + 1);
   };
   const inlineSave = <Button title="Save" size="small" disabled={busy} onPress={attemptSave} />;
+  const remove = (expense: Expense) => {
+    if (busy) return;
+    void action(() => deleteExpense(expense.id), () => {
+      haptics.warning();
+      onClose();
+      toast({ message: 'Expense deleted', actionLabel: 'Undo', onAction: () => { void action(() => restoreExpense(expense)); } });
+    });
+  };
   // Categories load in a few milliseconds; presenting after that opens the sheet in one
   // motion at its final height instead of springing to a loading row and then growing.
   if (!categories && !error) return null;
-  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}>
+  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}
+    trailing={initial && <SheetIconButton icon="trash" accessibilityLabel="Delete expense" onPress={() => remove(initial)} />}>
     {!categories ? <LoadState error={error} retry={load} /> : <>
       <AmountDisplay input={input} compact shakeSignal={shake} />
       {hint && <SheetRow optional><Text variant="footnote" weight="semibold" color="dangerText" align="center">{hint}</Text></SheetRow>}

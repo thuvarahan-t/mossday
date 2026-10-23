@@ -176,7 +176,7 @@ export function BottomSheet({
   if (!mounted) return null;
 
   return (
-    <Modal transparent visible statusBarTranslucent navigationBarTranslucent animationType="none" onRequestClose={onClose}>
+    <Modal transparent visible statusBarTranslucent navigationBarTranslucent hardwareAccelerated animationType="none" onRequestClose={onClose}>
       <GestureHandlerRootView style={styles.fill} onLayout={(event) => setMeasuredHeight(Math.round(event.nativeEvent.layout.height))}>
         <BlurTargetBoundary>
           <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>

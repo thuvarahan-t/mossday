@@ -26,13 +26,13 @@ export function SheetHeader({ title, leading, trailing }: SheetHeaderProps) {
   );
 }
 
-/** The round glass × / ‹ used on every sheet. */
+/** The round glass × / ‹ used on every sheet, and the red trash on edit sheets. */
 export function SheetIconButton({ icon, onPress, accessibilityLabel }: {
-  icon: 'close' | 'chevronLeft'; onPress: () => void; accessibilityLabel: string;
+  icon: 'close' | 'chevronLeft' | 'trash'; onPress: () => void; accessibilityLabel: string;
 }) {
   return (
     <GlassButton accessibilityLabel={accessibilityLabel} onPress={onPress} haptic="tap">
-      <Icon name={icon} color="label" />
+      <Icon name={icon} color={icon === 'trash' ? 'dangerText' : 'label'} />
     </GlassButton>
   );
 }
