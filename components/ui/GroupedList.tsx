@@ -92,7 +92,10 @@ export function ListRow({
   );
 }
 
-/** Grouped-list header: footnote, uppercase, aligned with the row text. */
+/**
+ * Grouped-list header: footnote, uppercase, aligned with the row text. Screens space their
+ * content with a container `gap`, so the margin only adds the extra space above a section.
+ */
 export function SectionHeader({ title }: { title: string }) {
   const theme = useTheme();
   return (
@@ -103,8 +106,7 @@ export function SectionHeader({ title }: { title: string }) {
       style={{
         textTransform: 'uppercase',
         paddingHorizontal: theme.sizes.screenInset + theme.sizes.rowPadding,
-        marginTop: theme.spacing.xxl,
-        marginBottom: theme.spacing.sm,
+        marginTop: theme.spacing.md,
       }}
     >
       {title}
@@ -112,12 +114,12 @@ export function SectionHeader({ title }: { title: string }) {
   );
 }
 
-/** Section title above a card ("Habits", "To-dos") with an optional trailing element. */
+/** Section title above a card ("Habits", "To-dos"); like `SectionHeader`, it relies on the container gap below. */
 export function SectionTitle({ title, trailing }: { title: string; trailing?: ReactNode }) {
   const theme = useTheme();
   return (
     <View style={[styles.sectionTitle, {
-      paddingHorizontal: theme.sizes.titleInset, marginTop: theme.spacing.xxxl, marginBottom: theme.spacing.md,
+      paddingHorizontal: theme.sizes.titleInset, marginTop: theme.spacing.xl,
     }]}>
       <Text variant="title3" weight="bold" accessibilityRole="header">{title}</Text>
       {trailing}

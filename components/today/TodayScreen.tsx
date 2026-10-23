@@ -62,7 +62,7 @@ export function TodayScreen() {
       <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
         <Text color="secondaryLabel">Spent today</Text>
         <AnimatedNumber value={spent} format={formatMoney} color={status === 'dangerText' ? 'dangerText' : 'label'} />
-        {budget > 0 && <><ProgressBar progress={spent / budget} color={theme.colors[status]} /><View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        {budget > 0 && <><ProgressBar progress={spent / budget} color={theme.colors[status === 'accent' ? 'accentBar' : status === 'warningText' ? 'warning' : 'danger']} /><View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text variant="subheadline" color={status}>{formatMoney(Math.abs(budget - spent))} {spent > budget ? 'over budget' : 'left'}</Text><Text variant="subheadline" color="secondaryLabel">of {formatMoney(budget)}</Text>
         </View></>}
         <Separator />
