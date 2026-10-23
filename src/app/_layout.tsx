@@ -17,11 +17,15 @@ import { ShareImageProvider } from '@/components/share/ShareImage';
 import { ToastProvider } from '@/components/ui/Toast';
 import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
 import { AppSheetCover } from '@/components/ui/sheet/SheetCover';
+import { useSheetState } from '@/hooks/useSheetState';
 import { useTheme } from '@/hooks/useTheme';
 import { getDatabase } from '@/lib/db';
 import { collectMedia } from '@/lib/media';
 import { getSettings } from '@/lib/repos/settings';
 import { applyAppearance } from '@/lib/appearance';
+import { setActiveCurrency } from '@/lib/currency';
+import { CurrencySheet } from '@/components/settings/CurrencySheet';
+import type { FormSheetTransition } from '@/components/ui/FormSheet';
 
 export default function RootLayout() {
   const theme = useTheme();
@@ -31,19 +35,23 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  // Sheet state keeps the first-launch prompt mounted through its close animation.
+  const [currencyPrompt, setCurrencyPrompt, currencyTransition] = useSheetState<true>();
 
   useEffect(() => {
     let active = true;
     getDatabase().then(async () => {
       const settings = await getSettings();
       applyAppearance(settings.appearance);
+      setActiveCurrency(settings.currency);
+      if (active && !settings.currencyPrompted) setCurrencyPrompt(true);
       if (Platform.OS !== 'web') await collectMedia().catch(() => undefined);
     }).then(
       () => { if (active) setReady(true); },
       (failure: unknown) => { if (active) setError(failure); },
     );
     return () => { active = false; };
-  }, [attempt]);
+  }, [attempt, setCurrencyPrompt]);
 
   const baseTheme = theme.isDark ? DarkTheme : DefaultTheme;
   const navigationTheme = {
@@ -75,7 +83,7 @@ export default function RootLayout() {
             )}
           </View>
         ) : ready && fontsLoaded ? (
-          <AppShell />
+          <AppShell currencyPrompt={currencyPrompt ? currencyTransition : null} onCurrencyDone={() => setCurrencyPrompt(null)} />
         ) : (
           <View style={[styles.center, { gap: theme.spacing.md }]}>
             <ActivityIndicator size="large" color={theme.colors.accent} />
@@ -92,7 +100,7 @@ export default function RootLayout() {
  * and recedes while a large sheet is open. Pushed screens use the iOS card transition with
  * the left-edge swipe-back gesture on both platforms (JS stack, not Android's native one).
  */
-function AppShell() {
+function AppShell({ currencyPrompt, onCurrencyDone }: { currencyPrompt: FormSheetTransition | null; onCurrencyDone: () => void }) {
   const theme = useTheme();
   const reduced = useReducedMotion();
   return (
@@ -119,6 +127,7 @@ function AppShell() {
             </Stack>
           </BlurTargetContent>
           </ShareImageProvider>
+          {currencyPrompt && <CurrencySheet firstLaunch {...currencyPrompt} onClose={onCurrencyDone} />}
         </ToastProvider>
       </BlurTargetProvider>
     </AppSheetCover>

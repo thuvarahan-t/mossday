@@ -17,6 +17,8 @@ import { exportBackup, storageBytes } from '@/lib/backup';
 import { amountToInput, applyKeypadKey, formatMoney, parseAmountInput } from '@/lib/money';
 import { getMealReminders, saveMealReminder, type MealReminder } from '@/lib/reminders';
 import { getSettings, setSetting } from '@/lib/repos/settings';
+import { useCurrency } from '@/hooks/useCurrency';
+import { CurrencySheet } from './CurrencySheet';
 
 type BudgetKey = 'dailyBudget' | 'monthlyBudget';
 const appearanceLabels = { system: 'Automatic', light: 'Light', dark: 'Dark' } as const;
@@ -26,6 +28,8 @@ const mealIcons: Record<string, ListRowProps['icon']> = {
 
 export function SettingsScreen() {
   const theme = useTheme();
+  useCurrency();
+  const [currency, setCurrency, currencyTransition] = useSheetState<true>();
   const action = useAction();
   const [budget, setBudget, budgetTransition] = useSheetState<BudgetKey>();
   const [input, setInput] = useState('');
@@ -45,7 +49,7 @@ export function SettingsScreen() {
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <SectionHeader title="Money" />
       <GroupedList>
-        <ListRow title="Currency" icon={{ icon: 'currency', color: 'green' }} value="LKR" accessibilityLabel="Currency, Sri Lankan rupees" />
+        <ListRow title="Currency" icon={{ icon: 'currency', color: 'green' }} value={data.settings.currency} accessory="chevron" onPress={() => setCurrency(true)} />
         {(['dailyBudget', 'monthlyBudget'] as const).map((key) => <ListRow key={key} title={key === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} icon={key === 'dailyBudget' ? { icon: 'target', color: 'orange' } : { icon: 'calendar', color: 'red' }}
           value={data.settings[key] ? formatMoney(data.settings[key]) : 'Not set'} accessory="chevron" onPress={() => { setInput(data.settings[key] ? amountToInput(data.settings[key]) : ''); setBudget(key); }} />)}
       </GroupedList>
@@ -63,6 +67,7 @@ export function SettingsScreen() {
         <ListRow title="Storage" icon={{ icon: 'storage', color: 'gray' }} value={`${(data.storage / 1024 / 1024).toFixed(1)} MB`} />
       </GroupedList>
       <Text variant="footnote" align="center" color="secondaryLabel">Mossday 1.0 · Offline and private</Text>
+      {currency && <CurrencySheet {...currencyTransition} onClose={() => setCurrency(null)} />}
       {budget && <FormSheet size="fit" dense {...budgetTransition} title={budget === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} onClose={() => setBudget(null)}><AmountDisplay input={input} />
         <NumberKeypad onKey={(key) => setInput((value) => applyKeypadKey(value, key))} onClear={() => setInput('')} />
         <Button title="Save budget" disabled={!parseAmountInput(input) || busy} onPress={() => run(() => setSetting(budget, parseAmountInput(input)!), () => setBudget(null))} />

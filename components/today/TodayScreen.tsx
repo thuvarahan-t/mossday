@@ -22,6 +22,7 @@ import { BottomSheet } from '@/components/ui/sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from '@/components/ui/sheet/SheetHeader';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import { formatLongDate } from '@/lib/date';
@@ -37,6 +38,7 @@ import { getSettings } from '@/lib/repos/settings';
 
 export function TodayScreen() {
   const theme = useTheme();
+  useCurrency();
   const action = useAction();
   const newNote = useNewNote();
   const noteAfterDismissal = useRef(false);

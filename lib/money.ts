@@ -1,16 +1,19 @@
-const rupeeFormatter = new Intl.NumberFormat('en-US', {
+import { currencySymbol, getActiveCurrency, type CurrencyCode } from './currency';
+
+const amountFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 0, maximumFractionDigits: 2,
 });
 
 /** Money is stored as integer cents; retain nonzero cents when displaying it. */
-export function formatMoney(cents: number): string {
+export function formatMoney(cents: number, currency: CurrencyCode = getActiveCurrency()): string {
   if (!Number.isSafeInteger(cents)) throw new RangeError('Money must be a safe integer in cents.');
-  return `Rs. ${rupeeFormatter.format(cents / 100)}`;
+  return `${currencySymbol(currency)} ${amountFormatter.format(cents / 100)}`;
 }
 
 /** The number without the currency prefix, e.g. "1,250" (amount display, widget). */
 export function formatAmount(cents: number): string {
-  return formatMoney(cents).replace(/^Rs\. /, '');
+  if (!Number.isSafeInteger(cents)) throw new RangeError('Money must be a safe integer in cents.');
+  return amountFormatter.format(cents / 100);
 }
 
 export const MAX_WHOLE_DIGITS = 7;

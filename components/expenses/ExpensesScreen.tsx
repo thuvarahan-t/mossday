@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast';
 import { resolveAccent, type ColorToken } from '@/constants/theme';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import {
@@ -39,6 +40,7 @@ type PeriodRange = { period: Period; date: string; from: string; to: string };
 
 export function ExpensesScreen() {
   const theme = useTheme();
+  useCurrency();
   const action = useAction();
   const toast = useToast();
   const today = useToday();

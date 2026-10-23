@@ -45,6 +45,14 @@ async function main() {
   const habits = load('lib/repos/habits.ts');
   const diary = load('lib/repos/diary.ts');
   const settings = load('lib/repos/settings.ts');
+  assert.equal((await settings.getSettings()).currencyPrompted, false);
+  await settings.completeCurrencySetup();
+  assert.equal((await settings.getSettings()).currency, 'LKR', 'Skip keeps Rs.');
+  assert.equal((await settings.getSettings()).currencyPrompted, true, 'The first-launch prompt stays dismissed');
+  await settings.setSetting('currency', 'USD');
+  assert.equal((await settings.getSettings()).currency, 'USD');
+  await assert.rejects(settings.setSetting('currency', 'BAD'));
+  assert.equal((await settings.getSettings()).currency, 'USD', 'Invalid preferences preserve the saved currency');
   const notes = load('lib/repos/notes.ts');
   const date = load('lib/date.ts');
   const today = date.todayLocalDate();

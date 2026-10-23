@@ -13,6 +13,7 @@ import { WeekStrip } from '@/components/ui/WeekStrip';
 import { GlassSurface } from '@/components/ui/glass/GlassSurface';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import { addDays, addMonths, dayOfMonth, endOfMonth, monthName, startOfMonth, startOfWeek, weekdayName } from '@/lib/date';
@@ -29,6 +30,7 @@ import { TodoSheet } from './TodoSheet';
 
 export function DiaryScreen() {
   const theme = useTheme();
+  useCurrency();
   const action = useAction();
   const today = useToday();
   const [date, setDate] = useState(today);

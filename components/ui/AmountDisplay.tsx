@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { durations } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
+import { useCurrency } from '@/hooks/useCurrency';
+import { currencySymbol } from '@/lib/currency';
 import { Text } from './Text';
 
 export type AmountDisplayProps = {
@@ -23,6 +25,7 @@ function groupThousands(input: string) {
 /** "Rs." + the big 64 pt amount at the top of the Add Expense sheet. */
 export function AmountDisplay({ input, shakeSignal = 0, compact }: AmountDisplayProps) {
   const theme = useTheme();
+  const currency = useCurrency();
   const reduceMotion = useReducedMotion();
   const shake = useSharedValue(0);
 
@@ -42,12 +45,12 @@ export function AmountDisplay({ input, shakeSignal = 0, compact }: AmountDisplay
   return (
     <Animated.View
       accessible
-      accessibilityLabel={`Amount, ${empty ? 'zero' : input} rupees`}
+      accessibilityLabel={`Amount, ${empty ? 'zero' : input} ${currency}`}
       accessibilityLiveRegion="polite"
       style={[styles.row, { gap: theme.spacing.xs, paddingHorizontal: theme.spacing.xxl }, style]}
     >
       <View style={{ paddingBottom: theme.spacing.sm }}>
-        <Text variant="title1" color="secondaryLabel">Rs.</Text>
+        <Text variant="title1" color="secondaryLabel">{currencySymbol(currency)}</Text>
       </View>
       <Text variant={compact ? 'hero' : 'display'} tabular color={empty ? 'tertiaryLabel' : 'label'} numberOfLines={1} adjustsFontSizeToFit style={styles.amount}>
         {empty ? '0' : groupThousands(input)}

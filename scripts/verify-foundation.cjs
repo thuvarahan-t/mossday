@@ -82,7 +82,8 @@ async function main() {
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE id<=11 AND isUserCreated=1').get().n, 0);
   sqlite.close();
 
-  const { formatMoney, parseAmountInput, applyKeypadKey, amountToInput } = load('lib/money.ts');
+  const currency = load('lib/currency.ts');
+  const { formatMoney, formatAmount, parseAmountInput, applyKeypadKey, amountToInput } = load('lib/money.ts', { './currency': currency });
   assert.equal(parseAmountInput('450'), 45000);
   assert.equal(parseAmountInput('12.5'), 1250);
   assert.equal(parseAmountInput(''), null);
@@ -100,6 +101,10 @@ async function main() {
   assert.equal(formatMoney(125050), 'Rs. 1,250.5');
   assert.equal(formatMoney(0), 'Rs. 0');
   assert.equal(formatMoney(-125000), 'Rs. -1,250');
+  currency.setActiveCurrency('USD');
+  assert.equal(formatMoney(125000), '$ 1,250');
+  assert.equal(formatAmount(125000), '1,250', 'Bare amounts do not depend on currency labels');
+  currency.setActiveCurrency('LKR');
   assert.throws(() => formatMoney(1.5));
   process.env.TZ = 'Asia/Colombo';
   const date = load('lib/date.ts');
