@@ -2,7 +2,7 @@ import { useSegments } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { durations, easing, toastDuration } from '@/constants/motion';
@@ -54,6 +54,7 @@ function ToastView({ toast, onDismissed }: { toast: ToastEntry; onDismissed: (id
   const segments = useSegments();
   const reduceMotion = useReducedMotion();
   const translateY = useSharedValue(HIDDEN_OFFSET);
+  const opacity = useSharedValue(0);
   const { id } = toast;
 
   const overTabBar = segments[0] === '(tabs)';
@@ -62,16 +63,23 @@ function ToastView({ toast, onDismissed }: { toast: ToastEntry; onDismissed: (id
     : insets.bottom + theme.spacing.md;
 
   const hide = useCallback(() => {
+    if (reduceMotion) {
+      opacity.set(withTiming(0, { duration: durations.fast, reduceMotion: ReduceMotion.Never }, (finished) => {
+        if (finished) scheduleOnRN(onDismissed, id);
+      }));
+      return;
+    }
     translateY.set(withTiming(HIDDEN_OFFSET, { duration: durations.normal, easing: easing.standard }, (finished) => {
       if (finished) scheduleOnRN(onDismissed, id);
     }));
-  }, [id, onDismissed, translateY]);
+  }, [id, onDismissed, translateY, opacity, reduceMotion]);
 
   useEffect(() => {
     translateY.set(animateTo(0, 'default', reduceMotion));
+    opacity.set(withTiming(1, { duration: durations.fast, reduceMotion: ReduceMotion.Never }));
     const timer = setTimeout(hide, toastDuration);
     return () => clearTimeout(timer);
-  }, [hide, reduceMotion, translateY]);
+  }, [hide, reduceMotion, translateY, opacity]);
 
   const pan = usePanGesture({
     activeOffsetY: 8,
@@ -84,7 +92,7 @@ function ToastView({ toast, onDismissed }: { toast: ToastEntry; onDismissed: (id
     },
   });
 
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.get() }] }));
+  const style = useAnimatedStyle(() => ({ opacity: reduceMotion ? opacity.get() : 1, transform: [{ translateY: reduceMotion ? 0 : translateY.get() }] }));
 
   return (
     <GestureDetector gesture={pan}>

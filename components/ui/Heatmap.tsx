@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import Svg, { Rect } from 'react-native-svg';
-import { scales } from '@/constants/motion';
+import { durations, scales } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { addDays, dayOfMonth, monthShort, WEEKDAY_LETTERS, type LocalDate } from '@/lib/date';
@@ -125,6 +125,8 @@ export function HeatmapSquare({ x, y, size, color, count }: { x: number; y: numb
   const topValue = useSharedValue(y);
   const scale = useSharedValue(1);
   const previousCount = useRef(count);
+  const fill = useSharedValue(color);
+  useEffect(() => { fill.set(withTiming(color, { duration: durations.normal })); }, [color, fill]);
 
   useEffect(() => {
     left.set(animateTo(x, 'snappy', reduceMotion));
@@ -139,6 +141,7 @@ export function HeatmapSquare({ x, y, size, color, count }: { x: number; y: numb
   }, [count, reduceMotion, scale]);
 
   const style = useAnimatedStyle(() => ({
+    backgroundColor: fill.get(),
     transform: [{ translateX: left.get() }, { translateY: topValue.get() }, { scale: scale.get() }],
   }));
   const outline = 1.5;

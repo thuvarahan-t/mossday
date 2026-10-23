@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { RemindersBridge } from '@/components/RemindersBridge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useReducedMotion } from 'react-native-reanimated';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -89,6 +90,7 @@ export default function RootLayout() {
  */
 function AppShell() {
   const theme = useTheme();
+  const reduced = useReducedMotion();
   return (
     <AppSheetCover>
       <BlurTargetProvider root>
@@ -98,7 +100,7 @@ function AppShell() {
             <Stack
               screenOptions={{
                 headerShown: false,
-                ...TransitionPresets.SlideFromRightIOS,
+                ...(reduced ? TransitionPresets.ModalFadeTransition : TransitionPresets.SlideFromRightIOS),
                 gestureEnabled: true,
                 gestureDirection: 'horizontal',
                 cardStyle: { backgroundColor: theme.colors.groupedBackground },

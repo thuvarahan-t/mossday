@@ -161,7 +161,7 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
   });
 
   const micStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: slide.get() }, { scale: 1 + pressed.get() * 0.15 }],
+    transform: [{ translateX: slide.get() }, { scale: reduceMotion ? 1 : 1 + pressed.get() * 0.15 }],
   }));
   const haloOuter = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(halo.get(), [0, 1], [1.35, 1.6]) }] }));
   const haloInner = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(halo.get(), [0, 1], [1.12, 1.25]) }] }));
