@@ -96,10 +96,11 @@ export function ExpensesScreen() {
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
   return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}
-    contentContainerStyle={{ gap: theme.spacing.lg }}>
+    contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {/* The Day / Week / Month switch stays put; only the period's content slides. */}
     <SegmentedControl segments={periods} selected={period} onChange={setPeriod} />
-    <PeriodSwipeArea contentKey={view} periods={periods} onSwipe={setPeriod} style={{ gap: theme.spacing.lg }}>
+    {/* Grows into the empty space under short lists, so a swipe anywhere below the switch works. */}
+    <PeriodSwipeArea contentKey={view} periods={periods} onSwipe={setPeriod} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
         canGoForward={selected.to < today} onShift={shift} onPickDate={datePicker.open} />
       {/* iOS draws the calendar inline, right under the date it changes; Android opens a dialog. */}
