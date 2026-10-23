@@ -67,6 +67,17 @@ export const weekdayName = (value: LocalDate) => WEEKDAYS[weekdayIndex(value)];
 export const weekdayShort = (value: LocalDate) => weekdayName(value).slice(0, 3);
 export const monthName = (value: LocalDate) => MONTHS[parseLocalDate(value).getMonth()];
 export const monthShort = (value: LocalDate) => monthName(value).slice(0, 3);
+
+const ORDINALS = ['1st', '2nd', '3rd', '4th', '5th'] as const;
+/**
+ * "October 4th week" for the Monday-start week beginning `weekStart`. A week that spans two
+ * months belongs to the month holding its Thursday (most of its days), as in ISO weeks.
+ */
+export function weekOfMonthLabel(weekStart: LocalDate, today: LocalDate): string {
+  const thursday = addDays(weekStart, 3);
+  const label = `${monthName(thursday)} ${ORDINALS[Math.ceil(dayOfMonth(thursday) / 7) - 1]} week`;
+  return thursday.slice(0, 4) === today.slice(0, 4) ? label : `${label} ${thursday.slice(0, 4)}`;
+}
 /** Single-letter weekday headers, Monday first. */
 export const WEEKDAY_LETTERS = WEEKDAYS.map((name) => name[0]);
 

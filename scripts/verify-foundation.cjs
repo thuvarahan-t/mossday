@@ -124,6 +124,13 @@ async function main() {
   const date = load('lib/date.ts');
   const { todayLocalDate } = date;
   assert.equal(date.addDays('2026-10-31', 1), '2026-11-01');
+  assert.equal(date.weekOfMonthLabel('2026-03-02', '2026-10-24'), 'March 1st week');
+  assert.equal(date.weekOfMonthLabel('2026-10-19', '2026-10-24'), 'October 4th week');
+  assert.equal(date.weekOfMonthLabel('2026-09-28', '2026-10-24'), 'October 1st week', 'A week spanning months belongs to its Thursday');
+  assert.equal(date.weekOfMonthLabel('2026-03-30', '2026-10-24'), 'April 1st week');
+  assert.equal(date.weekOfMonthLabel('2026-08-31', '2026-10-24'), 'September 1st week');
+  assert.equal(date.weekOfMonthLabel('2025-12-29', '2026-10-24'), 'January 1st week', 'The year follows the Thursday too');
+  assert.equal(date.weekOfMonthLabel('2025-03-03', '2026-10-24'), 'March 1st week 2025', 'Other years are named');
   assert.equal(date.addDays('2026-03-29', 1), '2026-03-30', 'DST-safe day arithmetic');
   assert.equal(date.startOfWeek('2026-10-22'), '2026-10-19', 'Weeks start on Monday');
   assert.equal(date.weekdayIndex('2026-10-25'), 6);

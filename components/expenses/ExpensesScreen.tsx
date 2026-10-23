@@ -26,7 +26,7 @@ import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import {
   addDays, addMonths, dateRange, daysBetween, endOfMonth, formatDayHeading, formatLongDate, monthName,
-  startOfMonth, startOfWeek, weekdayShort,
+  startOfMonth, startOfWeek, weekdayShort, weekOfMonthLabel,
 } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { deleteExpense, listExpenses, restoreExpense, type Expense } from '@/lib/repos/expenses';
@@ -170,7 +170,7 @@ function CategoryBreakdown({ totals, total, footnote, period }: { totals: Catego
 
 function periodLabel({ period, date, from }: PeriodRange, today: string) {
   if (period === 'Day') return formatDayHeading(date);
-  if (period === 'Week') return from === startOfWeek(today) ? 'This week' : `Week of ${formatDayHeading(from)}`;
+  if (period === 'Week') return weekOfMonthLabel(from, today);
   return date.slice(0, 4) === today.slice(0, 4) ? monthName(date) : `${monthName(date)} ${date.slice(0, 4)}`;
 }
 
