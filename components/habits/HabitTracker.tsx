@@ -1,46 +1,35 @@
-import { memo } from 'react';
+import { memo, useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Heatmap, HeatmapWeekdayLabels } from '@/components/ui/Heatmap';
-import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/hooks/useTheme';
-import { dataColors } from '@/lib/dataColors';
-import { monthName } from '@/lib/date';
+import { daysBetween } from '@/lib/date';
 import type { Habit } from '@/lib/repos/habits';
-import { habitPeriod, monthProgress, type HabitTrackerMode } from './habitPeriod';
+import { habitYear } from './habitPeriod';
 
-/** Month and Year share the same contribution-grid look; Month adds its goal-met count beside it. */
-export const HabitTracker = memo(function HabitTracker({ habit, counts, mode, anchor, today, selected = today, onSelectDate, fitWidth }: {
-  habit: Habit; counts: Readonly<Record<string, number>>; mode: HabitTrackerMode; anchor: string; today: string;
+/** Weeks kept visible to the right of the scrolled-to day, so it never sits on the edge. */
+const TRAILING_WEEKS = 2;
+
+/** The year's contribution grid. It opens scrolled to today (or the selected day), not January. */
+export const HabitTracker = memo(function HabitTracker({ habit, counts, anchor, today, selected = today, onSelectDate, fitWidth }: {
+  habit: Habit; counts: Readonly<Record<string, number>>; anchor: string; today: string;
   selected?: string; onSelectDate?: (date: string) => void;
   /** Static exported images fit the full year within their known panel width. */
   fitWidth?: number;
 }) {
   const theme = useTheme();
-  const palette = dataColors(theme, habit.color);
-  const period = habitPeriod(mode, anchor);
-  if (mode === 'Year') {
-    const squareSize = fitWidth ? Math.max(2, (fitWidth - (period.weeks - 1) * 2) / period.weeks) : theme.sizes.heatmapSquare;
-    const grid = <Heatmap color={habit.color} startDate={period.gridStart} weeks={period.weeks} counts={counts} today={today}
-      dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={selected} showMonthLabels future="faint"
-      minDate={period.start} maxDate={period.end} squareSize={squareSize} gap={fitWidth ? 2 : undefined} onSelectDate={onSelectDate} />;
-    return fitWidth ? grid : <View style={{ gap: theme.spacing.sm }}>
-      <View style={{ flexDirection: 'row' }}><HeatmapWeekdayLabels />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel={`${period.label} habit tracker`}>{grid}</ScrollView>
-      </View>
-      <Text variant="caption1" color="secondaryLabel">Swipe to see January through December</Text>
-    </View>;
-  }
-  const { done, eligible } = monthProgress(habit, counts, anchor, today);
-  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.lg }}>
-    <View style={{ flexDirection: 'row' }}>
-      <HeatmapWeekdayLabels top={0} />
-      <Heatmap color={habit.color} startDate={period.gridStart} weeks={period.weeks} counts={counts} today={today}
-        dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={selected} future="faint"
-        minDate={period.start} maxDate={period.end} onSelectDate={onSelectDate} />
-    </View>
-    <View accessible accessibilityLabel={`${done} of ${eligible} days done in ${monthName(anchor)}`} style={{ flex: 1, gap: theme.spacing.xxs }}>
-      <Text variant="title2" weight="bold" tabular style={{ color: palette.accent }}>{done}<Text variant="title3" color="secondaryLabel">/{eligible}</Text></Text>
-      <Text variant="footnote" color="secondaryLabel">days done in {monthName(anchor)}</Text>
-    </View>
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const period = habitYear(anchor);
+  const squareSize = fitWidth ? Math.max(2, (fitWidth - (period.weeks - 1) * 2) / period.weeks) : theme.sizes.heatmapSquare;
+  const grid = <Heatmap color={habit.color} startDate={period.gridStart} weeks={period.weeks} counts={counts} today={today}
+    dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={selected} showMonthLabels future="faint"
+    minDate={period.start} maxDate={period.end} squareSize={squareSize} gap={fitWidth ? 2 : undefined} onSelectDate={onSelectDate} />;
+  if (fitWidth) return grid;
+  const focus = selected >= period.start && selected <= period.end ? selected : period.start;
+  const focusRight = (Math.floor(daysBetween(period.gridStart, focus) / 7) + 1 + TRAILING_WEEKS) * (squareSize + theme.sizes.heatmapGap);
+  return <View style={{ flexDirection: 'row' }}><HeatmapWeekdayLabels />
+    <ScrollView ref={scroll} horizontal showsHorizontalScrollIndicator={false} accessibilityLabel={`${period.label} habit tracker`}
+      onLayout={(event) => scroll.current?.scrollTo({ x: Math.max(0, focusRight - event.nativeEvent.layout.width), animated: false })}>
+      {grid}
+    </ScrollView>
   </View>;
 });

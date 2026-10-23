@@ -11,20 +11,11 @@ function load(file, dependencies = {}) {
 }
 const date = load('lib/date.ts');
 const heatmap = load('lib/heatmap.ts', { './date': date });
-const periods = load('components/habits/habitPeriod.ts', { '@/lib/date': date, '@/lib/heatmap': heatmap });
-assert.equal(periods.habitPeriod('Month', '2024-02-20').end, '2024-02-29');
-assert.equal(periods.habitPeriod('Month', '2024-02-20').gridStart, '2024-01-29', 'The month grid aligns to Monday');
-assert.equal(periods.habitPeriod('Month', '2024-02-20').weeks, 5);
-const everyDay = { dailyGoal: 2, activeDays: 127 };
-assert.deepEqual({ ...periods.monthProgress(everyDay, { '2026-10-01': 2, '2026-10-02': 1, '2026-10-30': 2 }, '2026-10-24', '2026-10-24') }, { done: 1, eligible: 24 },
-  'Only goal-met days up to today count; later ticks in the month are ignored');
-assert.deepEqual({ ...periods.monthProgress(everyDay, {}, '2026-09-10', '2026-10-24') }, { done: 0, eligible: 30 });
-assert.deepEqual({ ...periods.monthProgress(everyDay, {}, '2026-11-10', '2026-10-24') }, { done: 0, eligible: 0 }, 'Future months have no eligible days');
-const restDays = periods.monthProgress({ dailyGoal: 1, activeDays: 0b1111100 }, {}, '2026-09-10', '2026-10-24').eligible;
-assert.ok(restDays > 0 && restDays < 30, 'Inactive weekdays are not eligible');
-assert.equal(periods.habitPeriod('Year', '2012-06-01').weeks, 54, 'A Sunday-starting leap year needs 54 calendar columns');
-assert.equal(periods.habitPeriod('Year', '2026-10-24').start, '2026-01-01');
-assert.equal(periods.habitPeriod('Year', '2026-10-24').end, '2026-12-31');
+const periods = load('components/habits/habitPeriod.ts', { '@/lib/date': date });
+assert.equal(periods.habitYear('2012-06-01').weeks, 54, 'A Sunday-starting leap year needs 54 calendar columns');
+assert.equal(periods.habitYear('2026-10-24').start, '2026-01-01');
+assert.equal(periods.habitYear('2026-10-24').end, '2026-12-31');
+assert.equal(periods.habitYear('2026-10-24').gridStart, '2025-12-29', 'The year grid aligns to Monday');
 assert.equal(periods.safeHabitDate('2026-02-30', '2026-10-24'), '2026-10-24');
 assert.equal(periods.safeHabitDate('2026-10-25', '2026-10-24'), '2026-10-24');
 assert.equal(periods.safeHabitDate('2026-10-20', '2026-10-24'), '2026-10-20');
@@ -32,7 +23,7 @@ assert.equal(periods.safeHabitDate(['2026-10-20'], '2026-10-24'), '2026-10-24');
 assert.deepEqual([0, 1, 2, 3].map((count) => heatmap.heatLevel(count, 3)), [0, 2, 3, 4]);
 const theme = {
   colors: { card: '#FFFFFF', label: '#000000', fill: '#EEEEEE', accent: '#217C46' }, accents: { purple: '#AF52DE', yellow: '#FFCC00' },
-  spacing: { xxs: 2, xs: 4, sm: 8 }, sizes: { touchTarget: 44, habitRing: 64, tickButton: 40, heatmapSquare: 10 }, radii: { lg: 14, sm: 8 },
+  spacing: { xxs: 2, xs: 4, sm: 8 }, sizes: { touchTarget: 44, habitRing: 64, tickButton: 40, heatmapSquare: 10, heatmapGap: 3 }, radii: { lg: 14, sm: 8 },
 };
 const colors = load('lib/dataColors.ts', { '@/constants/theme': { resolveAccent: (current, color) => current.accents[color] ?? color } });
 const palette = colors.dataColors(theme, 'purple');
@@ -81,17 +72,17 @@ const { HabitTracker } = load('components/habits/HabitTracker.tsx', {
 });
 const habit = { id: 1, name: 'Water', color: 'purple', dailyGoal: 3, activeDays: 127 };
 let picked;
-const month = HabitTracker({ habit, counts: { '2026-10-24': 3 }, mode: 'Month', anchor: '2026-10-24', today: '2026-10-24', onSelectDate: (day) => { picked = day; } });
-const monthGrid = month.props.children[0].props.children[1];
-assert.equal(monthGrid.type, 'Heatmap', 'Month uses the same compact grid as Year, not a calendar');
-assert.equal(monthGrid.props.startDate, '2026-09-28');
-assert.equal(monthGrid.props.minDate, '2026-10-01');
-assert.equal(monthGrid.props.maxDate, '2026-10-31');
-assert.equal(monthGrid.props.color, 'purple');
-monthGrid.props.onSelectDate('2026-10-24');
-assert.equal(picked, '2026-10-24');
-assert.equal(month.props.children[1].props.accessibilityLabel, '1 of 24 days done in October');
-const year = HabitTracker({ habit, counts: {}, mode: 'Year', anchor: '2026-10-24', today: '2026-10-24', fitWidth: 300 });
+const scrolled = [];
+const live = HabitTracker({ habit, counts: {}, anchor: '2026-10-24', today: '2026-10-24', onSelectDate: (day) => { picked = day; } });
+const liveScroll = live.props.children[1];
+assert.equal(liveScroll.type, 'ScrollView');
+liveScroll.props.ref.current = { scrollTo: (options) => scrolled.push(options.x) };
+liveScroll.props.onLayout({ nativeEvent: { layout: { width: 300 } } });
+const columnStep = theme.sizes.heatmapSquare + theme.sizes.heatmapGap;
+assert.equal(scrolled[0], (Math.floor(date.daysBetween('2025-12-29', '2026-10-24') / 7) + 3) * columnStep - 300, 'The tracker opens on today, not January');
+liveScroll.props.children.props.onSelectDate('2026-10-20');
+assert.equal(picked, '2026-10-20');
+const year = HabitTracker({ habit, counts: {}, anchor: '2026-10-24', today: '2026-10-24', fitWidth: 300 });
 assert.equal(year.type, 'Heatmap');
 assert.equal(year.props.minDate, '2026-01-01');
 assert.equal(year.props.maxDate, '2026-12-31');
@@ -127,4 +118,4 @@ const ids = [1, 2, 3];
 assert.deepEqual(Array.from(stack.moveItem(ids, 1, 2)), [2, 3, 1]);
 assert.deepEqual(ids, [1, 2, 3], 'Drag previews never mutate their input');
 assert.equal(stack.moveItem(ids, 1, -5), ids, 'Moving the first row up is a no-op');
-console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, custom colors, month selection, year bounds and drag ordering.');
+console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, custom colors, year scrolling and bounds, and drag ordering.');

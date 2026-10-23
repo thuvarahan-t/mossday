@@ -17,7 +17,7 @@ import { HabitCard } from './HabitCard';
 import { habitsShareContent } from './habitsShare';
 import { HabitSheet } from './HabitSheet';
 import { HabitPeriodControls } from './HabitPeriodControls';
-import { habitPeriod, type HabitTrackerMode } from './habitPeriod';
+import { habitYear } from './habitPeriod';
 
 export async function loadHabitData() {
   const [habits, logs] = await Promise.all([listHabits(), listHabitLogs('1970-01-01', todayLocalDate())]);
@@ -26,7 +26,6 @@ export async function loadHabitData() {
 export function HabitsScreen() {
   const theme = useTheme();
   const today = useToday();
-  const [mode, setMode] = useState<HabitTrackerMode>('Month');
   const [periodDate, setPeriodDate] = useState<string | null>(null);
   const anchor = periodDate ?? today;
   const [editor, setEditor, editorTransition] = useSheetState<Habit | 'new'>();
@@ -39,15 +38,15 @@ export function HabitsScreen() {
   const subtitle = active.length ? `${done} of ${active.length} done today` : 'Small daily wins';
   const shareImage = useShareImage();
   const shareHabits = () => {
-    if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitPeriod(mode, anchor).label, mode, anchor }));
+    if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitYear(anchor).label, anchor }));
   };
   return <LargeTitleScreen title="Habits" titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} addLabel="New habit" onAdd={() => setEditor('new')} />}
     subtitle={subtitle} scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md }}>
-    <HabitPeriodControls mode={mode} anchor={anchor} today={today} onModeChange={setMode} onAnchorChange={setPeriodDate} />
+    <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={setPeriodDate} />
     {error || !data ? <LoadState error={error} retry={refresh} /> : !data.habits.length ?
       <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
       <ReorderableStack items={data.habits} gap={theme.spacing.md} onReorder={reorder} onDraggingChange={setDragging}
-        renderItem={(habit) => <AnimatedListItem><HabitCard habit={habit} mode={mode} anchor={anchor} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} /></AnimatedListItem>} />}
+        renderItem={(habit) => <AnimatedListItem><HabitCard habit={habit} anchor={anchor} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} /></AnimatedListItem>} />}
     {editor && <HabitSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
   </LargeTitleScreen>;
 }

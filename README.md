@@ -43,12 +43,12 @@ a red Delete action. Deletion hides it from
 the picker while preserving old expenses; Undo
 restores it. Built-in categories cannot be deleted.
 
-Habits has Month / Year trackers in one compact control row. Both use the same
-contribution grid; Month also shows how many days met the goal. Tap a tracker
-date to adjust that day's count in the habit detail screen. Quick controls always
-apply to today: each tap adds one up to the daily goal; the visible Undo action
-removes one, and tapping a completed check also undoes one. Habit colours apply
-to cards, tracker cells, progress rings and Today badges in both themes.
+Habits shows one Year tracker per card, opened on the current week, with
+previous-year navigation. Tap a tracker date to adjust that day's count in the
+habit detail screen. Quick controls always apply to today: each tap adds one up
+to the daily goal; the visible Undo action removes one, and tapping a completed
+check also undoes one. Habit colours apply to cards, tracker cells, progress rings
+and Today badges in both themes.
 Hold a habit's name and drag to reorder the cards, like categories; holding
 without dragging opens Edit / Archive / Delete. The order persists (`habits.sortOrder`,
 schema v5), new habits append, and accessibility actions move a habit up or down.

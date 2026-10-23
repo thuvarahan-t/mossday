@@ -15,9 +15,8 @@ import { haptics } from '@/lib/haptics';
 import { dataColors } from '@/lib/dataColors';
 import { HabitTickButton } from './HabitTickButton';
 import { HabitTracker } from './HabitTracker';
-import type { HabitTrackerMode } from './habitPeriod';
 
-export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, anchor }: { habit: Habit; counts: Record<string, number>; onEdit: () => void; mode: HabitTrackerMode; anchor: string }) {
+export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, anchor }: { habit: Habit; counts: Record<string, number>; onEdit: () => void; anchor: string }) {
   const theme = useTheme();
   const palette = dataColors(theme, habit.color);
   const action = useAction();
@@ -50,7 +49,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, 
     <HabitTickButton name={habit.name} count={count} goal={habit.dailyGoal} color={habit.color}
       onTick={() => { haptics.tick(); void action(() => tickHabit(habit.id, today)); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
     </View>
-    <HabitTracker habit={habit} counts={counts} today={today} mode={mode} anchor={anchor}
+    <HabitTracker habit={habit} counts={counts} today={today} anchor={anchor}
       onSelectDate={(date) => router.push({ pathname: '/habit/[id]', params: { id: habit.id, date } })} />
   </Card>;
 });

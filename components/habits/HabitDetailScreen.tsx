@@ -19,7 +19,7 @@ import { HabitSheet } from './HabitSheet';
 import { dataColors } from '@/lib/dataColors';
 import { HabitPeriodControls } from './HabitPeriodControls';
 import { HabitTracker } from './HabitTracker';
-import { safeHabitDate, type HabitTrackerMode } from './habitPeriod';
+import { safeHabitDate } from './habitPeriod';
 
 export function HabitDetailScreen() {
   const { id, date } = useLocalSearchParams<{ id: string; date?: string }>();
@@ -27,7 +27,6 @@ export function HabitDetailScreen() {
   const action = useAction();
   const today = useToday();
   const [selected, setSelected] = useState(() => safeHabitDate(date, today));
-  const [mode, setMode] = useState<HabitTrackerMode>('Month');
   const [anchor, setAnchor] = useState(() => safeHabitDate(date, today));
   const [editing, selectEditing, editingTransition] = useSheetState<true>();
   const setEditing = (open: boolean) => selectEditing(open ? true : null);
@@ -40,14 +39,14 @@ export function HabitDetailScreen() {
   return <LargeTitleScreen title={habit ? `${habit.icon || '🌱'} ${habit.name}` : 'Habit'} showBack bottomInset="safeArea"
     headerRight={habit ? <GlassButton shape="pill" accessibilityLabel="Edit habit" onPress={() => setEditing(true)}><Text>Edit</Text></GlassButton> : undefined}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
-    <HabitPeriodControls mode={mode} anchor={anchor} today={today} onModeChange={setMode} onAnchorChange={(next) => { setAnchor(next); setSelected(next); }} />
+    <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={(next) => { setAnchor(next); setSelected(next); }} />
     {error || !data ? <LoadState error={error} retry={refresh} /> : !habit || !stats ? <Text align="center">This habit is no longer available.</Text> : <>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: theme.spacing.sm, paddingHorizontal: theme.sizes.titleInset }}>
         <AnimatedNumber value={stats.current} variant="display" rawColor={palette.accent} />
         <Text variant="title3" weight="regular" color="secondaryLabel">day streak</Text>
       </View>
       <Card style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
-        <HabitTracker habit={habit} counts={counts} mode={mode} anchor={anchor} today={today} selected={selected} onSelectDate={setSelected} />
+        <HabitTracker habit={habit} counts={counts} anchor={anchor} today={today} selected={selected} onSelectDate={setSelected} />
         {/* Selecting a historical date never changes the quick-tick date on the main cards. */}
         <View style={{ marginTop: theme.spacing.lg, marginHorizontal: -theme.sizes.cardPadding }}><Separator /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: theme.spacing.lg }}>
