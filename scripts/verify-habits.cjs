@@ -91,8 +91,12 @@ const liveScroll = live.props.children[1];
 assert.equal(liveScroll.type, 'ScrollView');
 liveScroll.props.ref.current = { scrollTo: (options) => scrolled.push(options.x) };
 liveScroll.props.onLayout({ nativeEvent: { layout: { width: 300 } } });
+assert.equal(scrolled.length, 0, 'Scrolling waits until the grid has a width, or Android ignores it');
+liveScroll.props.onContentSizeChange(2000, 130);
 const columnStep = theme.sizes.heatmapSquare + theme.sizes.heatmapGap;
 assert.equal(scrolled[0], (Math.floor(date.daysBetween('2025-12-29', '2026-10-24') / 7) + 3) * columnStep - 300, 'The tracker opens on today, not January');
+liveScroll.props.onLayout({ nativeEvent: { layout: { width: 300 } } });
+assert.equal(scrolled.length, 1, 'Later layouts never move the grid again');
 liveScroll.props.children.props.onSelectDate('2026-10-20');
 assert.equal(picked, '2026-10-20');
 const year = HabitTracker({ habit, counts: {}, anchor: '2026-10-24', today: '2026-10-24', fitWidth: 300 });
@@ -100,16 +104,23 @@ assert.equal(year.type, 'Heatmap');
 assert.equal(year.props.minDate, '2026-01-01');
 assert.equal(year.props.maxDate, '2026-12-31');
 assert.equal(year.props.color, 'purple');
+let scrubGesture;
+let grab;
 const { Heatmap } = load('components/ui/Heatmap.tsx', {
   ...common,
   'react-native': { View: 'View', Pressable: 'Pressable', StyleSheet: { create: (styles) => styles } },
   'react-native-svg': { default: 'Svg', Rect: 'Rect' }, './Text': { Text: 'Text' },
   '@/lib/date': date, '@/lib/heatmap': heatmap, '@/lib/haptics': { haptics: { selection: () => {} } },
+  'react-native-gesture-handler': {
+    GestureDetector: 'GestureDetector', usePanGesture: (config) => { scrubGesture = config; return config; },
+    GestureStateManager: { activate: () => { grab = 'active'; }, fail: () => { grab = 'failed'; } },
+  },
+  'react-native-worklets': { scheduleOnRN: (fn, ...args) => fn(...args) },
 });
 const yearlyGrid = Heatmap(year.props);
 assert.equal(yearlyGrid.props.children[1].props.children.length, 365, 'The year SVG contains only days in the selected year');
 picked = undefined;
-const interactiveYear = Heatmap({ ...year.props, onSelectDate: (day) => { picked = day; } });
+const interactiveYear = Heatmap({ ...year.props, onSelectDate: (day) => { picked = day; } }).props.children;
 assert.equal(interactiveYear.props.children.props.pointerEvents, 'box-only', 'Taps are measured on the grid, not the SVG below the month labels');
 interactiveYear.props.onPress({ nativeEvent: { locationX: 0, locationY: 18 } });
 assert.equal(picked, undefined, 'Padding days before January cannot be selected');
@@ -120,6 +131,29 @@ picked = undefined;
 const decemberOffset = date.daysBetween(year.props.startDate, '2026-12-31');
 interactiveYear.props.onPress({ nativeEvent: { locationX: Math.floor(decemberOffset / 7) * step + 0.1, locationY: 18 + (decemberOffset % 7) * step + 0.1 } });
 assert.equal(picked, undefined, 'Future days in the year cannot be edited');
+// Dragging the outlined day (20 October) moves the selection square by square.
+let scrubbing;
+Heatmap({ ...year.props, outlinedDate: '2026-10-20', onSelectDate: (day) => { picked = day; }, onScrubChange: (active) => { scrubbing = active; } });
+const cellCentre = (day) => {
+  const offset = date.daysBetween(year.props.startDate, day);
+  return { x: Math.floor(offset / 7) * step + year.props.squareSize / 2, y: 18 + (offset % 7) * step + year.props.squareSize / 2 };
+};
+scrubGesture.onTouchesDown({ handlerTag: 1, allTouches: [{ x: 0, y: 0 }] });
+assert.equal(grab, 'failed', 'Touches away from the outlined day leave taps and scrolling alone');
+scrubGesture.onTouchesDown({ handlerTag: 1, allTouches: [cellCentre('2026-10-20')] });
+assert.equal(grab, 'active', 'A touch on the outlined day grabs it');
+scrubGesture.onActivate();
+assert.equal(scrubbing, true);
+picked = undefined;
+scrubGesture.onUpdate(cellCentre('2026-10-13'));
+assert.equal(picked, '2026-10-13', 'Dragging a week back selects that day');
+picked = undefined;
+scrubGesture.onUpdate(cellCentre('2026-10-13'));
+assert.equal(picked, undefined, 'Staying on the same square does not reselect it');
+scrubGesture.onUpdate(cellCentre('2026-12-31'));
+assert.equal(picked, undefined, 'Dragging onto a future day does nothing');
+scrubGesture.onFinalize();
+assert.equal(scrubbing, false);
 const stack = load('components/ui/listOrder.ts');
 const heights = { 1: 200, 2: 100, 3: 150 };
 assert.deepEqual({ ...stack.stackTops([1, 2, 3], heights, 10) }, { 1: 0, 2: 210, 3: 320 }, 'Rows of different heights stack with the gap');
@@ -132,4 +166,4 @@ const ids = [1, 2, 3];
 assert.deepEqual(Array.from(stack.moveItem(ids, 1, 2)), [2, 3, 1]);
 assert.deepEqual(ids, [1, 2, 3], 'Drag previews never mutate their input');
 assert.equal(stack.moveItem(ids, 1, -5), ids, 'Moving the first row up is a no-op');
-console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, up-and-down tick cycle, custom colors, year scrolling and bounds, and drag ordering.');
+console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, up-and-down tick cycle, custom colors, year scrolling and bounds, drag-to-select days and card ordering.');

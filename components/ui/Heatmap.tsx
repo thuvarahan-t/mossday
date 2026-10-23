@@ -1,7 +1,9 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import { GestureDetector, GestureStateManager, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import Svg, { Rect } from 'react-native-svg';
+import { scheduleOnRN } from 'react-native-worklets';
 import { durations, scales } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
@@ -27,6 +29,8 @@ export type HeatmapProps = {
   gap?: number;
   showMonthLabels?: boolean;
   onSelectDate?: (date: LocalDate) => void;
+  /** Dragging the outlined square started (true) or ended; parents pause their scrolling. */
+  onScrubChange?: (scrubbing: boolean) => void;
   color?: string;
   minDate?: LocalDate;
   maxDate?: LocalDate;
@@ -35,6 +39,16 @@ export type HeatmapProps = {
 type Square = { date: LocalDate; x: number; y: number; level: number; future: boolean; inactive: boolean };
 
 const MONTH_LABEL_HEIGHT = 18;
+/** Touches this close to the outlined square's centre grab it; squares are far smaller than a fingertip. */
+const GRAB_RADIUS = 24;
+
+/** Day offset from the first column's Monday under a point in the grid, or -1 outside it. */
+export function heatmapIndexAt(x: number, y: number, step: number, top: number, weeks: number): number {
+  'worklet';
+  const column = Math.floor(x / step);
+  const row = Math.floor((y - top) / step);
+  return column < 0 || column >= weeks || row < 0 || row > 6 ? -1 : column * 7 + row;
+}
 
 /**
  * GitHub-style contribution grid (spec §5.3): columns are weeks, rows Monday→Sunday.
@@ -43,7 +57,7 @@ const MONTH_LABEL_HEIGHT = 18;
  */
 export const Heatmap = memo(function Heatmap({
   startDate, weeks, counts, today, dailyGoal = 1, activeDays = 127, outlinedDate, future = 'hidden',
-  squareSize, gap, showMonthLabels, onSelectDate, color, minDate, maxDate,
+  squareSize, gap, showMonthLabels, onSelectDate, onScrubChange, color, minDate, maxDate,
 }: HeatmapProps) {
   const theme = useTheme();
   const palette = useMemo(() => color ? dataColors(theme, color).heatmap : theme.heatmap, [color, theme]);
@@ -76,16 +90,48 @@ export const Heatmap = memo(function Heatmap({
 
   const outlined = squares.find((square) => square.date === outlinedDate);
 
-  const onPress = (event: GestureResponderEvent) => {
-    if (!onSelectDate) return;
-    const column = Math.floor(event.nativeEvent.locationX / step);
-    const row = Math.floor((event.nativeEvent.locationY - top) / step);
-    if (column < 0 || column >= weeks || row < 0 || row > 6) return;
-    const date = addDays(startDate, column * 7 + row);
-    if (date > today || (minDate && date < minDate) || (maxDate && date > maxDate)) return;
+  /** Selects the day at `index` if it is in range and not in the future. */
+  const selectIndex = (index: number) => {
+    if (!onSelectDate || index < 0) return;
+    const date = addDays(startDate, index);
+    if (date > today || (minDate && date < minDate) || (maxDate && date > maxDate) || date === outlinedDate) return;
     haptics.selection();
     onSelectDate(date);
   };
+  const onPress = (event: GestureResponderEvent) => {
+    selectIndex(heatmapIndexAt(event.nativeEvent.locationX, event.nativeEvent.locationY, step, top, weeks));
+  };
+  const setScrubbing = (scrubbing: boolean) => onScrubChange?.(scrubbing);
+
+  // Grab the outlined square and drag it: it follows the finger day by day (springing
+  // between squares with a tick each). Touches elsewhere fail at once, so taps select and
+  // a surrounding scroll view still scrolls.
+  const grabX = outlined ? outlined.x + size / 2 : -1;
+  const grabY = outlined ? outlined.y + top + size / 2 : -1;
+  const lastIndex = useSharedValue(-1);
+  const scrub = usePanGesture({
+    enabled: !!onSelectDate && !!outlined,
+    manualActivation: true,
+    onTouchesDown: (event) => {
+      const touch = event.allTouches[0];
+      const grabbed = !!touch && Math.hypot(touch.x - grabX, touch.y - grabY) <= GRAB_RADIUS;
+      if (grabbed) GestureStateManager.activate(event.handlerTag);
+      else GestureStateManager.fail(event.handlerTag);
+    },
+    onActivate: () => {
+      lastIndex.set(-1);
+      scheduleOnRN(setScrubbing, true);
+    },
+    onUpdate: (event) => {
+      const index = heatmapIndexAt(event.x, event.y, step, top, weeks);
+      if (index < 0 || index === lastIndex.get()) return;
+      lastIndex.set(index);
+      scheduleOnRN(selectIndex, index);
+    },
+    onFinalize: () => {
+      scheduleOnRN(setScrubbing, false);
+    },
+  });
 
   // `box-only` makes this view the touch target: locationX/Y are reported relative to the
   // view touched, and the SVG below the month labels would shift every tap by a row.
@@ -119,7 +165,9 @@ export const Heatmap = memo(function Heatmap({
   );
 
   if (!onSelectDate) return grid;
-  return <Pressable onPress={onPress} accessibilityLabel="Habit history" accessibilityHint="Tap a day to edit it">{grid}</Pressable>;
+  return <GestureDetector gesture={scrub}>
+    <Pressable onPress={onPress} accessibilityLabel="Habit history" accessibilityHint="Tap a day, or drag the outlined day, to choose it">{grid}</Pressable>
+  </GestureDetector>;
 });
 
 /**

@@ -29,6 +29,7 @@ export function HabitDetailScreen() {
   const today = useToday();
   const [selected, setSelected] = useState(() => safeHabitDate(date, today));
   const [anchor, setAnchor] = useState(() => safeHabitDate(date, today));
+  const [scrubbing, setScrubbing] = useState(false);
   const [editing, selectEditing, editingTransition] = useSheetState<true>();
   const setEditing = (open: boolean) => selectEditing(open ? true : null);
   const { data, error, refresh } = useResource(useCallback(async () => ({ habit: await getHabit(Number(id)), logs: await listHabitLogs('1970-01-01', todayLocalDate()) }), [id]));
@@ -37,7 +38,7 @@ export function HabitDetailScreen() {
   const counts = Object.fromEntries((data?.logs ?? []).filter((l) => l.habitId === Number(id)).map((l) => [l.date, l.count]));
   const stats = habit ? habitStats(habit, counts, today) : null;
   const count = counts[selected] ?? 0;
-  return <LargeTitleScreen title={habit ? `${habit.icon || '🌱'} ${habit.name}` : 'Habit'} showBack bottomInset="safeArea"
+  return <LargeTitleScreen title={habit ? `${habit.icon || '🌱'} ${habit.name}` : 'Habit'} showBack bottomInset="safeArea" scrollEnabled={!scrubbing}
     headerRight={habit ? <GlassButton shape="pill" accessibilityLabel="Edit habit" onPress={() => setEditing(true)}><Text>Edit</Text></GlassButton> : undefined}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={(next) => { setAnchor(next); setSelected(next); }} />
@@ -47,7 +48,7 @@ export function HabitDetailScreen() {
         <Text variant="title3" weight="regular" color="secondaryLabel">day streak</Text>
       </View>
       <Card style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
-        <HabitTracker habit={habit} counts={counts} anchor={anchor} today={today} selected={selected} onSelectDate={setSelected} />
+        <HabitTracker habit={habit} counts={counts} anchor={anchor} today={today} selected={selected} onSelectDate={setSelected} onScrubChange={setScrubbing} />
         {/* Selecting a historical date never changes the quick-tick date on the main cards. */}
         <View style={{ marginTop: theme.spacing.lg, marginHorizontal: -theme.sizes.cardPadding }}><Separator /></View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: theme.spacing.lg }}>
