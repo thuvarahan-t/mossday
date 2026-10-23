@@ -99,7 +99,9 @@ export function TodayScreen() {
         </View>
       </Card></AnimatedListItem>
       <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
-      <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around' }}>
+      {/* The scroll view clips its content, so padding gives a completed ring room to pop. */}
+      <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: -theme.spacing.sm }}
+        contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around', paddingVertical: theme.spacing.sm }}>
         {active.length ? active.map((habit) => <View key={habit.id} style={{ alignItems: 'center', gap: theme.spacing.sm }}>
           <HabitTickButton name={habit.name} color={habit.color} count={countFor(habit.id)} goal={habit.dailyGoal} emoji={habit.icon || '🌱'} onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
           <Text variant="subheadline" style={{ color: dataColors(theme, habit.color).accent }}>{habit.name}</Text>
