@@ -27,6 +27,13 @@ acceptance still includes device checks; the UI plan keeps those boxes open.
   grouped form, diary carry-over row and calendar view, section spacing and
   Settings rows. Web preview renders list items without layout animations.
 
+- [x] Android emulator pass (AVD `Small_Phone`, 360×640 dp, Expo Go 58.0.5): expense
+  add/edit/swipe-delete/Undo, habit add/tick/long-press undo/context-menu delete,
+  to-do add/check/delete/Undo, journal autosave, note create/type/empty-note cleanup,
+  daily budget → Today bar. Fixed on device: tab scenes splitting the screen height,
+  sheets/keypad overflowing short screens, keyboard covering the note toolbar and
+  journal, context-menu offset, truncated tab labels, clipped heatmap column.
+
 ## Release and device checklist
 
 - [ ] Note editor and recording state were not compared in the web preview;
@@ -43,7 +50,8 @@ acceptance still includes device checks; the UI plan keeps those boxes open.
 ## Environment evidence
 
 EAS CLI `whoami` returns **Not logged in**. No Git remote/upstream is configured.
-ADB reports no attached phone; emulator discovery returns no available AVDs.
+The `Small_Phone` AVD (Android 37) is available; boot it with `-memory 4096` because
+Expo Go 58 is killed for low memory at the default 1 GB.
 Computer-use inventory reports no browsers or app windows, so visual/native flow
 verification cannot be claimed in this session.
 
