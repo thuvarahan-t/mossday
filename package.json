@@ -49,7 +49,7 @@
     "web": "expo start --web",
     "test": "node scripts/verify-foundation.cjs && node scripts/verify-voice-recorder.cjs && node scripts/verify-repositories.cjs && node scripts/verify-services.cjs && node scripts/verify-today.cjs && node scripts/verify-sheets.cjs",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint src components constants hooks lib scripts --max-warnings 0"
   },
   "private": true
 }

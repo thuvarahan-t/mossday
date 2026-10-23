@@ -6,6 +6,8 @@ Tick each box (`[x]`) only after that part is finished, type-checked and committ
 **Current audit (2026-10-23):** Feature code is ahead of the older session logs.
 See [remaining work](REMAINING-WORK.md) for implementation evidence, current
 checks, and device/release tasks. Screen boxes remain open pending verification.
+The [motion checklist](MOTION-CHECKLIST.md) lists implemented feedback and device
+acceptance checks. All feature implementations are now committed.
 
 **Sources of truth**
 - `design/*.png` → how every screen must LOOK (layout, spacing, colours, sizes). Local only — `design/` is git-ignored and never pushed.

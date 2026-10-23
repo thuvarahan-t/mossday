@@ -2,8 +2,8 @@
 
 Offline Android app built with Expo, React Native, TypeScript, and Expo Router.
 Includes feature tabs, local SQLite storage, expenses, habit heatmaps, diary tasks
-and journal, and notes with photo and voice blocks. Today and Settings are being
-integrated. See [remaining work](docs/REMAINING-WORK.md) for current evidence.
+and journal, and notes with photo and voice blocks. Today and Settings are wired
+to local data. See [remaining work](docs/REMAINING-WORK.md) for verification status.
 
 ## Run
 
@@ -26,7 +26,7 @@ spec.md        Product specification and progress
 `mossday.db` lives in the app's private storage on the phone. The schema and
 11 default categories initialize atomically once, tracked by SQLite's
 `user_version`. Restarting preserves data and never reseeds deleted categories.
-Future screen data access goes through `lib/repos/` repositories.
+Screen data access goes through `lib/repos/` repositories.
 Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
 
 ## Verify
@@ -45,11 +45,22 @@ to the home screen in production. Device appearance and native gestures still
 need a phone check; automated checks do not establish visual fidelity.
 
 Continue screen work using [the UI build plan](docs/UI-BUILD-PLAN.md). The app shell
-and Today screen have working-tree implementations; phone verification remains pending.
+and Today screen are committed; phone verification remains pending.
 No Git remote is configured, so commits are currently local.
 
 Run `npm test` for SQLite migration, seed persistence, foreign key, cascade, local date, and money checks.
 It also covers keypad limits, heatmap levels, and mocked voice recorder lifecycle
 regressions (release during setup, save/cancel, stop failure, and unmount).
+
+Run `npm run lint` and `npm run typecheck` before committing. Tests also cover
+backup/reminder services, photo cleanup, midnight refresh and sheet sequencing.
+Use [the motion checklist](docs/MOTION-CHECKLIST.md) for device acceptance.
+
+## Android preview APK
+
+Run `npx eas-cli@latest login`, then `npx eas-cli@latest init` to link your Expo
+project, and `npx eas-cli@latest build --platform android --profile preview`.
+The checked-in `eas.json` requests an APK; production requests an AAB.
+EAS is currently not logged in; no cloud build or APK install has been verified.
 
 Dependency audit: the generated SDK 58 dependency tree reports 19 high-severity advisories. npm proposes incompatible Expo/React Native downgrades; these have not been applied. Review compatible upstream fixes before release.

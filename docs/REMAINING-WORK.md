@@ -1,51 +1,54 @@
 # Remaining work — 23 October 2026
 
-Open UI checklist boxes require implementation and phone verification. They do
-not mean the corresponding screen is absent.
+Implementation is committed in focused increments on `feat/ios-ui`. Screen
+acceptance still includes device checks; the UI plan keeps those boxes open.
 
-## Implementation audit
+## Completed implementation
 
-| Area | Evidence | Remaining |
-| --- | --- | --- |
-| Repositories | `7d66262`; persistent feature repositories | Phone persistence checks |
-| Expenses | `293a201`; entry sheets, categories, day/week/month, delete/undo | Design, date picker and gesture checks |
-| Habits | `ebb3149`; heatmaps, streaks, detail and past-day changes | Native tick/reminder and inactive-day checks |
-| Diary | `1f18c86`; tasks, calendar, carry-over and journal | Native autosave/reorder checks |
-| Notes | `a3cd9cd`; search, folders, pin and block editor | Native camera, voice, keyboard and media checks |
-| Today / Quick Add | Existing uncommitted implementation | Midnight refresh added; verify live totals and add flows |
-| Settings | Existing uncommitted implementation | Appearance, budgets, reminders and ZIP sharing device checks |
-| Release | Existing untracked preview APK configuration | EAS project/account setup, APK build and install |
+- [x] Repositories, serialized writes, query indexes and safe category migrations.
+- [x] Today live totals, budget states, meals, habit rings, tasks and Quick Add.
+- [x] Expense entry/edit, presets, one-time entries, category grid, day/week/month and Undo.
+- [x] Habit list, tick/undo, heatmaps, detail, historical edits, streaks and reminders.
+- [x] Diary tasks, reorder, carry-over, calendar, journal and mood autosave.
+- [x] Notes search, pin/folder/colour, text/image/voice/checklist blocks and media cleanup.
+- [x] Settings budgets, appearance, meal reminders, ZIP backup and storage.
+- [x] Shared motion pass: selections, focus, charts, lists, sheets, tabs, numbers,
+  habit feedback, context menus, toast and Reduce Motion handling.
+- [x] Routes moved to `src/app/` as required by AGENTS.md.
+- [x] Today and expense category bars follow UI analysis R7/R9.
+- [x] Native time and category controls added to the light/dark gallery.
+- [x] Six test suites, strict TypeScript and source lint pass.
+- [x] Expo Doctor reports 20/20 checks passed.
+- [x] Android and iOS production Hermes bundles compile.
+- [x] Four Inter weights are bundled instead of the entire family.
 
-## Next checklist
+## Release and device checklist
 
-- [x] Read all project Markdown, inspect branch, upstream, remotes and existing changes.
-- [x] Run foundation, recorder, repository and service suites.
-- [x] Add tested local-midnight/foreground refresh for Today.
-- [x] Fix autosave render-time ref write and service/script lint failures.
 - [ ] Compare every Phase 6 screen with its design on mobile in light/dark mode.
-- [ ] Verify Phase 4 interactions with Reduce Motion enabled and disabled.
-- [ ] Resolve current `app/` versus AGENTS' required `src/app/` layout.
-- [ ] Reconcile UI-ANALYSIS decisions with implementation: Today has recent notes
-  and a mini chart despite R9; Expenses has a donut despite R7. Diary calendar is
-  a mode within DiaryScreen, rather than the separate routes in the analysis.
-- [ ] Review and commit pre-existing Today, Settings, notification and UI work in coherent increments.
-- [ ] Diagnose local Hermes bytecode export failure; JS-only export is a separate check.
-- [ ] Build preview APK with EAS and test on Android.
-- [ ] Configure the intended remote/upstream and push validated commits.
+- [ ] Run the [motion acceptance checks](MOTION-CHECKLIST.md) on a device.
+- [ ] Verify camera, audio, permissions, keyboard and media ownership on device.
+- [ ] Verify reminders arrive and reschedule after edits, archive/delete and restart.
+- [ ] Share a ZIP from a device and inspect its database and media files.
+- [ ] Log in to EAS, link the project and build/install the preview APK.
+- [ ] Configure the intended Git remote/upstream and push validated commits.
 
-## Validation and environment
+## Environment evidence
 
-SDK 58 docs were consulted before API edits. TypeScript, ESLint over source
-directories, the four existing suites, and `node scripts/verify-today.cjs` pass.
-The new test covers local midnight, resume after multiple days and cleanup.
+EAS CLI `whoami` returns **Not logged in**. No Git remote/upstream is configured.
+ADB reports no attached phone; emulator discovery returns no available AVDs.
+Computer-use inventory reports no browsers or app windows, so visual/native flow
+verification cannot be claimed in this session.
 
-Node/npm are absent from this shell's PATH; checks used the installed Codex Node
-24 runtime directly. Expo lint delegates to unavailable `npx`, so ESLint was run
-directly. Metro starts on port 8081. ADB reports no attached devices. Android
-export reached Hermes, whose compiler exited unsuccessfully. A subsequent Android
-JS export with `--no-bytecode` passed (4,008 modules). This is not an APK
-verification. No Git remote or branch upstream is configured.
+The earlier Hermes error was sandbox execution denial. Running the installed
+compiler/export with execution permission succeeds. Outputs are ignored under
+`dist/`; they are bundles, not installable APKs.
 
-Pre-existing user edits are preserved. Older session logs describe their original
-checkpoints, not today's implementation. Keep screen completion boxes open until
-their design and native verification requirements are met.
+Node/npm were absent from PATH. The installed Codex Node 24 runtime and official
+npm CLI obtained via Corepack run the project commands. Temporary CLI shims and
+caches remain ignored inside `.expo/`. Lint explicitly covers all source and
+verification directories, with zero warnings allowed.
+
+Tests cover migrations/seed preservation, money/date helpers, repository CRUD and
+rollback, concurrent ticks, streaks, carry-over/reorder, journal and note blocks,
+recorder lifecycle, reminder reconciliation/permissions, ZIP/media ownership,
+photo-buffer cleanup, midnight refresh and sheet dismissal sequencing.
