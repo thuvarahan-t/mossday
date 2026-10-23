@@ -14,11 +14,12 @@ export type ProgressRingProps = {
   strokeWidth?: number;
   /** Raw colour for data-coloured rings (habit colour); defaults to the green bar tint. */
   color?: string;
+  trackColor?: string;
   children?: ReactNode;
 };
 
 /** Activity-style ring; the arc springs to its new length. */
-export const ProgressRing = memo(function ProgressRing({ progress, size, strokeWidth = 5, color, children }: ProgressRingProps) {
+export const ProgressRing = memo(function ProgressRing({ progress, size, strokeWidth = 5, color, trackColor, children }: ProgressRingProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const side = size ?? theme.sizes.habitRing;
@@ -35,7 +36,7 @@ export const ProgressRing = memo(function ProgressRing({ progress, size, strokeW
   return (
     <View style={{ width: side, height: side }}>
       <Svg width={side} height={side} style={styles.rotate}>
-        <Circle cx={side / 2} cy={side / 2} r={radius} stroke={theme.colors.fill} strokeWidth={strokeWidth} fill="none" />
+        <Circle cx={side / 2} cy={side / 2} r={radius} stroke={trackColor ?? theme.colors.fill} strokeWidth={strokeWidth} fill="none" />
         <AnimatedCircle
           cx={side / 2} cy={side / 2} r={radius}
           stroke={color ?? theme.colors.accentBar}

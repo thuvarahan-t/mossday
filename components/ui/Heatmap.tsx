@@ -28,6 +28,8 @@ export type HeatmapProps = {
   showMonthLabels?: boolean;
   onSelectDate?: (date: LocalDate) => void;
   color?: string;
+  minDate?: LocalDate;
+  maxDate?: LocalDate;
 };
 
 type Square = { date: LocalDate; x: number; y: number; level: number; future: boolean; inactive: boolean };
@@ -41,7 +43,7 @@ const MONTH_LABEL_HEIGHT = 18;
  */
 export const Heatmap = memo(function Heatmap({
   startDate, weeks, counts, today, dailyGoal = 1, activeDays = 127, outlinedDate, future = 'hidden',
-  squareSize, gap, showMonthLabels, onSelectDate, color,
+  squareSize, gap, showMonthLabels, onSelectDate, color, minDate, maxDate,
 }: HeatmapProps) {
   const theme = useTheme();
   const palette = useMemo(() => color ? dataColors(theme, color).heatmap : theme.heatmap, [color, theme]);
@@ -58,6 +60,7 @@ export const Heatmap = memo(function Heatmap({
     for (let week = 0; week < weeks; week += 1) {
       for (let day = 0; day < 7; day += 1) {
         const date = addDays(startDate, week * 7 + day);
+        if ((minDate && date < minDate) || (maxDate && date > maxDate)) continue;
         // Label a month above its first full week (the column whose Monday is the 1st–7th).
         if (day === 0 && dayOfMonth(date) <= 7) labels.push({ x: week * step, text: monthShort(date) });
         cells.push({
@@ -69,7 +72,7 @@ export const Heatmap = memo(function Heatmap({
       }
     }
     return { squares: cells, monthLabels: labels };
-  }, [activeDays, counts, dailyGoal, startDate, step, today, weeks]);
+  }, [activeDays, counts, dailyGoal, startDate, step, today, weeks, minDate, maxDate]);
 
   const outlined = squares.find((square) => square.date === outlinedDate);
 
@@ -79,7 +82,7 @@ export const Heatmap = memo(function Heatmap({
     const row = Math.floor((event.nativeEvent.locationY - top) / step);
     if (column < 0 || column >= weeks || row < 0 || row > 6) return;
     const date = addDays(startDate, column * 7 + row);
-    if (date > today) return;
+    if (date > today || (minDate && date < minDate) || (maxDate && date > maxDate)) return;
     haptics.selection();
     onSelectDate(date);
   };
@@ -107,7 +110,7 @@ export const Heatmap = memo(function Heatmap({
       {outlined && (
         <HeatmapSquare
           x={outlined.x} y={outlined.y + top} size={size}
-          color={palette[outlined.level]} count={counts[outlined.date] ?? 0}
+          color={palette[outlined.level]} outlineColor={color ? palette[4] : undefined} count={counts[outlined.date] ?? 0}
         />
       )}
     </View>
@@ -121,7 +124,7 @@ export const Heatmap = memo(function Heatmap({
  * The highlighted square: springs to its position and pops (1 → 1.15 → 1) when its count
  * changes, so a tick visibly lands on today's square.
  */
-export function HeatmapSquare({ x, y, size, color, count }: { x: number; y: number; size: number; color: string; count: number }) {
+export function HeatmapSquare({ x, y, size, color, count, outlineColor }: { x: number; y: number; size: number; color: string; count: number; outlineColor?: string }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const left = useSharedValue(x);
@@ -154,7 +157,7 @@ export function HeatmapSquare({ x, y, size, color, count }: { x: number; y: numb
       pointerEvents="none"
       style={[styles.square, {
         width: size + outline * 2, height: size + outline * 2, marginLeft: -outline, marginTop: -outline,
-        borderRadius: theme.radii.hairline + outline, borderWidth: outline, borderColor: theme.colors.label,
+        borderRadius: theme.radii.hairline + outline, borderWidth: outline, borderColor: outlineColor ?? theme.colors.label,
         backgroundColor: color,
       }, style]}
     />

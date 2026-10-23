@@ -1,34 +1,28 @@
 import { router } from 'expo-router';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { ContextMenu } from '@/components/ui/ContextMenu';
-import { Heatmap } from '@/components/ui/Heatmap';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
 import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useToday } from '@/hooks/useToday';
-import { addDays, startOfWeek } from '@/lib/date';
 import { archiveHabit, deleteHabit, habitStats, restoreHabit, tickHabit, type Habit } from '@/lib/repos/habits';
 import { haptics } from '@/lib/haptics';
 import { dataColors } from '@/lib/dataColors';
 import { HabitTickButton } from './HabitTickButton';
+import { HabitTracker } from './HabitTracker';
+import type { HabitTrackerMode } from './habitPeriod';
 
-export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { habit: Habit; counts: Record<string, number>; onEdit: () => void }) {
+export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, mode, anchor }: { habit: Habit; counts: Record<string, number>; onEdit: () => void; mode: HabitTrackerMode; anchor: string }) {
   const theme = useTheme();
   const palette = dataColors(theme, habit.color);
   const action = useAction();
   const toast = useToast();
   const today = useToday();
   const count = counts[today] ?? 0;
-  const [width, setWidth] = useState(0);
-  const gap = theme.sizes.heatmapGap;
-  const weeks = Math.max(1, Math.floor((width + gap) / (theme.sizes.heatmapSquare + gap)));
-  // Squares stretch slightly so the grid ends flush with the card edge (UI analysis R15);
-  // floored to whole pixels' worth so rounding never clips the last column.
-  const squareSize = Math.floor(((width - (weeks - 1) * gap) / weeks) * 10) / 10;
   const stats = habitStats(habit, counts, today);
   return <Card padding="row" style={{ backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.border }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingBottom: theme.spacing.lg }}>
@@ -42,14 +36,15 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit }: { ha
     ]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
         <View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: palette.tint }}><Text variant="title2">{habit.icon || '🌱'}</Text></View>
-        <View style={{ flex: 1 }}><Text variant="title3" style={{ color: palette.accent }}>{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="body" rawColor={palette.accent} /></View>
+        <View style={{ flex: 1 }}><Text variant="title3" numberOfLines={2} style={{ color: palette.accent }}>{habit.name}</Text><AnimatedNumber value={stats.current} format={(value) => `${value}-day streak`} variant="footnote" rawColor={palette.accent} /></View>
       </View>
     </ContextMenu>
+    <View style={{ alignItems: 'center' }}><Text variant="caption2" color="secondaryLabel">Today</Text>
     <HabitTickButton name={habit.name} count={count} goal={habit.dailyGoal} color={habit.color}
       onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
     </View>
-    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      {width > 0 && <Heatmap color={habit.color} startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize} counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} outlinedDate={today} />}
     </View>
+    <HabitTracker habit={habit} counts={counts} today={today} mode={mode} anchor={anchor}
+      onSelectDate={(date) => router.push({ pathname: '/habit/[id]', params: { id: habit.id, date } })} />
   </Card>;
 });

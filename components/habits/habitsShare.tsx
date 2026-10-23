@@ -1,20 +1,18 @@
 import { View } from 'react-native';
 import { ShareLine, SharePanel, SHARE_CARD_WIDTH, type ShareCardContent } from '@/components/share/ShareCard';
-import { Heatmap } from '@/components/ui/Heatmap';
 import { Text } from '@/components/ui/Text';
 import type { Theme } from '@/constants/theme';
-import { addDays, startOfWeek } from '@/lib/date';
+import { HabitTracker } from './HabitTracker';
+import type { HabitTrackerMode } from './habitPeriod';
 import { habitStats, type Habit, type HabitLog } from '@/lib/repos/habits';
+import { dataColors } from '@/lib/dataColors';
 
-/** Habits tab as an image: each habit with its streak and the last weeks of its heatmap. */
-export function habitsShareContent({ theme, habits, logs, today, subtitle }: {
-  theme: Theme; habits: Habit[]; logs: HabitLog[]; today: string; subtitle: string;
+/** Share the selected calendar period using each habit's own colour. */
+export function habitsShareContent({ theme, habits, logs, today, subtitle, mode, anchor }: {
+  theme: Theme; habits: Habit[]; logs: HabitLog[]; today: string; subtitle: string; mode: HabitTrackerMode; anchor: string;
 }): ShareCardContent {
   // Card width minus the card's and the panel's horizontal padding.
   const gridWidth = SHARE_CARD_WIDTH - theme.spacing.xl * 2 - theme.spacing.lg * 2;
-  const gap = theme.sizes.heatmapGap;
-  const weeks = Math.floor((gridWidth + gap) / (theme.sizes.heatmapSquare + gap));
-  const squareSize = Math.floor(((gridWidth - (weeks - 1) * gap) / weeks) * 10) / 10;
   return {
     icon: 'habits',
     title: 'Habits',
@@ -25,10 +23,9 @@ export function habitsShareContent({ theme, habits, logs, today, subtitle }: {
         const streak = habitStats(habit, counts, today).current;
         return <SharePanel key={habit.id}>
           <ShareLine title={habit.name} detail={streak === 1 ? '1-day streak' : `${streak}-day streak`}
-            leading={<Text variant="title2">{habit.icon || '🌱'}</Text>}
+            leading={<View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: dataColors(theme, habit.color).tint }}><Text variant="title2">{habit.icon || '🌱'}</Text></View>}
             value={`${counts[today] ?? 0}/${habit.dailyGoal}`} />
-          <Heatmap color={habit.color} startDate={addDays(startOfWeek(today), -(weeks - 1) * 7)} weeks={weeks} squareSize={squareSize}
-            counts={counts} today={today} dailyGoal={habit.dailyGoal} activeDays={habit.activeDays} />
+          <HabitTracker habit={habit} counts={counts} today={today} mode={mode} anchor={anchor} fitWidth={gridWidth} />
         </SharePanel>;
       })}
     </View>,

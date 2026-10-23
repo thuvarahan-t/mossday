@@ -39,6 +39,12 @@ a red Delete action. Deletion hides it from
 the picker while preserving old expenses; Undo
 restores it. Built-in categories cannot be deleted.
 
+Habits has Month / Year trackers with previous-period navigation. Tap a tracker
+date to adjust that day's count in the habit detail screen. Quick controls always
+apply to today: each tap adds one up to the daily goal; the visible Undo action
+removes one, and tapping a completed check also undoes one. Habit colours apply
+to cards, tracker cells, progress rings and Today badges in both themes.
+
 ## Verify
 
 Run `npx tsc --noEmit` and `npx expo-doctor`.

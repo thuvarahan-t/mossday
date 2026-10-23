@@ -19,6 +19,7 @@ export const HabitTickButton = memo(function HabitTickButton({ name, count, goal
   const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const previous = useRef(count);
+  const held = useRef(false);
   useEffect(() => {
     if (previous.current !== count && !reduced) scale.set(withSequence(animateTo(scales.pop, 'bouncy', false), animateTo(1, 'bouncy', false)));
     previous.current = count;
@@ -30,15 +31,17 @@ export const HabitTickButton = memo(function HabitTickButton({ name, count, goal
   return <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
     <PressableScale disabled={disabled} accessibilityLabel={`${done ? 'Undo' : 'Tick'} ${name}, ${count} of ${goal}`}
       accessibilityHint={done ? 'Remove one tick' : 'Add one tick. Use Undo below to remove a tick.'}
-      onPress={done ? onUndo : onTick} onLongPress={count > 0 ? onUndo : undefined}
+      onPressIn={() => { held.current = false; }}
+      onPress={() => { if (!held.current) { if (done) onUndo(); else onTick(); } }}
+      onLongPress={count > 0 ? () => { held.current = true; onUndo(); } : undefined}
       style={{ minWidth: theme.sizes.touchTarget, minHeight: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View style={style}>
-        {emoji ? <ProgressRing progress={count / goal} color={palette.accent}>
+        {emoji ? <ProgressRing progress={count / goal} color={palette.accent} trackColor={palette.tint}>
           <View style={[circle, { width: side - 16, height: side - 16, backgroundColor: palette.tint }]}>
             <Text variant="title2">{emoji}</Text>
           </View>
-        </ProgressRing> : done ? <View style={[circle, { backgroundColor: palette.accent }]}><Icon name="check" color="onAccent" strokeWidth={3} /></View>
-          : <ProgressRing progress={count / goal} color={palette.accent} size={side} strokeWidth={4}>
+        </ProgressRing> : done ? <View style={[circle, { backgroundColor: palette.accent }]}><Icon name="check" rawColor={palette.onAccent} strokeWidth={3} /></View>
+          : <ProgressRing progress={count / goal} color={palette.accent} trackColor={palette.tint} size={side} strokeWidth={4}>
             <Icon name="plus" rawColor={palette.accent} strokeWidth={2.6} />
           </ProgressRing>}
       </Animated.View>

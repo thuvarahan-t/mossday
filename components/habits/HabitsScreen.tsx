@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -14,6 +15,8 @@ import { isActiveDay } from '@/lib/heatmap';
 import { HabitCard } from './HabitCard';
 import { habitsShareContent } from './habitsShare';
 import { HabitSheet } from './HabitSheet';
+import { HabitPeriodControls } from './HabitPeriodControls';
+import { habitPeriod, type HabitTrackerMode } from './habitPeriod';
 
 export async function loadHabitData() {
   const [habits, logs] = await Promise.all([listHabits(), listHabitLogs('1970-01-01', todayLocalDate())]);
@@ -22,6 +25,9 @@ export async function loadHabitData() {
 export function HabitsScreen() {
   const theme = useTheme();
   const today = useToday();
+  const [mode, setMode] = useState<HabitTrackerMode>('Month');
+  const [periodDate, setPeriodDate] = useState<string | null>(null);
+  const anchor = periodDate ?? today;
   const [editor, setEditor, editorTransition] = useSheetState<Habit | 'new'>();
   const { data, error, refresh } = useResource(loadHabitData);
   const active = data?.habits.filter((habit) => isActiveDay(habit.activeDays, today)) ?? [];
@@ -29,12 +35,13 @@ export function HabitsScreen() {
   const subtitle = active.length ? `${done} of ${active.length} done today` : 'Small daily wins';
   const shareImage = useShareImage();
   const shareHabits = () => {
-    if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle }));
+    if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitPeriod(mode, anchor).label, mode, anchor }));
   };
   return <LargeTitleScreen title="Habits" titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} addLabel="New habit" onAdd={() => setEditor('new')} />} subtitle={subtitle} contentContainerStyle={{ gap: theme.spacing.md }}>
+    <HabitPeriodControls mode={mode} anchor={anchor} today={today} onModeChange={setMode} onAnchorChange={setPeriodDate} />
     {error || !data ? <LoadState error={error} retry={refresh} /> : !data.habits.length ?
       <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
-      data.habits.map((habit) => <AnimatedListItem key={habit.id}><HabitCard habit={habit} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} /></AnimatedListItem>)}
+      data.habits.map((habit) => <AnimatedListItem key={habit.id}><HabitCard habit={habit} mode={mode} anchor={anchor} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} /></AnimatedListItem>)}
     {editor && <HabitSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
   </LargeTitleScreen>;
 }
