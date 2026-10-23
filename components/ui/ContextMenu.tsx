@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import { Fragment, useCallback, useRef, useState, type ComponentRef, type ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import { Modal, Platform, Pressable, StatusBar, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -51,7 +51,10 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
   const open = () => {
     anchor.current?.measureInWindow((x, y, width, height) => {
       haptics.tick();
-      setFrame({ x, y, width, height });
+      // The menu's modal window covers the whole screen. When the app window starts below the
+      // Android status bar (not edge-to-edge, e.g. Expo Go) its insets are 0, so shift by the bar.
+      const windowTop = Platform.OS === 'android' ? Math.max(0, (StatusBar.currentHeight ?? 0) - insets.top) : 0;
+      setFrame({ x, y: y + windowTop, width, height });
       progress.set(0);
       progress.set(animateTo(1, 'default', reduceMotion));
     });
