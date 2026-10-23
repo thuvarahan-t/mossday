@@ -57,6 +57,17 @@ async function main() {
   sqlite.exec("DELETE FROM categories WHERE name='Entertainment'");
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10, 'Restart must not reseed deleted categories');
+  // Reopen an existing v1 database: indexing must preserve records and deleted seeds.
+  sqlite.exec("INSERT INTO expenses(amount,date,createdAt) VALUES (45000,'2026-10-23','now')");
+  for (const index of ['expenses_by_date', 'todos_by_date', 'logs_by_date', 'blocks_by_note', 'notes_by_update']) {
+    sqlite.exec(`DROP INDEX ${index}`);
+  }
+  sqlite.exec('PRAGMA user_version = 1');
+  await load('lib/db.ts', dependencies).getDatabase();
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.equal(sqlite.prepare('SELECT amount FROM expenses').get().amount, 45000);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10);
+  assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name LIKE '%_by_%'").get().n, 5);
   sqlite.close();
 
   const { formatMoney, parseAmountInput, applyKeypadKey, amountToInput } = load('lib/money.ts');

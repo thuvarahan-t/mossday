@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 // A shared promise prevents duplicate initialization under React Strict Mode.
 let databasePromise: Promise<SQLiteDatabase> | undefined;
 
@@ -24,7 +24,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
   try {
     await db.execAsync('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 1) {
       // Schema, seeds, and migration marker either all succeed or all roll back.
       await db.withTransactionAsync(async () => {
         await db.execAsync(`
@@ -85,7 +85,19 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
             name, icon, color, type, sortOrder, isDefault,
           );
         }
-        await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
+        await db.execAsync('PRAGMA user_version = 1;');
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS expenses_by_date ON expenses(date, createdAt);
+          CREATE INDEX IF NOT EXISTS todos_by_date ON todos(date, sortOrder);
+          CREATE INDEX IF NOT EXISTS logs_by_date ON habit_logs(date, habitId);
+          CREATE INDEX IF NOT EXISTS blocks_by_note ON note_blocks(noteId, position);
+          CREATE INDEX IF NOT EXISTS notes_by_update ON notes(isPinned, updatedAt);
+          PRAGMA user_version = 2;
+        `);
       });
     }
     return db;
