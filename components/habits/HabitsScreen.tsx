@@ -50,8 +50,11 @@ export function HabitsScreen() {
       <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
       <ReorderableStack items={data.habits} gap={theme.spacing.md} onReorder={reorder} onDraggingChange={setDragging}
         renderItem={(habit) => <AnimatedListItem><HabitCard habit={habit} anchor={anchor} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} onScrubChange={setDragging} /></AnimatedListItem>} />}
-    {data && data.archived.length > 0 && <GroupedList>
-      <ListRow title="Archived habits" icon={{ icon: 'archive', color: 'gray' }} value={String(data.archived.length)} accessory="chevron" onPress={() => setArchive(true)} />
+    {/* Like Expenses' "Add expense" row: the next habit is one tap away at the end of the
+        list (the empty state has its own button). Archived habits sit beside it. */}
+    {data && (data.habits.length > 0 || data.archived.length > 0) && <GroupedList>
+      {data.habits.length > 0 && <ListRow title="New habit" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />}
+      {data.archived.length > 0 && <ListRow title="Archived habits" icon={{ icon: 'archive', color: 'gray' }} value={String(data.archived.length)} accessory="chevron" onPress={() => setArchive(true)} />}
     </GroupedList>}
     {archive && data && <ArchivedHabitsSheet {...archiveTransition} habits={data.archived} onClose={() => setArchive(null)} />}
     {editor && <HabitSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
