@@ -5,20 +5,21 @@ import Animated, { LinearTransition, useAnimatedStyle, useReducedMotion, useShar
 import { scheduleOnRN } from 'react-native-worklets';
 import { useTheme } from '@/hooks/useTheme';
 import { haptics } from '@/lib/haptics';
+import { ContextMenu, type ContextMenuHandle } from './ContextMenu';
 import { IconTile } from './IconTile';
 import type { IconName } from './Icon';
-import { PressableScale } from './PressableScale';
+import { PressableScale, type PressableScaleProps } from './PressableScale';
 import { Text } from './Text';
 
 export type CategoryGridItem = { id: number; name: string; icon: IconName; color: string; isUserCreated?: number };
 type CategoryGridProps = {
   items: CategoryGridItem[]; selected: number | null; onSelect: (id: number) => void; onCreate: () => void;
   onReorder?: (ids: number[]) => void; onDraggingChange?: (dragging: boolean) => void; disabled?: boolean;
-  onManage?: (id: number) => void;
+  onDelete?: (id: number) => void;
 };
 
 /** Compact picker. Long press a tile, drag to its destination, then release to insert. */
-export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, onDraggingChange, disabled, onManage }: CategoryGridProps) {
+export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, onDraggingChange, disabled, onDelete }: CategoryGridProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const gap = theme.spacing.sm;
@@ -35,7 +36,7 @@ export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, o
     {items.map((item, index) => <CategoryTile key={item.id} item={item} selected={item.id === selected}
       width={tileWidth} gap={gap} index={index} disabled={disabled} reorderable={!!onReorder}
       onSelect={() => onSelect(item.id)} onMove={(target) => move(index, target)} onDraggingChange={onDraggingChange}
-      onManage={item.isUserCreated && onManage ? () => onManage(item.id) : undefined} />)}
+      onDelete={item.isUserCreated && onDelete ? () => onDelete(item.id) : undefined} />)}
     <PressableScale accessibilityLabel="New category" disabled={disabled} haptic="tap" onPress={onCreate}
       style={{ width: tileWidth, minHeight: 88, padding: gap, gap, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.lg, backgroundColor: theme.colors.card }}>
       <IconTile icon="plus" color="gray" neutral /><Text variant="footnote">New</Text>
@@ -43,11 +44,11 @@ export function CategoryGrid({ items, selected, onSelect, onCreate, onReorder, o
   </View>;
 }
 
-function CategoryTile({ item, selected, width, gap, index, disabled, reorderable, onSelect, onMove, onDraggingChange, onManage }: {
+function CategoryTile({ item, selected, width, gap, index, disabled, reorderable, onSelect, onMove, onDraggingChange, onDelete }: {
   item: CategoryGridItem; selected: boolean; width: number; gap: number; index: number;
   disabled?: boolean; reorderable: boolean; onSelect: () => void; onMove: (target: number) => void;
   onDraggingChange?: (dragging: boolean) => void;
-  onManage?: () => void;
+  onDelete?: () => void;
 }) {
   const theme = useTheme();
   const reduced = useReducedMotion();
@@ -56,6 +57,8 @@ function CategoryTile({ item, selected, width, gap, index, disabled, reorderable
   const height = useSharedValue(88);
   const dragging = useSharedValue(false);
   const suppressSelection = useRef(false);
+  const menu = useRef<ContextMenuHandle>(null);
+  const openMenu = () => menu.current?.open();
   const activate = () => { suppressSelection.current = true; haptics.selection(); onDraggingChange?.(true); };
   const finish = () => onDraggingChange?.(false);
   const gesture = usePanGesture({
@@ -67,7 +70,7 @@ function CategoryTile({ item, selected, width, gap, index, disabled, reorderable
     onDeactivate: (event) => {
       if (event.canceled) return;
       if (Math.abs(event.translationX) < 10 && Math.abs(event.translationY) < 10) {
-        if (onManage) scheduleOnRN(onManage);
+        if (onDelete) scheduleOnRN(openMenu);
         return;
       }
       const column = Math.max(0, Math.min(2, index % 3 + Math.round(event.translationX / Math.max(1, width + gap))));
@@ -80,26 +83,32 @@ function CategoryTile({ item, selected, width, gap, index, disabled, reorderable
     transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: dragging.get() && !reduced ? 1.04 : 1 }],
     zIndex: dragging.get() ? 10 : 0, opacity: dragging.get() ? 0.85 : 1,
   }));
+  const triggerProps: PressableScaleProps = {
+    disabled,
+    onPressIn: () => { suppressSelection.current = false; },
+    accessibilityState: { selected },
+    accessibilityHint: onDelete ? 'Long press for more actions, or drag to reorder' : reorderable ? 'Long press and drag to reorder' : undefined,
+    accessibilityActions: reorderable ? [{ name: 'moveEarlier', label: 'Move earlier' }, { name: 'moveLater', label: 'Move later' }] : [],
+    onAccessibilityAction: (event) => {
+      if (event.nativeEvent.actionName === 'moveEarlier') onMove(index - 1);
+      if (event.nativeEvent.actionName === 'moveLater') onMove(index + 1);
+    },
+  };
+  const select = () => { if (!suppressSelection.current) onSelect(); };
+  const tileStyle: PressableScaleProps['style'] = {
+    minHeight: 88, padding: gap, gap, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.lg,
+    backgroundColor: selected ? theme.colors.accentFill : theme.colors.card,
+  };
+  const content = <View style={tileStyle}>
+    <IconTile icon={item.icon} color={item.color} />
+    <Text variant="footnote" align="center" numberOfLines={2} style={{ minHeight: 36 }}>{item.name}</Text>
+  </View>;
   return <GestureDetector gesture={gesture}>
     <Animated.View style={[{ width }, style]} layout={reduced ? undefined : LinearTransition}
       onLayout={(event) => height.set(Math.max(1, event.nativeEvent.layout.height))}>
-      <PressableScale disabled={disabled} haptic="selection" onPressIn={() => { suppressSelection.current = false; }}
-        onPress={() => { if (!suppressSelection.current) onSelect(); }} accessibilityLabel={item.name}
-        accessibilityHint={onManage ? 'Long press and release for delete options, or drag to reorder' : reorderable ? 'Long press and drag to reorder' : undefined} accessibilityState={{ selected }}
-        accessibilityActions={[
-          ...(reorderable ? [{ name: 'moveEarlier', label: 'Move earlier' }, { name: 'moveLater', label: 'Move later' }] : []),
-          ...(onManage ? [{ name: 'manage', label: 'Category options' }] : []),
-        ]}
-        onAccessibilityAction={(event) => {
-          if (event.nativeEvent.actionName === 'moveEarlier') onMove(index - 1);
-          if (event.nativeEvent.actionName === 'moveLater') onMove(index + 1);
-          if (event.nativeEvent.actionName === 'manage') onManage?.();
-        }}
-        style={{ minHeight: 88, padding: gap, gap, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.lg,
-          backgroundColor: selected ? theme.colors.accentFill : theme.colors.card }}>
-        <IconTile icon={item.icon} color={item.color} />
-        <Text variant="footnote" align="center" numberOfLines={2} style={{ minHeight: 36 }}>{item.name}</Text>
-      </PressableScale>
+      {onDelete ? <ContextMenu ref={menu} manualTrigger triggerProps={triggerProps} accessibilityLabel={item.name} onPress={select}
+        actions={[{ label: 'Delete', icon: 'trash', destructive: true, onPress: onDelete }]}>{content}</ContextMenu>
+        : <PressableScale {...triggerProps} haptic="selection" accessibilityLabel={item.name} onPress={select}>{content}</PressableScale>}
     </Animated.View>
   </GestureDetector>;
 }

@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { Fragment, useCallback, useRef, useState, type ComponentRef, type ReactNode } from 'react';
+import { Fragment, useCallback, useImperativeHandle, useRef, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
-import { PressableScale } from './PressableScale';
+import { PressableScale, type PressableScaleProps } from './PressableScale';
 import { Text } from './Text';
 import { BlurTargetBoundary, useRootBlurTarget } from './glass/BlurTarget';
 import { GlassSurface } from './glass/GlassSurface';
@@ -22,7 +22,12 @@ export type ContextMenuAction = {
   onPress: () => void;
 };
 
+export type ContextMenuHandle = { open: () => void };
 export type ContextMenuProps = {
+  ref?: Ref<ContextMenuHandle>;
+  /** A gesture owner can open the same menu after distinguishing a hold from a drag. */
+  manualTrigger?: boolean;
+  triggerProps?: Pick<PressableScaleProps, 'disabled' | 'onPressIn' | 'accessibilityState' | 'accessibilityHint' | 'accessibilityActions' | 'onAccessibilityAction'>;
   actions: ContextMenuAction[];
   children: ReactNode;
   onPress?: () => void;
@@ -39,7 +44,7 @@ const MENU_ROW_HEIGHT = 44;
  * Long-press menu with the iOS context-menu feel: the app blurs, the pressed card lifts
  * and grows slightly, and the action list springs out beside it.
  */
-export function ContextMenu({ actions, children, onPress, accessibilityLabel, style }: ContextMenuProps) {
+export function ContextMenu({ actions, children, onPress, accessibilityLabel, style, ref, manualTrigger, triggerProps }: ContextMenuProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const windowTop = useWindowTopOffset();
@@ -51,6 +56,7 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
   const progress = useSharedValue(0);
 
   const open = () => {
+    if (triggerProps?.disabled) return;
     anchor.current?.measureInWindow((x, y, width, height) => {
       haptics.tick();
       // The menu's modal window covers the whole screen, which may start above the app window.
@@ -59,6 +65,7 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
       progress.set(animateTo(1, 'default', reduceMotion));
     });
   };
+  useImperativeHandle(ref, () => ({ open }));
 
   const close = useCallback((after?: () => void) => {
     const finish = () => {
@@ -92,15 +99,19 @@ export function ContextMenu({ actions, children, onPress, accessibilityLabel, st
   return (
     <>
       <PressableScale
+        {...triggerProps}
         ref={anchor}
         style={style}
         onPress={onPress}
-        onLongPress={open}
+        onLongPress={manualTrigger ? undefined : open}
         delayLongPress={350}
         accessibilityLabel={accessibilityLabel}
-        accessibilityHint="Long press for more actions"
-        accessibilityActions={actions.map((action) => ({ name: action.label, label: action.label }))}
-        onAccessibilityAction={(event) => actions.find((action) => action.label === event.nativeEvent.actionName)?.onPress()}
+        accessibilityHint={triggerProps?.accessibilityHint ?? 'Long press for more actions'}
+        accessibilityActions={[...(triggerProps?.accessibilityActions ?? []), ...actions.map((action) => ({ name: action.label, label: action.label }))]}
+        onAccessibilityAction={(event) => {
+          triggerProps?.onAccessibilityAction?.(event);
+          actions.find((action) => action.label === event.nativeEvent.actionName)?.onPress();
+        }}
       >
         {children}
       </PressableScale>

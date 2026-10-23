@@ -54,7 +54,6 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const toast = useToast();
   const [categories, setCategories] = useState<Category[] | null>(categoryCache);
   const [draggingCategory, setDraggingCategory] = useState(false);
-  const [managingCategory, setManagingCategory, categoryMenuTransition] = useSheetState<Category>();
   const categoryOrderSaving = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
@@ -96,7 +95,6 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
       await deleteCategory(category.id);
       const remaining = await refreshCategories();
       if (categoryId === category.id) setCategoryId(remaining.find((row) => row.type === 'MEAL')?.id ?? null);
-      setManagingCategory(null);
       toast({ message: 'Category deleted', actionLabel: 'Undo', onAction: () => {
         void action(async () => { await restoreCategory(category.id); await refreshCategories(); });
       } });
@@ -186,7 +184,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
     {other && <FormSheet {...otherTransition} title="Categories" size="fit" dense scrollEnabled={!draggingCategory} onClose={() => setOther(false)}>
       <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
         disabled={busy} onReorder={saveCategoryOrder} onDraggingChange={setDraggingCategory}
-        onManage={(id) => { const category = categories?.find((row) => row.id === id); if (category?.isUserCreated) setManagingCategory(category); }}
+        onDelete={(id) => { const category = categories?.find((row) => row.id === id); if (category?.isUserCreated) removeCategory(category); }}
         selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setOther(false); }} onCreate={() => setNewCategory(true)} />
       {newCategory && <>
         <TextField value={categoryName} onChangeText={setCategoryName} placeholder="Category name" accessibilityLabel="Category name" />
@@ -197,10 +195,6 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
           void action(async () => { const id = await addCategory(categoryName, 'tag', color); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
         }} />
       </>}
-      {managingCategory && <FormSheet {...categoryMenuTransition} title={managingCategory.name} size="fit" dense onClose={() => { if (!busy) setManagingCategory(null); }}>
-        <Text variant="subheadline" color="secondaryLabel">Remove this category from the picker. Existing expenses will stay unchanged.</Text>
-        <Button title="Delete category" disabled={busy} variant="plain" onPress={() => removeCategory(managingCategory)} />
-      </FormSheet>}
     </FormSheet>}
   </FormSheet>;
 }

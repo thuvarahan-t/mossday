@@ -31,8 +31,9 @@ Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
 In Add Expense → Other, categories use a compact sheet. Long press and drag a
 tile to reorder it; the order persists across restarts. Accessibility actions
 also move categories earlier or later. New categories append to the saved order.
-For a category you created, long press and release without dragging to open
-Delete. Deletion hides it from the picker while preserving old expenses; Undo
+For a category you created, long press without dragging to open the same
+context menu used for expenses, with a red Delete action. Deletion hides it from
+the picker while preserving old expenses; Undo
 restores it. Built-in categories cannot be deleted.
 
 ## Verify
