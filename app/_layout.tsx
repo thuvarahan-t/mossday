@@ -13,6 +13,7 @@ import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/Blu
 import { AppSheetCover } from '@/components/ui/sheet/SheetCover';
 import { useTheme } from '@/hooks/useTheme';
 import { getDatabase } from '@/lib/db';
+import { collectMedia } from '@/lib/media';
 
 export default function RootLayout() {
   const theme = useTheme();
@@ -25,7 +26,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     let active = true;
-    getDatabase().then(
+    getDatabase().then(() => collectMedia()).then(
       () => { if (active) setReady(true); },
       (failure: unknown) => { if (active) setError(failure); },
     );

@@ -1,2 +1,1 @@
-import { Screen } from '@/components/Screen';
-export default function NotesScreen() { return <Screen title="Notes" />; }
+export { NotesScreen as default } from '@/components/notes/NotesScreen';

@@ -11,7 +11,10 @@ async function main() {
     execAsync: async (sql) => sqlite.exec(sql),
     getFirstAsync: async (sql, ...params) => sqlite.prepare(sql).get(...params) ?? null,
     getAllAsync: async (sql, ...params) => sqlite.prepare(sql).all(...params),
-    runAsync: async (sql, ...params) => sqlite.prepare(sql).run(...params),
+    runAsync: async (sql, ...params) => {
+      const result = sqlite.prepare(sql).run(...params);
+      return { changes: result.changes, lastInsertRowId: Number(result.lastInsertRowid) };
+    },
     closeAsync: async () => {},
     withTransactionAsync: async (operation) => {
       sqlite.exec('BEGIN');
@@ -42,6 +45,7 @@ async function main() {
   const habits = load('lib/repos/habits.ts');
   const diary = load('lib/repos/diary.ts');
   const settings = load('lib/repos/settings.ts');
+  const notes = load('lib/repos/notes.ts');
   const date = load('lib/date.ts');
   const today = date.todayLocalDate();
   const yesterday = date.addDays(today, -1);
@@ -100,6 +104,26 @@ async function main() {
   await settings.setSetting('dailyBudget', 200000);
   assert.equal((await settings.getSettings()).dailyBudget, 200000);
   assert.equal((await settings.getSettings()).appearance, 'dark');
+  const noteId = await notes.createNote();
+  const draft = { title: 'Recipe', folder: 'Ideas', color: null, isPinned: 1, blocks: [
+    { type: 'TEXT', content: 'Ingredients', filePath: null, durationMs: null },
+    { type: 'VOICE', content: null, filePath: 'test.m4a', durationMs: 42000 },
+    { type: 'CHECKLIST', content: '[{"text":"Rice","done":true}]', filePath: null, durationMs: null },
+  ] };
+  await notes.saveNote(noteId, draft);
+  assert.equal((await notes.getNote(noteId)).blocks.length, 3);
+  assert.equal((await notes.getNote(noteId)).note.folder, 'Ideas');
+  await assert.rejects(notes.saveNote(noteId, { ...draft, blocks: [{ type: 'INVALID' }] }));
+  assert.equal((await notes.getNote(noteId)).blocks.length, 3, 'Failed block save restores the entire previous draft');
+  const deleted = await notes.deleteNote(noteId);
+  assert.equal((await notes.listNotes()).notes.length, 0);
+  await notes.restoreNote(deleted);
+  assert.equal((await notes.getNote(noteId)).blocks[1].filePath, 'test.m4a');
+  assert.equal(notes.checklistItems('[{"text":"Rice","done":true}]')[0].done, true);
+  assert.equal(notes.checklistItems('bad json').length, 0);
+  assert.equal(notes.checklistItems('[null,1,{}]').length, 0);
+  await notes.setNoteProperty(noteId, 'isPinned', 0);
+  assert.equal((await notes.getNote(noteId)).note.isPinned, 0);
   sqlite.close();
   console.log('Repositories verified: CRUD, undo, rollback, concurrent ticks, streaks, carry-over, reorder, journal, settings.');
 }
