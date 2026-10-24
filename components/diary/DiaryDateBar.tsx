@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { Extrapolation, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming,
+} from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { DayStrip } from '@/components/ui/DayStrip';
 import { Icon } from '@/components/ui/Icon';
 import { MonthGrid } from '@/components/ui/MonthGrid';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
+import { durations, easing } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { addMonths, monthName, startOfMonth } from '@/lib/date';
@@ -15,14 +18,20 @@ import { haptics } from '@/lib/haptics';
 import type { Todo } from '@/lib/repos/diary';
 import type { Expense } from '@/lib/repos/expenses';
 
-/** Flick speed (pt/s) that opens or closes the month regardless of how far it was pulled. */
+/** Flick speed (pt/s) that opens or closes the month, or turns it, regardless of distance. */
 const FLICK_VELOCITY = 500;
+/** Sideways drag (pt) that turns the month; how far the grid follows; how far it slides. */
+const TURN_DISTANCE = 56;
+const FOLLOW = 0.45;
+const TRAVEL = 0.25;
 
 /**
  * The Diary's date control. Collapsed, it is a free-scrolling row of days. Drag it down and
  * it expands into the month, following the finger (the month unfolds from under the row and
  * fades in as the row fades out); drag up, or pick a day, to fold it back. The grabber
- * toggles it with a tap. The page stops scrolling while it is dragged.
+ * toggles it with a tap. The page stops scrolling while it is dragged. Open, swipe the month
+ * sideways to turn it (left for next, as elsewhere in the app): it follows the finger, slides
+ * out, and the new month slides in from the far side; the ‹ › arrows slide it the same way.
  */
 export function DiaryDateBar({ today, selected, month, markedDates, monthlyExpenses, monthlyTodos, onSelect, onMonthChange, onDraggingChange }: {
   today: string; selected: string; month: string; markedDates: ReadonlySet<string>;
@@ -34,6 +43,7 @@ export function DiaryDateBar({ today, selected, month, markedDates, monthlyExpen
   const [stripHeight, setStripHeight] = useState(0);
   const [monthHeight, setMonthHeight] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [width, setWidth] = useState(0);
   const progress = useSharedValue(0);
   const start = useSharedValue(0);
   const range = Math.max(1, monthHeight - stripHeight);
@@ -73,6 +83,42 @@ export function DiaryDateBar({ today, selected, month, markedDates, monthlyExpen
     },
   });
 
+  const slide = useSharedValue(0);
+  const fade = useSharedValue(1);
+  const shownMonth = useRef(month);
+  useEffect(() => {
+    const before = shownMonth.current;
+    shownMonth.current = month;
+    if (before === month) return;
+    fade.set(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration: durations.normal, easing: easing.standard })));
+    slide.set(reduced ? 0 : withSequence(withTiming((month > before ? 1 : -1) * width * TRAVEL, { duration: 0 }), animateTo(0, 'snappy', false)));
+  }, [month, reduced, width, fade, slide]);
+  const turnMonth = (delta: 1 | -1) => {
+    haptics.selection();
+    onMonthChange(addMonths(month, delta));
+  };
+  const turn = usePanGesture({
+    enabled: expanded,
+    activeOffsetX: [-16, 16],
+    failOffsetY: [-12, 12],
+    onUpdate: (event) => {
+      if (!reduced) slide.set(event.translationX * FOLLOW);
+    },
+    onDeactivate: (event) => {
+      const flick = Math.abs(event.velocityX) > FLICK_VELOCITY && Math.sign(event.velocityX) === Math.sign(event.translationX);
+      if (Math.abs(event.translationX) < TURN_DISTANCE && !flick) {
+        slide.set(animateTo(0, 'snappy', reduced));
+        return;
+      }
+      const delta = event.translationX < 0 ? 1 : -1;
+      fade.set(withTiming(0, { duration: durations.fast, easing: easing.standard }));
+      slide.set(withTiming(reduced ? 0 : -delta * width * TRAVEL, { duration: durations.fast, easing: easing.standard }, (finished) => {
+        if (finished) scheduleOnRN(turnMonth, delta);
+      }));
+    },
+  });
+  const turnStyle = useAnimatedStyle(() => ({ opacity: fade.get(), transform: [{ translateX: slide.get() }] }));
+
   const containerStyle = useAnimatedStyle(() => (monthHeight
     ? { height: interpolate(progress.get(), [0, 1], [stripHeight, monthHeight]) } : {}));
   const stripStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.get(), [0, 0.4], [1, 0], Extrapolation.CLAMP) }));
@@ -105,8 +151,12 @@ export function DiaryDateBar({ today, selected, month, markedDates, monthlyExpen
               <Icon name="chevronRight" color="accent" />
             </PressableScale>
           </View>
-          <MonthGrid month={month} today={today} selected={selected} spendLevels={spendLevels} todoDates={new Set(monthlyTodos.map((t) => t.date))}
-            onSelect={(date) => { onSelect(date); toggle(false); }} />
+          <GestureDetector gesture={turn}>
+            <Animated.View style={turnStyle} onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}>
+              <MonthGrid month={month} today={today} selected={selected} spendLevels={spendLevels} todoDates={new Set(monthlyTodos.map((t) => t.date))}
+                onSelect={(date) => { onSelect(date); toggle(false); }} />
+            </Animated.View>
+          </GestureDetector>
         </Animated.View>
       </Animated.View>
       <PressableScale haptic="tap" accessibilityLabel={expanded ? 'Show the week' : 'Show the month'} accessibilityHint="Or drag the dates up or down"
