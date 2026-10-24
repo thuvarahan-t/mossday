@@ -70,9 +70,11 @@ or hold and drag to reorder it live; tap its text to edit, swipe left to delete.
 order is saved per day, so Today shows the Diary's order. Done to-dos always sit below
 open ones, and a ticked one strikes through before gliding down.
 
-Emoji (habit icons, diary moods) are Microsoft's Fluent Emoji 3D images, bundled in
-`assets/emoji/` (MIT, see its LICENSE) so iPhone and Android look the same; Apple's own
-emoji cannot be shipped in an app. Add a new choice there and in
+Habit emoji are Microsoft's Fluent Emoji 3D images, bundled in `assets/emoji/` (MIT, see
+its LICENSE) so iPhone and Android look the same; Apple's own emoji cannot be shipped in
+an app. Diary moods use Google's Noto Emoji Animation (CC BY 4.0, credited in Settings):
+the chosen mood animates (`assets/emoji-animated/`, via expo-image) over a glow in its
+colour, and the others show still frames. Adding expo-image needs a new development build. Add a new choice there and in
 `components/ui/emojiAssets.ts`; anything unmapped falls back to the system font.
 
 ## Verify

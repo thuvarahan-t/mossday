@@ -180,4 +180,7 @@ assert.equal(offered.length, 25);
 for (const emoji of offered) assert.ok(emojiFiles.emojiAsset(emoji), `No Fluent image for ${emoji}`);
 assert.equal(emojiFiles.emojiAsset('🏋️'), emojiFiles.emojiAsset('🏋'), 'Variation selectors are ignored');
 assert.equal(emojiFiles.emojiAsset('🦄'), undefined, 'Unknown emoji fall back to text');
+const animatedFiles = [...fs.readFileSync('components/ui/AnimatedEmoji.tsx', 'utf8').matchAll(/require\('([^']+)'\)/g)].map((match) => match[1]);
+assert.equal(animatedFiles.length, 5, 'Every diary mood has an animation');
+for (const file of animatedFiles) assert.ok(fs.existsSync(require('node:path').resolve('components/ui', file)), `missing ${file}`);
 console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, up-and-down tick cycle, custom colors, year scrolling and bounds, drag-to-select days, card ordering and bundled emoji.');

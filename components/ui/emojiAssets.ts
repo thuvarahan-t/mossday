@@ -33,4 +33,4 @@ const assets: Record<string, ImageSourcePropType> = {
   '🤩': require('../../assets/emoji/star-struck.png'),
 };
 
-export const emojiAsset = (emoji: string): ImageSourcePropType | undefined => assets[emoji.replace(/️/g, '')];
+export const emojiAsset = (emoji: string): ImageSourcePropType | undefined => assets[emoji.replace(/\uFE0F/g, '')];

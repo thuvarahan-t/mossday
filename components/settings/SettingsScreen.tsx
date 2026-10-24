@@ -64,6 +64,8 @@ export function SettingsScreen() {
         <ListRow title="Storage" icon={{ icon: 'storage', color: 'gray' }} value={`${(data.storage / 1024 / 1024).toFixed(1)} MB`} />
       </GroupedList>
       <Text variant="footnote" align="center" color="secondaryLabel">Mossday 1.0 · Offline and private</Text>
+      {/* Required attribution for the bundled emoji; licenses are in assets/emoji and assets/emoji-animated. */}
+      <Text variant="caption2" align="center" color="tertiaryLabel">Emoji: Fluent Emoji by Microsoft (MIT) · Noto Emoji Animation by Google (CC BY 4.0)</Text>
       {currency && <CurrencySheet {...currencyTransition} onClose={() => setCurrency(null)} />}
       {budget && <BudgetSheet {...budgetTransition} initial={budget} budgets={data.settings} onClose={() => setBudget(null)} />}
       {appearance && <FormSheet size="fit" dense {...appearanceTransition} title="Appearance" onClose={() => setAppearance(false)}>{(['system', 'light', 'dark'] as const).map((value) =>
