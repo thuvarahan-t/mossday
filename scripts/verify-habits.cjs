@@ -47,6 +47,7 @@ const common = {
   '@/lib/animation': { animateTo: (value) => value }, '@/constants/motion': { scales: { pop: 1.15 } },
   '@/components/ui/Icon': { Icon: 'Icon' }, '@/components/ui/PressableScale': { PressableScale: 'PressableScale' },
   '@/components/ui/ProgressRing': { ProgressRing: 'ProgressRing' }, '@/components/ui/Text': { Text: 'Text' },
+  '@/components/ui/Emoji': { Emoji: 'Emoji' },
 };
 const { HabitTickButton } = load('components/habits/HabitTickButton.tsx', common);
 for (let count = 0; count <= 3; count++) {
@@ -166,4 +167,17 @@ const ids = [1, 2, 3];
 assert.deepEqual(Array.from(stack.moveItem(ids, 1, 2)), [2, 3, 1]);
 assert.deepEqual(ids, [1, 2, 3], 'Drag previews never mutate their input');
 assert.equal(stack.moveItem(ids, 1, -5), ids, 'Moving the first row up is a no-op');
-console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, up-and-down tick cycle, custom colors, year scrolling and bounds, drag-to-select days and card ordering.');
+// Every emoji the app offers (habit icons, diary moods) has a bundled Fluent image on disk.
+const emojiSource = fs.readFileSync('components/ui/emojiAssets.ts', 'utf8');
+const emojiFiles = {};
+vm.runInNewContext(ts.transpileModule(emojiSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText,
+  { exports: emojiFiles, require: (file) => { assert.ok(fs.existsSync(require('node:path').resolve('components/ui', file)), `missing ${file}`); return file; } });
+const offered = [
+  ...eval(fs.readFileSync('components/habits/HabitSheet.tsx', 'utf8').match(/const habitEmojis = (\[.*?\]);/)[1]),
+  ...eval(fs.readFileSync('components/diary/JournalEditor.tsx', 'utf8').match(/export const MOODS = (\[.*?\]);/)[1]),
+];
+assert.equal(offered.length, 25);
+for (const emoji of offered) assert.ok(emojiFiles.emojiAsset(emoji), `No Fluent image for ${emoji}`);
+assert.equal(emojiFiles.emojiAsset('🏋️'), emojiFiles.emojiAsset('🏋'), 'Variation selectors are ignored');
+assert.equal(emojiFiles.emojiAsset('🦄'), undefined, 'Unknown emoji fall back to text');
+console.log('Habits verified: leap-year periods, calendar alignment, date validation, goal progress, visible/toggle/hold undo, up-and-down tick cycle, custom colors, year scrolling and bounds, drag-to-select days, card ordering and bundled emoji.');

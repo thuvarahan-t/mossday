@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Emoji } from '@/components/ui/Emoji';
 import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
 import { GroupedList, ListRow } from '@/components/ui/GroupedList';
 import { SwatchPicker, WeekdayPicker } from '@/components/ui/Pickers';
@@ -51,7 +52,7 @@ export function HabitSheet({ initial, onClose, ...transition }: { initial?: Habi
     trailing={<Button title={initial ? 'Save' : 'Add'} size="small" disabled={!name.trim() || busy} onPress={save} />}>
     <Card padding="row" inset={false} style={[styles.row, { gap: theme.spacing.md }]}>
       <PressableScale haptic="selection" accessibilityLabel={`Habit emoji, ${icon}. Choose another`} onPress={() => setPickingEmoji(!pickingEmoji)} style={[styles.center, emojiTile]}>
-        <Text variant="title1" weight="regular">{icon}</Text>
+        <Emoji emoji={icon} size={32} />
       </PressableScale>
       <View style={styles.fill}><TextField appearance="bare" value={name} onChangeText={setName} placeholder="Habit name" accessibilityLabel="Habit name" maxLength={100} /></View>
     </Card>
@@ -59,7 +60,7 @@ export function HabitSheet({ initial, onClose, ...transition }: { initial?: Habi
       {habitEmojis.map((emoji) => <PressableScale key={emoji} haptic="selection" accessibilityLabel={emoji} accessibilityState={{ selected: emoji === icon }}
         onPress={() => { setIcon(emoji); setPickingEmoji(false); }}
         style={[styles.center, emojiTile, { backgroundColor: emoji === icon ? theme.colors.accentFill : 'transparent' }]}>
-        <Text variant="title2" weight="regular">{emoji}</Text>
+        <Emoji emoji={emoji} size={28} />
       </PressableScale>)}
     </Card></AnimatedListItem>}
     <Text variant="footnote" color="secondaryLabel" style={{ textTransform: 'uppercase', paddingHorizontal: theme.sizes.rowPadding, marginBottom: -theme.spacing.sm }}>Colour</Text>

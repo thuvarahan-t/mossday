@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ShareCheck } from '@/components/share/ShareCheck';
 import { ShareLine, SharePanel, type ShareCardContent } from '@/components/share/ShareCard';
+import { Emoji } from '@/components/ui/Emoji';
 import { Text } from '@/components/ui/Text';
 import type { Theme } from '@/constants/theme';
 import { formatLongDate } from '@/lib/date';
@@ -38,7 +39,7 @@ export function todayShareContent({ theme, today, spent, budget, meals, expenses
       </SharePanel>
       {habits.length > 0 && <SharePanel>
         <Text variant="headline">Habits · {done} of {habits.length} done</Text>
-        {habits.map((habit) => <ShareLine key={habit.id} title={habit.name} leading={<View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: dataColors(theme, habit.color).tint }}><Text variant="title3">{habit.icon || '🌱'}</Text></View>}
+        {habits.map((habit) => <ShareLine key={habit.id} title={habit.name} leading={<View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: dataColors(theme, habit.color).tint }}><Emoji emoji={habit.icon || '🌱'} size={24} /></View>}
           value={countFor(habit.id) >= habit.dailyGoal ? 'Done' : `${countFor(habit.id)}/${habit.dailyGoal}`} />)}
       </SharePanel>}
       {todos.length > 0 && <SharePanel>

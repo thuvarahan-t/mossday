@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { ShareCheck } from '@/components/share/ShareCheck';
 import { ShareLine, SharePanel, type ShareCardContent } from '@/components/share/ShareCard';
+import { Emoji } from '@/components/ui/Emoji';
 import { Text } from '@/components/ui/Text';
 import type { Theme } from '@/constants/theme';
 import { dayOfMonth, monthName, weekdayName } from '@/lib/date';
@@ -22,7 +23,7 @@ export function diaryShareContent({ theme, date, todos, journal, summary }: {
       {(journal?.text || journal?.mood !== null && journal?.mood !== undefined) && <SharePanel gap={theme.spacing.sm}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text variant="headline">How was today?</Text>
-          {journal.mood !== null && <Text variant="title2">{MOODS[journal.mood]}</Text>}
+          {journal.mood !== null && <Emoji emoji={MOODS[journal.mood]} size={28} />}
         </View>
         {journal.text ? <Text>{journal.text}</Text> : null}
       </SharePanel>}

@@ -16,6 +16,8 @@ import { GlassSurface, OnGlassBar } from './glass/GlassSurface';
 
 export type LargeTitleScreenProps = {
   title: string; subtitle?: string;
+  /** Shown before the title, e.g. the habit's emoji on its detail screen. */
+  titleLeading?: ReactNode;
   /** Fixed actions beside the screen title. */
   titleAccessory?: ReactNode;
   showBack?: boolean; onBack?: () => void; headerRight?: ReactNode;
@@ -31,7 +33,7 @@ export type LargeTitleScreenProps = {
  * scrolls beneath it, and a glass bar (blur + tint + hairline) fades in once it does.
  */
 export function LargeTitleScreen({
-  title, subtitle, titleAccessory, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
+  title, subtitle, titleLeading, titleAccessory, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
   contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true,
 }: LargeTitleScreenProps) {
   const theme = useTheme();
@@ -79,6 +81,7 @@ export function LargeTitleScreen({
           <View style={{ paddingTop: insets.top + theme.spacing.sm, paddingBottom: theme.spacing.sm, paddingHorizontal: theme.sizes.screenInset }}>
             <View style={[styles.row, { gap: theme.spacing.sm, minHeight: theme.sizes.circleButton }]}>
               {showBack && <GlassButton accessibilityLabel="Back" haptic="tap" onPress={onBack}><Icon name="chevronLeft" /></GlassButton>}
+              {titleLeading}
               <Text variant="title2" weight="bold" accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={{ flex: 1, minWidth: 0 }}>{title}</Text>
               <View style={[styles.row, { gap: theme.spacing.sm }]}>{titleAccessory}{headerRight}</View>
             </View>

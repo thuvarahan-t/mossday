@@ -41,6 +41,8 @@ export type ListRowProps = {
   title: string;
   subtitle?: string;
   icon?: Pick<IconTileProps, 'icon' | 'color' | 'neutral'>;
+  /** Custom content where the icon tile goes, e.g. a habit's emoji. */
+  leading?: ReactNode;
   /** Right-hand text (secondary label) — amounts, settings values. */
   value?: string;
   valueColor?: ColorToken;
@@ -55,7 +57,7 @@ export type ListRowProps = {
 
 /** A row inside `GroupedList`. Pressable rows highlight like iOS and scale very slightly. */
 export function ListRow({
-  title, subtitle, icon, value, valueColor = 'secondaryLabel', accessory, titleVariant = 'body',
+  title, subtitle, icon, leading, value, valueColor = 'secondaryLabel', accessory, titleVariant = 'body',
   onPress, accessibilityLabel, footer,
 }: ListRowProps) {
   const theme = useTheme();
@@ -67,6 +69,7 @@ export function ListRow({
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.fill }, highlightStyle]} />
       <View style={[styles.row, { minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding, gap: theme.spacing.md }]}>
         {icon && <IconTile {...icon} />}
+        {leading}
         <View style={[styles.text, { paddingVertical: theme.spacing.sm }]}>
           <View style={[styles.row, { gap: theme.spacing.sm }]}>
             <View style={styles.text}>

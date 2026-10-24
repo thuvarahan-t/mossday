@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Card } from '@/components/ui/Card';
+import { Emoji } from '@/components/ui/Emoji';
 import { GroupedList, ListRow, Separator } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
@@ -38,7 +39,7 @@ export function HabitDetailScreen() {
   const counts = Object.fromEntries((data?.logs ?? []).filter((l) => l.habitId === Number(id)).map((l) => [l.date, l.count]));
   const stats = habit ? habitStats(habit, counts, today) : null;
   const count = counts[selected] ?? 0;
-  return <LargeTitleScreen title={habit ? `${habit.icon || '🌱'} ${habit.name}` : 'Habit'} showBack bottomInset="safeArea" scrollEnabled={!scrubbing}
+  return <LargeTitleScreen title={habit ? habit.name : 'Habit'} titleLeading={habit ? <Emoji emoji={habit.icon || '🌱'} size={28} /> : undefined} showBack bottomInset="safeArea" scrollEnabled={!scrubbing}
     headerRight={habit ? <GlassButton shape="pill" accessibilityLabel="Edit habit" onPress={() => setEditing(true)}><Text>Edit</Text></GlassButton> : undefined}
     contentContainerStyle={{ gap: theme.spacing.lg }}>
     <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={(next) => { setAnchor(next); setSelected(next); }} />

@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence } from 'react-native-reanimated';
 import { Icon } from '@/components/ui/Icon';
+import { Emoji } from '@/components/ui/Emoji';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Text } from '@/components/ui/Text';
@@ -50,7 +51,7 @@ export const HabitTickButton = memo(function HabitTickButton({ name, count, goal
       <Animated.View style={style}>
         {emoji ? <ProgressRing progress={count / goal} color={palette.accent} trackColor={palette.tint}>
           <View style={[circle, { width: side - 16, height: side - 16, backgroundColor: palette.tint }]}>
-            <Text variant="title2">{emoji}</Text>
+            <Emoji emoji={emoji} size={26} />
           </View>
         </ProgressRing> : done ? <View style={[circle, { backgroundColor: palette.accent }]}><Icon name="check" rawColor={palette.onAccent} strokeWidth={3} /></View>
           : <ProgressRing progress={count / goal} color={palette.accent} trackColor={palette.tint} size={side} strokeWidth={4}>

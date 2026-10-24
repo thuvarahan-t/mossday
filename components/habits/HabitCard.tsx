@@ -3,6 +3,7 @@ import { memo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { ContextMenu, type ContextMenuHandle } from '@/components/ui/ContextMenu';
+import { Emoji } from '@/components/ui/Emoji';
 import { ReorderHandle, useReorderActions } from '@/components/ui/ReorderableStack';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Text } from '@/components/ui/Text';
@@ -47,7 +48,7 @@ export const HabitCard = memo(function HabitCard({ habit, counts, onEdit, anchor
       }); } },
     ]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: palette.tint }}><Text variant="title2">{habit.icon || '🌱'}</Text></View>
+        <View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: palette.tint }}><Emoji emoji={habit.icon || '🌱'} size={26} /></View>
         <View style={{ flex: 1 }}>
           <Text variant="title3" numberOfLines={2} style={{ color: palette.accent }}>{habit.name}</Text>
           {/* A picked past day replaces the streak line, so ticking today costs no extra row. */}

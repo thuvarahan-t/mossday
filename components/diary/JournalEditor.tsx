@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { Card } from '@/components/ui/Card';
+import { Emoji } from '@/components/ui/Emoji';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
@@ -21,7 +22,7 @@ function MoodButton({ index, selected, onPress }: { index: number; selected: boo
   useEffect(() => { progress.set(animateTo(selected ? 1 : 0, 'snappy', reduced)); }, [progress, reduced, selected]);
   const style = useAnimatedStyle(() => ({ opacity: 0.6 + progress.get() * 0.4, backgroundColor: interpolateColor(progress.get(), [0, 1], ['transparent', fill]) }));
   return <PressableScale haptic="selection" accessibilityLabel={MOOD_LABELS[index]} accessibilityRole="radio" accessibilityState={{ selected }} onPress={onPress}>
-    <Animated.View style={[{ padding: theme.spacing.sm, borderRadius: theme.radii.pill }, style]}><Text variant="title1">{MOODS[index]}</Text></Animated.View>
+    <Animated.View style={[{ padding: theme.spacing.sm, borderRadius: theme.radii.pill }, style]}><Emoji emoji={MOODS[index]} size={32} /></Animated.View>
   </PressableScale>;
 }
 export function JournalEditor({ date, initial }: { date: string; initial: DiaryEntry | null }) {

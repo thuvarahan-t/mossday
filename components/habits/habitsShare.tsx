@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { ShareLine, SharePanel, SHARE_CARD_WIDTH, type ShareCardContent } from '@/components/share/ShareCard';
-import { Text } from '@/components/ui/Text';
+import { Emoji } from '@/components/ui/Emoji';
 import type { Theme } from '@/constants/theme';
 import { HabitTracker } from './HabitTracker';
 import { habitStats, type Habit, type HabitLog } from '@/lib/repos/habits';
@@ -22,7 +22,7 @@ export function habitsShareContent({ theme, habits, logs, today, subtitle, ancho
         const streak = habitStats(habit, counts, today).current;
         return <SharePanel key={habit.id}>
           <ShareLine title={habit.name} detail={streak === 1 ? '1-day streak' : `${streak}-day streak`}
-            leading={<View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: dataColors(theme, habit.color).tint }}><Text variant="title2">{habit.icon || '🌱'}</Text></View>}
+            leading={<View style={{ padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: dataColors(theme, habit.color).tint }}><Emoji emoji={habit.icon || '🌱'} size={26} /></View>}
             value={`${counts[today] ?? 0}/${habit.dailyGoal}`} />
           <HabitTracker habit={habit} counts={counts} today={today} anchor={anchor} fitWidth={gridWidth} />
         </SharePanel>;

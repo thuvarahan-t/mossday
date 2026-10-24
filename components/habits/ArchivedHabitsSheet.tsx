@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/Button';
+import { Emoji } from '@/components/ui/Emoji';
 import { FormSheet, type FormSheetTransition } from '@/components/ui/FormSheet';
 import { GroupedList, ListRow } from '@/components/ui/GroupedList';
 import { Text } from '@/components/ui/Text';
@@ -17,7 +18,7 @@ export function ArchivedHabitsSheet({ habits, onClose, ...transition }: { habits
   };
   return <FormSheet size="fit" dense {...transition} title="Archived habits" onClose={onClose}>
     {habits.length ? <GroupedList style={{ marginHorizontal: 0 }}>
-      {habits.map((habit) => <ListRow key={habit.id} title={`${habit.icon || '🌱'}  ${habit.name}`}
+      {habits.map((habit) => <ListRow key={habit.id} title={habit.name} leading={<Emoji emoji={habit.icon || '🌱'} size={28} />}
         accessory={<Button title="Restore" size="small" variant="tinted" accessibilityLabel={`Restore ${habit.name}`} onPress={() => restore(habit)} />} />)}
     </GroupedList> : <Text color="secondaryLabel" align="center">No archived habits.</Text>}
   </FormSheet>;
