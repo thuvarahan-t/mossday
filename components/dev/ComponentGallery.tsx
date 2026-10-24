@@ -30,7 +30,7 @@ import { Text } from '@/components/ui/Text';
 import { SearchField, TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
 import { Toggle } from '@/components/ui/Toggle';
-import { WeekStrip } from '@/components/ui/WeekStrip';
+import { DayStrip } from '@/components/ui/DayStrip';
 import { GlassButton } from '@/components/ui/glass/GlassButton';
 import { BottomSheet } from '@/components/ui/sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from '@/components/ui/sheet/SheetHeader';
@@ -234,9 +234,7 @@ function Gallery() {
 
       <Section title="Dates & charts">
         <DatePill date={selectedDay} today={today} onPress={() => setSelectedDay(addDays(selectedDay, -1))} />
-        <WeekStrip weekStart={startOfWeek(selectedDay)} selected={selectedDay} today={today}
-          markedDates={new Set([today, addDays(today, -1)])} onSelect={setSelectedDay}
-          onChangeWeek={(delta) => setSelectedDay(addDays(selectedDay, delta * 7))} />
+        <DayStrip selected={selectedDay} today={today} markedDates={new Set([today, addDays(today, -1)])} onSelect={setSelectedDay} />
         <MonthGrid month={today} today={today} selected={selectedDay} onSelect={setSelectedDay}
           spendLevels={Object.fromEntries(Object.entries(counts).map(([date, value]) => [date, value]))}
           todoDates={new Set([today, addDays(today, -2)])} />

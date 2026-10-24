@@ -1,38 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { BackHandler, View } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
-import { durations, spring } from '@/constants/motion';
+import { useCallback, useState } from 'react';
+import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { useShareImage } from '@/components/share/ShareImage';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Icon } from '@/components/ui/Icon';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
-import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
-import { WeekStrip } from '@/components/ui/WeekStrip';
-import { GlassSurface } from '@/components/ui/glass/GlassSurface';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
-import { addDays, addMonths, dayOfMonth, endOfMonth, monthName, startOfMonth, startOfWeek, weekdayName } from '@/lib/date';
+import { addDays, dayOfMonth, endOfMonth, monthName, startOfMonth, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { getJournal, listTodos, moveIncomplete } from '@/lib/repos/diary';
 import { listExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits } from '@/lib/repos/habits';
 import { isActiveDay } from '@/lib/heatmap';
-import { DiaryCalendar } from './DiaryCalendar';
+import { DiaryDateBar } from './DiaryDateBar';
 import { diaryShareContent } from './diaryShare';
 import { JournalEditor } from './JournalEditor';
 import { TodoList } from './TodoList';
 import { TodoSheet } from './TodoSheet';
 
-/** The month calendar drops in from above when the week strip is pulled down, and lifts away on close. */
-const calendarIn = FadeInUp.springify().damping(spring.gentle.damping).stiffness(spring.gentle.stiffness);
-const calendarOut = FadeOutUp.duration(durations.fast);
+/** Days either side of the selected one whose to-dos mark the free-scrolling date strip. */
+const MARKED_RANGE = 42;
 
 export function DiaryScreen() {
   const theme = useTheme();
@@ -42,47 +35,30 @@ export function DiaryScreen() {
   const [date, setDate] = useState(today);
   const [dragging, setDragging] = useState(false);
   const [month, setMonth] = useState(startOfMonth(today));
-  const [calendar, setCalendar] = useState(false);
   const [adding, selectAdding, addingTransition] = useSheetState<true>();
   const setAdding = useCallback((open: boolean) => selectAdding(open ? true : null), [selectAdding]);
   const { data, error, refresh } = useResource(useCallback(async () => {
-    const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, weekTodos] = await Promise.all([
+    const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, nearbyTodos] = await Promise.all([
       listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listExpenses(date), listHabits(), listHabitLogs(date, date),
       listTodos(startOfMonth(month), endOfMonth(month)), listExpenses(startOfMonth(month), endOfMonth(month)),
-      listTodos(startOfWeek(date), addDays(startOfWeek(date), 6)),
+      listTodos(addDays(date, -MARKED_RANGE), addDays(date, MARKED_RANGE)),
     ]);
-    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, weekTodos };
+    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, nearbyTodos };
   }, [date, month]));
   const spend = data?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, date)) ?? [];
   const done = active.filter((h) => (data?.logs.find((l) => l.habitId === h.id)?.count ?? 0) >= h.dailyGoal).length;
-  const closeCalendar = useCallback(() => setCalendar(false), []);
   const summary = `Spent ${formatMoney(spend)} · ${done} of ${active.length} habits done`;
   const shareImage = useShareImage();
   const shareDay = () => {
     if (data) void shareImage(diaryShareContent({ theme, date, todos: data.todos, journal: data.journal, summary }));
   };
-  useEffect(() => {
-    if (!calendar) return;
-    // Android back leaves the calendar mode before it leaves the tab.
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => { closeCalendar(); return true; });
-    return () => subscription.remove();
-  }, [calendar, closeCalendar]);
-  const monthNavigation = <GlassSurface contentStyle={{ flexDirection: 'row', height: theme.sizes.circleButton, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.xl, alignItems: 'center' }}>
-    <PressableScale haptic="selection" accessibilityLabel="Previous month" hitSlop={theme.spacing.sm} onPress={() => setMonth(addMonths(month, -1))}><Icon name="chevronLeft" size={theme.sizes.iconLarge} /></PressableScale>
-    <PressableScale haptic="selection" accessibilityLabel="Next month" hitSlop={theme.spacing.sm} onPress={() => setMonth(addMonths(month, 1))}><Icon name="chevronRight" size={theme.sizes.iconLarge} /></PressableScale>
-  </GlassSurface>;
-  return <LargeTitleScreen title={calendar ? `${monthName(month)}${month.slice(0, 4) === today.slice(0, 4) ? '' : ` ${month.slice(0, 4)}`}` : `${dayOfMonth(date)} ${monthName(date)}`}
-    subtitle={calendar ? undefined : `${weekdayName(date)}, ${date.slice(0, 4)}`} showBack={calendar} onBack={closeCalendar} headerRight={calendar ? monthNavigation : undefined}
-    titleAccessory={calendar ? undefined : <TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
+  return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
+    titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg }}>
-    {error || !data ? <LoadState error={error} retry={refresh} /> : calendar ? <Animated.View key="calendar" entering={calendarIn} exiting={calendarOut} style={{ gap: theme.spacing.lg }}>
-      <DiaryCalendar month={month} today={today} selected={date}
-        monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} selectedSpend={spend} selectedOpenTodos={data.todos.filter((t) => !t.isDone).length}
-        onSelect={setDate} onOpenDay={closeCalendar} />
-    </Animated.View> : <>
-      <WeekStrip weekStart={startOfWeek(date)} today={today} selected={date} markedDates={new Set(data.weekTodos.map((t) => t.date))} onSelect={setDate}
-        onChangeWeek={(delta) => setDate(addDays(date, delta * 7))} onOpenCalendar={() => { setMonth(startOfMonth(date)); setCalendar(true); }} />
+    {error || !data ? <LoadState error={error} retry={refresh} /> : <>
+      <DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data.nearbyTodos.map((t) => t.date))}
+        monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />
       {data.todos.length || data.previous.length ? <TodoList todos={data.todos} onDraggingChange={setDragging} header={data.previous.length > 0 &&
         <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
           <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
