@@ -66,6 +66,10 @@ each day's journal mood beside its date (the badges pop in as the month opens; t
 selected day's one animates); swipe it left for the next month and right for the previous one, or
 use its ‹ › arrows.
 
+Notes show as a two-column masonry grid (Pinned, then Others): each card is as tall as
+its photo, title and first lines, and joins the shorter column. Long press a card for
+Pin, Folder, Colour and Delete.
+
 Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe left for the
 tab on the right and right for the one on the left, on Habits, Today, Diary (below the
 dates) and Notes. Expenses swipes through Day → Week → Month first, then on to Today past

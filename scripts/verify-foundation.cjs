@@ -119,6 +119,11 @@ async function main() {
   assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1, 3, 4])), [2, 1, 4, 3], 'Open to-dos stay above done ones');
   assert.deepEqual(Array.from(savedTodoOrder(day, [3, 1, 2, 4])), [1, 2, 4, 3], 'A done row dragged to the top falls back below');
   assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1])), [2, 1, 4, 3], 'Rows hidden by a display limit keep their place');
+  const { masonryColumns } = load('components/ui/masonry.ts');
+  assert.deepEqual(Array.from(masonryColumns([100, 100, 100, 100], 2), (c) => Array.from(c)), [[0, 2], [1, 3]], 'Equal cards alternate, reading left to right');
+  assert.deepEqual(Array.from(masonryColumns([300, 100, 100, 100], 2), (c) => Array.from(c)), [[0], [1, 2, 3]], 'Cards fill the shorter column');
+  assert.deepEqual(Array.from(masonryColumns([100, 100, 50], 2, 10), (c) => Array.from(c)), [[0, 2], [1]], 'Ties go to the leftmost column');
+  assert.deepEqual(Array.from(masonryColumns([], 2), (c) => Array.from(c)), [[], []]);
   const { tabNeighbour } = load('components/navigation/tabs.ts');
   assert.equal(tabNeighbour('expenses', 1), '/', 'Past Month, Expenses swipes on to Today');
   assert.equal(tabNeighbour('expenses', -1), '/habits', 'Past Day, Expenses swipes back to Habits');
