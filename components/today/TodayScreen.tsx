@@ -123,7 +123,7 @@ export function TodayScreen() {
           <Icon name="chevronRight" color="secondaryLabel" />
         </PressableScale>
       </View>} />
-      {data.todos.length ? <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} onAdd={() => setSheet('todo')} /> : <Card><Button title="Nothing planned · Add to-do" variant="plain" onPress={() => setSheet('todo')} /></Card>}
+      <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} onAdd={() => setSheet('todo')} />
     </>}
     <BottomSheet {...sheetTransition} onDismissed={() => {
       sheetTransition.onDismissed();

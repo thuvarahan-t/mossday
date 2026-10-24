@@ -26,7 +26,10 @@ import { savedTodoOrder } from './todoOrder';
  */
 export function TodoList({ todos, limit, header, onDraggingChange, onAdd }: {
   todos: Todo[]; limit?: number; header?: ReactNode; onDraggingChange?: (dragging: boolean) => void;
-  /** Adds an "Add to-do" row at the end of the list. */
+  /**
+   * Adds a row at the end: "Add to-do" under existing to-dos, or "Nothing planned · Add
+   * to-do" when the day has none (still under the carry-over banner, if there is one).
+   */
   onAdd?: () => void;
 }) {
   const theme = useTheme();
@@ -60,11 +63,12 @@ export function TodoList({ todos, limit, header, onDraggingChange, onAdd }: {
   return <>
     <GroupedList>
       {header}
-      <ReorderableStack key="todos" items={visible} gap={0} onReorder={reorder} onDraggingChange={onDraggingChange}
+      {/* Only with rows: an empty stack would still get a separator above the add row. */}
+      {visible.length > 0 && <ReorderableStack key="todos" items={visible} gap={0} onReorder={reorder} onDraggingChange={onDraggingChange}
         renderItem={(todo) => <TodoRow todo={todo} done={pending[todo.id] ?? !!todo.isDone} separator={todo.id !== lastId}
           separatorInset={theme.sizes.rowPadding + theme.sizes.checkbox + theme.spacing.md}
-          onToggle={() => toggle(todo)} onEdit={() => setEditing(todo)} onDelete={() => remove(todo)} />} />
-      {onAdd && <ListRow key="add" title="Add to-do" icon={{ icon: 'plus', color: 'green' }} onPress={onAdd} />}
+          onToggle={() => toggle(todo)} onEdit={() => setEditing(todo)} onDelete={() => remove(todo)} />} />}
+      {onAdd && <ListRow key="add" title={todos.length ? 'Add to-do' : 'Nothing planned · Add to-do'} icon={{ icon: 'plus', color: 'green' }} onPress={onAdd} />}
     </GroupedList>
     {editing && <TodoSheet {...editingTransition} date={editing.date} initial={editing} onClose={() => setEditing(null)} />}
   </>;
