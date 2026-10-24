@@ -1,4 +1,5 @@
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import type { Ref } from 'react';
+import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { fontFamilies, textVariants, type TextVariant } from '@/constants/typography';
 import { useTheme } from '@/hooks/useTheme';
@@ -10,12 +11,14 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColo
   appearance?: 'outlined' | 'filled' | 'bare';
   variant?: TextVariant;
   bold?: boolean;
+  /** For moving focus between fields, e.g. to the next checklist item. */
+  ref?: Ref<TextInputInstance>;
 };
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 /** Text input styled with the type tokens; outlined fields turn green while focused. */
-export function TextField({ appearance = 'outlined', variant = 'body', bold, multiline, onFocus, onBlur, ...rest }: TextFieldProps) {
+export function TextField({ appearance = 'outlined', variant = 'body', bold, multiline, onFocus, onBlur, ref, ...rest }: TextFieldProps) {
   const theme = useTheme();
   const reduced = useReducedMotion();
   const focus = useSharedValue(0);
@@ -26,6 +29,7 @@ export function TextField({ appearance = 'outlined', variant = 'body', bold, mul
   return (
     <AnimatedTextInput
       {...rest}
+      ref={ref}
       multiline={multiline}
       onFocus={(event) => { focus.set(animateTo(1, 'snappy', reduced)); onFocus?.(event); }}
       onBlur={(event) => { focus.set(animateTo(0, 'snappy', reduced)); onBlur?.(event); }}

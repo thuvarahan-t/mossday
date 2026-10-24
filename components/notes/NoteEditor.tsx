@@ -1,16 +1,15 @@
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Keyboard, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Keyboard, ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
-import { Checkbox } from '@/components/ui/Checkbox';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
 import { ReorderableRow } from '@/components/ui/ReorderableRow';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { StrikeText } from '@/components/ui/StrikeText';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
@@ -20,19 +19,47 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { VoicePlayer } from '@/components/ui/voice/VoicePlayer';
 import { VoiceRecorder } from '@/components/ui/voice/VoiceRecorder';
 import { useAction, useAutosave, useResource } from '@/hooks/useResource';
+import { useSheetState } from '@/hooks/useSheetState';
 import { useTheme } from '@/hooks/useTheme';
-import { formatTimestamp } from '@/lib/date';
-import { importMedia, mediaFile, reclaimMediaLater } from '@/lib/media';
+import { dataColors } from '@/lib/dataColors';
+import { formatRelativeTimestamp, formatTimestamp } from '@/lib/date';
 import { importNotePhoto } from '@/lib/images';
-import { checklistItems, deleteNote, getNote, notePreview, saveNote, type Note, type NoteBlock, type NoteDraft } from '@/lib/repos/notes';
+import { importMedia, mediaFile, reclaimMediaLater } from '@/lib/media';
+import { ensureReminderPermission } from '@/lib/reminders';
+import {
+  checklistItems, deleteNote, duplicateNote, getNote, listNoteFolders, notePreview, restoreNote, saveNote, setNoteArchived, setNoteReminder,
+  type Note, type NoteBlock, type NoteDraft,
+} from '@/lib/repos/notes';
+import { ChecklistBlock } from './ChecklistBlock';
+import { emptyHistory, recordEdit, redo, undo } from './draftHistory';
+import { parseDrawing, serializeDrawing, type Drawing } from './drawing';
+import { DrawingEditor } from './DrawingEditor';
+import { DrawingView } from './DrawingView';
+import { checklistToText, continueList, noteCounts, textToChecklist, toggleList, type ListKind } from './noteText';
+import { NoteOptionsSheet } from './NoteOptionsSheet';
+import { NoteTag } from './NoteTag';
+import { PhotoViewer } from './PhotoViewer';
+import { ReminderSheet } from './ReminderSheet';
+import { formatReminder } from './reminderTimes';
 
-const TOOLBAR: { icon: IconName; label: string }[] = [
-  { icon: 'edit', label: 'Add text' }, { icon: 'image', label: 'Add photo from gallery' },
-  { icon: 'camera', label: 'Take photo' }, { icon: 'mic', label: 'Record voice note' }, { icon: 'checklist', label: 'Add checklist' },
+type ToolId = 'format' | 'gallery' | 'camera' | 'voice' | 'checklist' | 'drawing' | 'tools' | 'text' | 'bullets' | 'numbers' | 'checkboxes' | 'timestamp';
+type Tool = { id: ToolId; icon: IconName; label: string };
+const INSERT_TOOLS: Tool[] = [
+  { id: 'format', icon: 'text', label: 'Format text' }, { id: 'gallery', icon: 'image', label: 'Add photo from gallery' },
+  { id: 'camera', icon: 'camera', label: 'Take photo' }, { id: 'voice', icon: 'mic', label: 'Record voice note' },
+  { id: 'checklist', icon: 'checklist', label: 'Add checklist' }, { id: 'drawing', icon: 'brush', label: 'Add drawing' },
 ];
+/** Samsung's format bar, swapped in for the tools by "Aa". */
+const FORMAT_TOOLS: Tool[] = [
+  { id: 'tools', icon: 'chevronLeft', label: 'Back to tools' }, { id: 'text', icon: 'plus', label: 'Add text' },
+  { id: 'bullets', icon: 'bulletList', label: 'Bulleted list' }, { id: 'numbers', icon: 'numberList', label: 'Numbered list' },
+  { id: 'checkboxes', icon: 'checklist', label: 'Show or hide checkboxes' }, { id: 'timestamp', icon: 'clock', label: 'Insert date and time' },
+];
+type Focus = { blockId: number; selection: { start: number; end: number } };
 
 const emptyTextBlock = (noteId: number): NoteBlock =>
   ({ id: -1, noteId, type: 'TEXT', content: '', filePath: null, durationMs: null, position: 0 });
+const EMPTY_CHECKLIST = JSON.stringify([{ text: '', done: false }]);
 
 function isEmptyDraft(draft: NoteDraft) {
   return !draft.title.trim() && draft.blocks.every((block) => block.type === 'TEXT' && !block.content?.trim());
@@ -43,24 +70,66 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const action = useAction();
   const toast = useToast();
   const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
   const keyboard = useAnimatedKeyboard();
   const keyboardPadding = useAnimatedStyle(() => ({ paddingBottom: Math.max(0, keyboard.height.get() - insets.bottom) }));
   // A new note opens on an empty text block so typing can start right away; it is only
   // stored once something is written.
   const [draft, setDraft] = useState<NoteDraft>(() => ({ ...note, blocks: blocks.length ? blocks : [emptyTextBlock(note.id)] }));
   const latest = useRef(draft);
+  const history = useRef(emptyHistory<NoteDraft>());
+  const [steps, setSteps] = useState(() => emptyHistory<NoteDraft>());
   const nextId = useRef(-2);
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
-  const autosave = useAutosave<NoteDraft>((value) => saveNote(note.id, value));
+  const [formatting, setFormatting] = useState(false);
+  /** The text block or checklist being typed in, for the format bar; null in the heading. */
+  const focus = useRef<Focus | null>(null);
+  const [autoFocusId, setAutoFocusId] = useState<number | null>(null);
+  /** Where to put the cursor after the app changed the text being typed (a list marker, a time). */
+  const [cursor, setCursor] = useState<{ blockId: number; at: number } | null>(null);
+  const [reminderAt, setReminderAt] = useState(note.reminderAt);
+  const [editedAt, setEditedAt] = useState(note.updatedAt);
+  const [openedAt] = useState(() => Date.now());
+  const [sheet, setSheet, sheetTransition] = useSheetState<'options' | 'reminder'>(true);
+  const [drawing, setDrawing] = useState<{ blockId: number | null; initial: Drawing | null } | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const folders = useResource(listNoteFolders).data ?? [];
+  // Set once the note is deleted here, so edits still waiting to save are dropped.
+  const gone = useRef(false);
+  const autosave = useAutosave<NoteDraft>((value) => gone.current ? Promise.resolve() : saveNote(note.id, value));
   // Leaving a note without any content removes it instead of keeping a blank card.
-  useEffect(() => () => { if (isEmptyDraft(latest.current)) void deleteNote(note.id).catch(() => undefined); }, [note.id]);
-  const edit = (next: NoteDraft) => { latest.current = next; setDraft(next); autosave(next); };
-  const changeBlock = (id: number, content: string) => edit({ ...latest.current, blocks: latest.current.blocks.map((b) => b.id === id ? { ...b, content } : b) });
-  const addBlock = (type: NoteBlock['type'], filePath: string | null = null, durationMs: number | null = null) => {
-    const block: NoteBlock = { id: nextId.current--, noteId: note.id, type, content: type === 'CHECKLIST' ? '[{"text":"","done":false}]' : '', filePath, durationMs, position: latest.current.blocks.length };
-    edit({ ...latest.current, blocks: [...latest.current.blocks, block] });
+  useEffect(() => () => { if (!gone.current && isEmptyDraft(latest.current)) void deleteNote(note.id).catch(() => undefined); }, [note.id]);
+
+  const commit = (next: NoteDraft) => { latest.current = next; setDraft(next); autosave(next); setEditedAt(new Date().toISOString()); };
+  /** Every change goes through here, so it can be undone; `group` merges a burst of typing. */
+  const edit = (next: NoteDraft, group: string | null = null) => {
+    history.current = recordEdit(history.current, latest.current, group);
+    setSteps(history.current);
+    commit(next);
   };
+  const step = (direction: typeof undo) => {
+    const result = direction(history.current, latest.current);
+    if (!result) return;
+    history.current = result.history;
+    setSteps(result.history);
+    focus.current = null;
+    commit(result.draft);
+  };
+  const replaceBlock = (id: number, change: Partial<NoteBlock>, group: string | null = null) =>
+    edit({ ...latest.current, blocks: latest.current.blocks.map((b) => b.id === id ? { ...b, ...change } : b) }, group);
+  const newBlock = (type: NoteBlock['type'], content: string | null = '', filePath: string | null = null, durationMs: number | null = null): NoteBlock =>
+    ({ id: nextId.current--, noteId: note.id, type, content, filePath, durationMs, position: 0 });
+  const addBlock = (block: NoteBlock, focusIt = false) => {
+    edit({ ...latest.current, blocks: [...latest.current.blocks, block] });
+    if (focusIt) setAutoFocusId(block.id);
+  };
+  const focused = () => {
+    const current = focus.current;
+    const block = current && latest.current.blocks.find((b) => b.id === current.blockId);
+    return block && current ? { block, selection: current.selection } : null;
+  };
+
   const addImage = async (camera: boolean) => {
     if (busy) return;
     setBusy(true);
@@ -72,92 +141,217 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
       const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7, allowsEditing: true };
       const result = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       if (result.canceled || !result.assets[0]) return;
-      const asset = result.assets[0];
-      const path = await importNotePhoto(asset);
-      addBlock('IMAGE', path);
+      addBlock(newBlock('IMAGE', '', await importNotePhoto(result.assets[0])));
     });
     setBusy(false);
   };
+  // Samsung's format bar: lists, checkboxes and a time stamp act on the block being typed in,
+  // or start a new block when the cursor is in the heading or nowhere.
+  const formatList = (kind: ListKind) => {
+    const current = focused();
+    if (current?.block.type === 'TEXT') replaceBlock(current.block.id, { content: toggleList(current.block.content ?? '', current.selection, kind) });
+    else addBlock(newBlock('TEXT', kind === 'bullet' ? '• ' : '1. '), true);
+  };
+  const toggleCheckboxes = () => {
+    const current = focused();
+    if (!current) { addBlock(newBlock('CHECKLIST', EMPTY_CHECKLIST), true); return; }
+    focus.current = null;
+    replaceBlock(current.block.id, current.block.type === 'TEXT'
+      ? { type: 'CHECKLIST', content: JSON.stringify(textToChecklist(current.block.content ?? '')) }
+      : { type: 'TEXT', content: checklistToText(checklistItems(current.block.content)) });
+  };
+  const insertTimestamp = () => {
+    const stamp = formatTimestamp(new Date().toISOString());
+    const current = focused();
+    if (current?.block.type !== 'TEXT') { addBlock(newBlock('TEXT', stamp), true); return; }
+    const text = current.block.content ?? '';
+    const at = Math.min(current.selection.end, text.length);
+    replaceBlock(current.block.id, { content: text.slice(0, at) + stamp + text.slice(at) });
+    setCursor({ blockId: current.block.id, at: at + stamp.length });
+  };
+  const saveDrawing = (result: Drawing) => {
+    const target = drawing;
+    setDrawing(null);
+    if (!target) return;
+    if (target.blockId === null) { if (result.strokes.length) addBlock(newBlock('DRAWING', serializeDrawing(result))); return; }
+    if (result.strokes.length) replaceBlock(target.blockId, { content: serializeDrawing(result) });
+    else edit({ ...latest.current, blocks: latest.current.blocks.filter((b) => b.id !== target.blockId) });
+  };
+
+  const runTool = (id: ToolId) => {
+    switch (id) {
+      case 'format': setFormatting(true); break;
+      case 'tools': setFormatting(false); break;
+      case 'gallery': case 'camera': void addImage(id === 'camera'); break;
+      case 'voice': setRecording(true); break;
+      case 'checklist': addBlock(newBlock('CHECKLIST', EMPTY_CHECKLIST), true); break;
+      case 'drawing': Keyboard.dismiss(); setDrawing({ blockId: null, initial: null }); break;
+      case 'text': addBlock(newBlock('TEXT'), true); break;
+      case 'bullets': formatList('bullet'); break;
+      case 'numbers': formatList('number'); break;
+      case 'checkboxes': toggleCheckboxes(); break;
+      case 'timestamp': insertTimestamp(); break;
+    }
+  };
+
   const saveAndLeave = () => {
     if (busy) return;
     setBusy(true);
     void action(() => saveNote(note.id, latest.current), () => router.back()).finally(() => setBusy(false));
   };
-  const runTool = (icon: IconName) => {
-    if (icon === 'edit') addBlock('TEXT');
-    else if (icon === 'checklist') addBlock('CHECKLIST');
-    else if (icon === 'mic') setRecording(true);
-    else void addImage(icon === 'camera');
+  const share = () => { void action(async () => {
+    await saveNote(note.id, latest.current);
+    await Share.share({ message: `${latest.current.title}\n\n${notePreview(latest.current.blocks)}`.trim() });
+  }); };
+  const copy = () => { void action(async () => {
+    await saveNote(note.id, latest.current);
+    const id = await duplicateNote(note.id);
+    setSheet(null);
+    router.replace({ pathname: '/note/[id]', params: { id } });
+    toast({ message: 'Copy made' });
+  }); };
+  const archive = () => {
+    const archived = !note.isArchived;
+    void action(async () => {
+      await saveNote(note.id, latest.current);
+      await setNoteArchived(note.id, archived);
+    }, () => {
+      setSheet(null);
+      router.back();
+      toast({ message: archived ? 'Note archived' : 'Note unarchived', actionLabel: 'Undo', onAction: () => { void action(() => setNoteArchived(note.id, !archived)); } });
+    });
   };
-  return <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+  const remove = () => { void action(async () => {
+    await saveNote(note.id, latest.current);
+    gone.current = true;
+    const snapshot = await deleteNote(note.id);
+    reclaimMediaLater(snapshot.blocks.flatMap((b) => b.filePath ? [b.filePath] : []));
+    setSheet(null);
+    router.back();
+    toast({ message: 'Note deleted', actionLabel: 'Undo', onAction: () => { void action(() => restoreNote(snapshot)); } });
+  }); };
+  const remind = (at: string | null) => { void action(async () => {
+    if (at) await ensureReminderPermission();
+    await setNoteReminder(note.id, at);
+    setReminderAt(at);
+    setSheet(null);
+  }); };
+
+  const palette = draft.color ? dataColors(theme, draft.color) : null;
+  // Coloured notes take their colour's tint as the page, like Keep.
+  const background = palette?.tint ?? theme.colors.background;
+  const contentWidth = window.width - theme.spacing.xl * 2;
+  const pill = { height: theme.sizes.circleButton, paddingHorizontal: theme.spacing.md, gap: theme.spacing.lg };
+
+  return <SafeAreaView style={{ flex: 1, backgroundColor: background }}>
     {/* Follows the keyboard frame directly: Android may neither resize the window nor report
         coordinates that KeyboardAvoidingView can use (Expo Go draws below the status bar). */}
     <Animated.View style={[{ flex: 1 }, keyboardPadding]}>
-      <View style={[styles.row, { justifyContent: 'space-between', padding: theme.spacing.lg, gap: theme.spacing.sm }]}>
+      <View style={[styles.row, { padding: theme.spacing.lg, gap: theme.spacing.sm }]}>
         <GlassButton accessibilityLabel="Save and go back" onPress={saveAndLeave}><Icon name="chevronLeft" size={theme.sizes.iconLarge} /></GlassButton>
-        <View style={[styles.row, { gap: theme.spacing.sm }]}>
-          <GlassSurface contentStyle={[styles.row, { height: theme.sizes.circleButton, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.xl }]}>
-            <PressableScale haptic="selection" hitSlop={theme.spacing.sm} accessibilityLabel={draft.isPinned ? 'Unpin note' : 'Pin note'}
-              accessibilityState={{ selected: !!draft.isPinned }} onPress={() => edit({ ...latest.current, isPinned: draft.isPinned ? 0 : 1 })}>
-              <Icon name="pin" color={draft.isPinned ? 'accent' : 'label'} fill={draft.isPinned ? theme.colors.accent : undefined} />
-            </PressableScale>
-            <PressableScale haptic="tap" hitSlop={theme.spacing.sm} accessibilityLabel="Share note"
-              onPress={() => { void action(async () => { await saveNote(note.id, latest.current); await Share.share({ message: `${latest.current.title}
-
-${notePreview(latest.current.blocks)}` }); }); }}>
-              <Icon name="share" />
-            </PressableScale>
-          </GlassSurface>
-          <PressableScale haptic="success" accessibilityLabel="Done" disabled={busy} onPress={() => { Keyboard.dismiss(); saveAndLeave(); }}
-            style={[styles.center, { width: theme.sizes.circleButton, height: theme.sizes.circleButton, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent }]}>
-            <Icon name="check" color="onAccent" strokeWidth={2.8} />
-          </PressableScale>
-        </View>
+        <GlassSurface contentStyle={[styles.row, pill]}>
+          <HeaderIcon icon="undo" label="Undo" onPress={() => step(undo)} disabled={!steps.past.length} />
+          <HeaderIcon icon="redo" label="Redo" onPress={() => step(redo)} disabled={!steps.future.length} />
+        </GlassSurface>
+        <View style={{ flex: 1 }} />
+        <GlassSurface contentStyle={[styles.row, pill]}>
+          <HeaderIcon icon="pin" label={draft.isPinned ? 'Unpin note' : 'Pin note'} selected={!!draft.isPinned}
+            onPress={() => edit({ ...latest.current, isPinned: latest.current.isPinned ? 0 : 1 })} />
+          <HeaderIcon icon="bell" label={reminderAt ? `Reminder, ${formatReminder(reminderAt)}` : 'Add reminder'} selected={!!reminderAt}
+            onPress={() => { Keyboard.dismiss(); setSheet('reminder'); }} />
+          <HeaderIcon icon="more" label="More options" onPress={() => { Keyboard.dismiss(); setSheet('options'); }} />
+        </GlassSurface>
+        <PressableScale haptic="success" accessibilityLabel="Done" disabled={busy} onPress={() => { Keyboard.dismiss(); saveAndLeave(); }}
+          style={[styles.center, { width: theme.sizes.circleButton, height: theme.sizes.circleButton, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent }]}>
+          <Icon name="check" color="onAccent" strokeWidth={2.8} />
+        </PressableScale>
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <Text align="center" variant="footnote" color="secondaryLabel">{formatTimestamp(note.createdAt)}</Text>
-        <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title })} appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />
+        <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; }}
+          appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />
         {draft.blocks.map((block, index) => <ReorderableRow key={block.id} label={`Reorder ${block.type.toLowerCase()} block`} onMove={(offset) => {
           const reordered = [...latest.current.blocks]; const from = reordered.findIndex((b) => b.id === block.id);
           const [moved] = reordered.splice(from, 1); reordered.splice(Math.max(0, Math.min(reordered.length, from + offset)), 0, moved);
           edit({ ...latest.current, blocks: reordered });
         }}><SwipeableRow onDelete={() => {
+          if (focus.current?.blockId === block.id) focus.current = null;
           edit({ ...latest.current, blocks: latest.current.blocks.filter((b) => b.id !== block.id) });
           if (block.filePath) reclaimMediaLater([block.filePath]);
           toast({ message: 'Block deleted', actionLabel: 'Undo', onAction: () => {
             const restored = [...latest.current.blocks]; restored.splice(Math.min(index, restored.length), 0, block); edit({ ...latest.current, blocks: restored });
           } });
         }}>
-          <View style={{ paddingVertical: theme.spacing.sm, backgroundColor: theme.colors.background }}>
-            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder="Write something…" value={block.content ?? ''} onChangeText={(text) => changeBlock(block.id, text)} accessibilityLabel="Note text" />}
-            {block.type === 'IMAGE' && block.filePath && <Image source={{ uri: mediaFile(block.filePath).uri }} style={{ width: '100%', height: theme.sizes.habitRing * 3, borderRadius: theme.radii.card }} resizeMode="cover" accessibilityLabel="Attached photo" />}
+          <View style={{ paddingVertical: theme.spacing.sm, backgroundColor: background }}>
+            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder="Write something…" value={block.content ?? ''} accessibilityLabel="Note text"
+              autoFocus={block.id === autoFocusId}
+              onFocus={() => { const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; }}
+              selection={cursor?.blockId === block.id ? { start: cursor.at, end: cursor.at } : undefined}
+              onSelectionChange={(event) => {
+                const { selection } = event.nativeEvent;
+                focus.current = { blockId: block.id, selection };
+                // Released once the cursor has arrived; the typing's own selection event may come first.
+                if (cursor?.blockId === block.id && selection.start === cursor.at) setCursor(null);
+              }}
+              onChangeText={(text) => {
+                const content = continueList(block.content ?? '', text);
+                replaceBlock(block.id, { content }, `text:${block.id}`);
+                setCursor(content !== text ? { blockId: block.id, at: listCursor(text, content) } : null);
+              }} />}
+            {block.type === 'IMAGE' && block.filePath && <PressableScale haptic="tap" accessibilityLabel="Open photo" onPress={() => setPhoto(mediaFile(block.filePath!).uri)}>
+              <Image source={{ uri: mediaFile(block.filePath).uri }} contentFit="cover" transition={150} accessibilityLabel="Attached photo"
+                style={{ width: '100%', height: contentWidth * 0.75, borderRadius: theme.radii.card }} />
+            </PressableScale>}
             {block.type === 'VOICE' && block.filePath && <VoicePlayer uri={mediaFile(block.filePath).uri} durationMs={block.durationMs ?? 0} />}
-            {block.type === 'CHECKLIST' && <View style={{ gap: theme.spacing.sm }}>
-              {checklistItems(block.content).map((item, itemIndex) => <View key={itemIndex} style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-                <Checkbox checked={item.done} accessibilityLabel={item.text || 'Checklist item'} onToggle={() => {
-                  const items = checklistItems(block.content); items[itemIndex] = { ...item, done: !item.done }; changeBlock(block.id, JSON.stringify(items));
-                }} />
-                <View style={{ flex: 1 }}>{item.done ? <StrikeText struck>{item.text}</StrikeText> : <TextField value={item.text} appearance="bare" placeholder="List item" accessibilityLabel="Checklist text" onChangeText={(text) => {
-                  const items = checklistItems(block.content); items[itemIndex] = { ...item, text }; changeBlock(block.id, JSON.stringify(items));
-                }} />}</View>
-                <Button title="×" size="small" variant="plain" onPress={() => changeBlock(block.id, JSON.stringify(checklistItems(block.content).filter((_, i) => i !== itemIndex)))} />
-              </View>)}
-              <Button title="Add item" size="small" variant="plain" onPress={() => changeBlock(block.id, JSON.stringify([...checklistItems(block.content), { text: '', done: false }]))} />
-            </View>}
+            {block.type === 'CHECKLIST' && <ChecklistBlock blockId={block.id} content={block.content} autoFocus={block.id === autoFocusId}
+              onFocus={() => { focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; }}
+              onChange={(content, group) => replaceBlock(block.id, { content }, group)} />}
+            {block.type === 'DRAWING' && <PressableScale haptic="tap" accessibilityLabel="Edit drawing"
+              onPress={() => { Keyboard.dismiss(); setDrawing({ blockId: block.id, initial: parseDrawing(block.content) }); }}
+              style={{ borderRadius: theme.radii.card, overflow: 'hidden', backgroundColor: theme.colors.card }}>
+              <DrawingView drawing={parseDrawing(block.content)} width={contentWidth} />
+            </PressableScale>}
           </View>
         </SwipeableRow></ReorderableRow>)}
+        {(reminderAt || draft.folder) && <View style={[styles.row, { flexWrap: 'wrap', gap: theme.spacing.sm }]}>
+          {reminderAt && <NoteTag icon="bell" label={formatReminder(reminderAt)} past={Date.parse(reminderAt) <= openedAt} onPress={() => setSheet('reminder')} />}
+          {draft.folder && <NoteTag icon="folder" label={draft.folder} onPress={() => setSheet('options')} />}
+        </View>}
+        <Text align="center" variant="caption1" color="tertiaryLabel">{`Edited ${formatRelativeTimestamp(editedAt)}`}</Text>
       </ScrollView>
       {recording ? <VoiceRecorder onCancel={() => setRecording(false)} onError={(message) => toast({ message })} onSave={(uri, durationMs) => {
-        void action(async () => { const path = importMedia(uri, 'm4a'); addBlock('VOICE', path, durationMs); setRecording(false); });
+        void action(async () => { addBlock(newBlock('VOICE', '', importMedia(uri, 'm4a'), durationMs)); setRecording(false); });
       }} /> : <GlassSurface style={{ marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm }}
         contentStyle={[styles.row, { justifyContent: 'space-around', height: theme.sizes.toolbarHeight }]}>
-        {TOOLBAR.map((item) => <PressableScale key={item.label} haptic="selection" accessibilityLabel={item.label} disabled={busy} hitSlop={theme.spacing.sm}
-          style={[styles.center, { minWidth: theme.sizes.circleButton, height: theme.sizes.circleButton }]} onPress={() => runTool(item.icon)}>
-          {item.icon === 'edit' ? <Text variant="headline">Aa</Text> : <Icon name={item.icon} />}
+        {(formatting ? FORMAT_TOOLS : INSERT_TOOLS).map((tool) => <PressableScale key={tool.id} haptic="selection" accessibilityLabel={tool.label} disabled={busy} hitSlop={theme.spacing.sm}
+          style={[styles.center, { minWidth: theme.sizes.circleButton, height: theme.sizes.circleButton }]} onPress={() => runTool(tool.id)}>
+          <Icon name={tool.icon} />
         </PressableScale>)}
       </GlassSurface>}
     </Animated.View>
+    {sheet === 'options' && <NoteOptionsSheet {...sheetTransition} onClose={() => setSheet(null)}
+      options={{ color: draft.color, folder: draft.folder, folders, archived: !!note.isArchived, counts: noteCounts(draft.title, draft.blocks), createdAt: note.createdAt, updatedAt: editedAt }}
+      onColor={(color) => edit({ ...latest.current, color })} onFolder={(folder) => edit({ ...latest.current, folder })}
+      onShare={share} onCopy={copy} onArchive={archive} onDelete={remove} />}
+    {sheet === 'reminder' && <ReminderSheet {...sheetTransition} reminderAt={reminderAt} onSet={remind} onClose={() => setSheet(null)} />}
+    {drawing && <DrawingEditor initial={drawing.initial} onDone={saveDrawing} />}
+    {photo && <PhotoViewer uri={photo} onClose={() => setPhoto(null)} />}
   </SafeAreaView>;
+}
+
+/** After list typing changed `typed` into `content`, the cursor goes after the added marker (or where the removed one was). */
+function listCursor(typed: string, content: string) {
+  let at = 0;
+  while (at < typed.length && typed[at] === content[at]) at += 1;
+  return at + Math.max(0, content.length - typed.length);
+}
+
+function HeaderIcon({ icon, label, onPress, disabled, selected }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean; selected?: boolean }) {
+  const theme = useTheme();
+  return <PressableScale haptic="selection" hitSlop={theme.spacing.sm} accessibilityLabel={label} disabled={disabled}
+    accessibilityState={{ disabled, selected }} onPress={onPress} style={{ opacity: disabled ? 0.35 : 1 }}>
+    <Icon name={icon} color={selected ? 'accent' : 'label'} fill={selected ? theme.colors.accent : undefined} />
+  </PressableScale>;
 }
 
 export function NoteEditorScreen() {

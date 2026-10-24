@@ -25,17 +25,20 @@ async function savedFolders(db: SQLiteDatabase): Promise<string[]> {
     return Array.isArray(names) ? names.filter((name): name is string => typeof name === 'string') : [];
   } catch { return []; }
 }
-/** Notes on the main grid, or with `archived` the archive, with their blocks and the folder list. */
-export const listNotes = (archived = false) => read(async (db) => {
-  const notes = await db.getAllAsync<Note>('SELECT * FROM notes WHERE isArchived=? ORDER BY isPinned DESC,updatedAt DESC,id DESC', archived ? 1 : 0);
+/** Created folders and folders notes use (archived ones too), alphabetically, each once. */
+async function folderNames(db: SQLiteDatabase) {
   const used = (await db.getAllAsync<{ folder: string }>('SELECT DISTINCT folder FROM notes WHERE folder IS NOT NULL')).map((row) => row.folder);
-  return {
-    notes,
-    blocks: await db.getAllAsync<NoteBlock>('SELECT b.* FROM note_blocks b JOIN notes n ON n.id=b.noteId WHERE n.isArchived=? ORDER BY b.position,b.id', archived ? 1 : 0),
-    /** Created folders and folders notes use, alphabetically, each once. */
-    folders: [...new Set([...await savedFolders(db), ...used])].sort((a, b) => a.localeCompare(b)),
-  };
-});
+  return [...new Set([...await savedFolders(db), ...used])].sort((a, b) => a.localeCompare(b));
+}
+export const listNoteFolders = () => read(folderNames);
+/** Notes on the main grid, or with `archived` the archive, with their blocks and the folder list. */
+export const listNotes = (archived = false) => read(async (db) => ({
+  notes: await db.getAllAsync<Note>('SELECT * FROM notes WHERE isArchived=? ORDER BY isPinned DESC,updatedAt DESC,id DESC', archived ? 1 : 0),
+  blocks: await db.getAllAsync<NoteBlock>('SELECT b.* FROM note_blocks b JOIN notes n ON n.id=b.noteId WHERE n.isArchived=? ORDER BY b.position,b.id', archived ? 1 : 0),
+  folders: await folderNames(db),
+  /** For the "Archived notes" row, shown only when there is something in it. */
+  archivedCount: (await db.getFirstAsync<{ n: number }>('SELECT count(*) AS n FROM notes WHERE isArchived=?', archived ? 0 : 1))?.n ?? 0,
+}));
 /** Adds an empty folder. "All" is the built-in filter, and names are unique ignoring case. */
 export function addFolder(name: string) {
   const clean = requireName(name);
