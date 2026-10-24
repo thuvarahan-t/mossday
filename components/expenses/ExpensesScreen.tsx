@@ -1,7 +1,8 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
+import { tabNeighbour } from '@/components/navigation/tabs';
 import { useShareImage } from '@/components/share/ShareImage';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
@@ -84,6 +85,9 @@ export function ExpensesScreen() {
       message: 'Expense deleted', actionLabel: 'Undo', onAction: () => { void action(() => restoreExpense(expense)); },
     }));
   };
+  // Past Day (right) the swipe moves on to Habits, past Month (left) to Today.
+  const goToTab = (delta: -1 | 1) => { const href = tabNeighbour('expenses', delta); if (href) router.navigate(href); };
+  const swipePast = { previous: () => goToTab(-1), next: () => goToTab(1) };
   // A picked date opens that day, whichever period was showing.
   const datePicker = useDatePicker(date, (day) => { setPeriod('Day'); setDate(day); }, today);
   const shift = (delta: -1 | 1) => setDate(period === 'Month' ? addMonths(date, delta) : addDays(date, delta * (period === 'Week' ? 7 : 1)));
@@ -100,7 +104,7 @@ export function ExpensesScreen() {
     {/* The Day / Week / Month switch stays put; only the period's content slides. */}
     <SegmentedControl segments={periods} selected={period} onChange={setPeriod} />
     {/* Grows into the empty space under short lists, so a swipe anywhere below the switch works. */}
-    <PeriodSwipeArea contentKey={view} periods={periods} onSwipe={setPeriod} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
+    <PeriodSwipeArea contentKey={view} periods={periods} onSwipe={setPeriod} onSwipePast={swipePast} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
         canGoForward={selected.to < today} onShift={shift} onPickDate={datePicker.open} />
       {/* iOS draws the calendar inline, right under the date it changes; Android opens a dialog. */}

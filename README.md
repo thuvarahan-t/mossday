@@ -33,8 +33,8 @@ later. Only the label changes; saved amounts are never converted.
 Expenses shows the month's budget as a progress line on every period; tapping it
 (or the daily budget bar) opens one Budget sheet with a Daily / Monthly switch. The
 "a day" average divides by days that have at least one expense, not by calendar days.
-Swipe left on Expenses to move Day → Week → Month and right to move back; the
-view slides out and the next slides in once its data is ready. The ‹ › arrows and
+Swipe left on Expenses to move Day → Week → Month and right to move back (past either
+end, on to the next tab); the view slides out and the next slides in once its data is ready. The ‹ › arrows and
 the tappable date label change the date.
 In Add Expense → Other, categories use a compact sheet. Long press and drag a
 tile to reorder it; nearby tiles shift live and a dashed placeholder marks the
@@ -66,8 +66,10 @@ each day's journal mood beside its date (the badges pop in as the month opens; t
 selected day's one animates); swipe it left for the next month and right for the previous one, or
 use its ‹ › arrows.
 
-Tab swipes: on Diary (below the dates) swipe right for Today and left for Notes; on Notes
-swipe right for Diary. Tabs follow the tab bar's order (components/navigation/tabs.ts).
+Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe left for the
+tab on the right and right for the one on the left, on Habits, Today, Diary (below the
+dates) and Notes. Expenses swipes through Day → Week → Month first, then on to Today past
+Month, or back to Habits past Day.
 
 To-dos (Diary and Today share one list): hold a to-do and release for Edit / Delete,
 or hold and drag to reorder it live; tap its text to edit, swipe left to delete. The

@@ -119,6 +119,13 @@ async function main() {
   assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1, 3, 4])), [2, 1, 4, 3], 'Open to-dos stay above done ones');
   assert.deepEqual(Array.from(savedTodoOrder(day, [3, 1, 2, 4])), [1, 2, 4, 3], 'A done row dragged to the top falls back below');
   assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1])), [2, 1, 4, 3], 'Rows hidden by a display limit keep their place');
+  const { tabNeighbour } = load('components/navigation/tabs.ts');
+  assert.equal(tabNeighbour('expenses', 1), '/', 'Past Month, Expenses swipes on to Today');
+  assert.equal(tabNeighbour('expenses', -1), '/habits', 'Past Day, Expenses swipes back to Habits');
+  assert.equal(tabNeighbour('index', 1), '/diary');
+  assert.equal(tabNeighbour('index', -1), '/expenses');
+  assert.equal(tabNeighbour('habits', -1), undefined, 'Habits is the first tab');
+  assert.equal(tabNeighbour('notes', 1), undefined, 'Notes is the last tab');
   const { swipeDelta } = load('lib/swipe.ts');
   assert.equal(swipeDelta(-80, 0), 1, 'Swiping left moves to the next section (Day → Week → Month)');
   assert.equal(swipeDelta(80, 0), -1, 'Swiping right moves back a section');

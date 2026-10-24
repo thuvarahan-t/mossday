@@ -7,7 +7,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
 import { swipeDelta } from '@/lib/swipe';
-import { tabs, type TabName } from './tabs';
+import { tabNeighbour, type TabName } from './tabs';
 
 /** How far the content follows the finger, and the stiffer pull at the first or last tab. */
 const FOLLOW = 0.35;
@@ -22,9 +22,8 @@ const BLOCKED_FOLLOW = 0.12;
 export function TabSwipeArea({ tab, children, style }: { tab: TabName; children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const reduced = useReducedMotion();
   const offset = useSharedValue(0);
-  const index = tabs.findIndex((item) => item.name === tab);
-  const previous = tabs[index - 1]?.href;
-  const next = tabs[index + 1]?.href;
+  const previous = tabNeighbour(tab, -1);
+  const next = tabNeighbour(tab, 1);
   const go = (delta: -1 | 1) => {
     const href = delta === 1 ? next : previous;
     if (!href) return;

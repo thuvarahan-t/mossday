@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
+import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareImage';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ExpenseSheet, preloadCategories } from '@/components/expenses/ExpenseSheet';
@@ -73,58 +74,60 @@ export function TodayScreen() {
   };
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
     titleAccessory={<TabHeaderActions shareLabel="Share today" onShare={shareToday} addLabel="Quick add" onAdd={() => setSheet('quick')} />}
-    scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md }}>
-    {error || !data ? <LoadState error={error} retry={refresh} /> : <>
-      <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-          <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={openTodaysExpenses} style={{ flex: 1, gap: theme.spacing.sm }}>
-            <Text color="secondaryLabel">Spent today</Text>
-            <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
-          </PressableScale>
-          {/* A sibling, not a child, of the summary so both stay separate accessible buttons. */}
-          <PressableScale accessibilityLabel="Add expense" haptic="tap" onPress={() => addExpense()}
-            style={{ width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, borderRadius: theme.sizes.touchTarget / 2,
-              alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill }}>
+    scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
+    <TabSwipeArea tab="index" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
+      {error || !data ? <LoadState error={error} retry={refresh} /> : <>
+        <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+            <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={openTodaysExpenses} style={{ flex: 1, gap: theme.spacing.sm }}>
+              <Text color="secondaryLabel">Spent today</Text>
+              <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
+            </PressableScale>
+            {/* A sibling, not a child, of the summary so both stay separate accessible buttons. */}
+            <PressableScale accessibilityLabel="Add expense" haptic="tap" onPress={() => addExpense()}
+              style={{ width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, borderRadius: theme.sizes.touchTarget / 2,
+                alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill }}>
+              <Icon name="plus" color="accent" strokeWidth={2.6} />
+            </PressableScale>
+          </View>
+          {budget > 0 && <PressableScale accessibilityLabel="Daily budget, view today's expenses" haptic="tap" onPress={openTodaysExpenses}>
+            <BudgetMeter spent={spent} budget={budget} />
+          </PressableScale>}
+          <Separator />
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            {data.categories.filter((c) => c.type === 'MEAL').map((category) => {
+              const logged = data.expenses.filter((e) => e.date === today && e.categoryId === category.id);
+              return <PressableScale key={category.id} accessibilityLabel={`${category.name}, ${logged.length ? 'edit expense' : 'add expense'}`}
+                onPress={() => {
+                  // A logged meal opens today's entry for it (the latest, if several); an empty one adds it.
+                  if (logged.length) { setEditing(logged[0]); setSheet('expense'); } else addExpense(category.id);
+                }}
+                style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: theme.colors.fill, alignItems: 'center' }}>
+                <Text variant="footnote" color="secondaryLabel">{category.name}</Text><Text variant="headline" color={logged.length ? 'label' : 'accent'}>{logged.length ? formatMoney(logged.reduce((sum, e) => sum + e.amount, 0)) : '+ Add'}</Text>
+              </PressableScale>;
+            })}
+          </View>
+        </Card></AnimatedListItem>
+        <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
+        {/* The scroll view clips its content, so padding gives a completed ring room to pop. */}
+        <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: -theme.spacing.sm }}
+          contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around', paddingVertical: theme.spacing.sm }}>
+          {active.length ? active.map((habit) => <View key={habit.id} style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+            <HabitTickButton name={habit.name} color={habit.color} count={countFor(habit.id)} goal={habit.dailyGoal} emoji={habit.icon || '🌱'} onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
+            <Text variant="subheadline" style={{ color: dataColors(theme, habit.color).accent }}>{habit.name}</Text>
+          </View>) : <Button title="Add your first habit" variant="plain" onPress={() => router.navigate('/habits')} />}
+        </ScrollView></Card></AnimatedListItem>
+        <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<View style={{ flexDirection: 'row' }}>
+          <PressableScale accessibilityLabel="Add to-do" haptic="tap" onPress={() => setSheet('todo')} style={sectionIconButton}>
             <Icon name="plus" color="accent" strokeWidth={2.6} />
           </PressableScale>
-        </View>
-        {budget > 0 && <PressableScale accessibilityLabel="Daily budget, view today's expenses" haptic="tap" onPress={openTodaysExpenses}>
-          <BudgetMeter spent={spent} budget={budget} />
-        </PressableScale>}
-        <Separator />
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-          {data.categories.filter((c) => c.type === 'MEAL').map((category) => {
-            const logged = data.expenses.filter((e) => e.date === today && e.categoryId === category.id);
-            return <PressableScale key={category.id} accessibilityLabel={`${category.name}, ${logged.length ? 'edit expense' : 'add expense'}`}
-              onPress={() => {
-                // A logged meal opens today's entry for it (the latest, if several); an empty one adds it.
-                if (logged.length) { setEditing(logged[0]); setSheet('expense'); } else addExpense(category.id);
-              }}
-              style={{ flex: 1, padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: theme.colors.fill, alignItems: 'center' }}>
-              <Text variant="footnote" color="secondaryLabel">{category.name}</Text><Text variant="headline" color={logged.length ? 'label' : 'accent'}>{logged.length ? formatMoney(logged.reduce((sum, e) => sum + e.amount, 0)) : '+ Add'}</Text>
-            </PressableScale>;
-          })}
-        </View>
-      </Card></AnimatedListItem>
-      <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
-      {/* The scroll view clips its content, so padding gives a completed ring room to pop. */}
-      <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: -theme.spacing.sm }}
-        contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around', paddingVertical: theme.spacing.sm }}>
-        {active.length ? active.map((habit) => <View key={habit.id} style={{ alignItems: 'center', gap: theme.spacing.sm }}>
-          <HabitTickButton name={habit.name} color={habit.color} count={countFor(habit.id)} goal={habit.dailyGoal} emoji={habit.icon || '🌱'} onTick={() => { void action(() => tickHabit(habit.id, today), haptics.tick); }} onUndo={() => { void action(() => tickHabit(habit.id, today, -1)); }} />
-          <Text variant="subheadline" style={{ color: dataColors(theme, habit.color).accent }}>{habit.name}</Text>
-        </View>) : <Button title="Add your first habit" variant="plain" onPress={() => router.navigate('/habits')} />}
-      </ScrollView></Card></AnimatedListItem>
-      <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<View style={{ flexDirection: 'row' }}>
-        <PressableScale accessibilityLabel="Add to-do" haptic="tap" onPress={() => setSheet('todo')} style={sectionIconButton}>
-          <Icon name="plus" color="accent" strokeWidth={2.6} />
-        </PressableScale>
-        <PressableScale accessibilityLabel="See all to-dos" haptic="tap" onPress={() => router.navigate('/diary')} style={sectionIconButton}>
-          <Icon name="chevronRight" color="secondaryLabel" />
-        </PressableScale>
-      </View>} />
-      <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} onAdd={() => setSheet('todo')} />
-    </>}
+          <PressableScale accessibilityLabel="See all to-dos" haptic="tap" onPress={() => router.navigate('/diary')} style={sectionIconButton}>
+            <Icon name="chevronRight" color="secondaryLabel" />
+          </PressableScale>
+        </View>} />
+        <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} onAdd={() => setSheet('todo')} />
+      </>}
+    </TabSwipeArea>
     <BottomSheet {...sheetTransition} onDismissed={() => {
       sheetTransition.onDismissed();
       if (noteAfterDismissal.current) { noteAfterDismissal.current = false; newNote(); }

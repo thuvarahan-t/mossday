@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
+import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareImage';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
@@ -44,18 +45,20 @@ export function HabitsScreen() {
     if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitYear(anchor).label, anchor }));
   };
   return <LargeTitleScreen title="Habits" titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} addLabel="New habit" onAdd={() => setEditor('new')} />}
-    subtitle={subtitle} scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md }}>
-    <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={setPeriodDate} />
-    {error || !data ? <LoadState error={error} retry={refresh} /> : !data.habits.length ?
-      <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
-      <ReorderableStack items={data.habits} gap={theme.spacing.md} onReorder={reorder} onDraggingChange={setDragging}
-        renderItem={(habit) => <AnimatedListItem><HabitCard habit={habit} anchor={anchor} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} onScrubChange={setDragging} /></AnimatedListItem>} />}
-    {/* Like Expenses' "Add expense" row: the next habit is one tap away at the end of the
-        list (the empty state has its own button). Archived habits sit beside it. */}
-    {data && (data.habits.length > 0 || data.archived.length > 0) && <GroupedList>
-      {data.habits.length > 0 && <ListRow title="New habit" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />}
-      {data.archived.length > 0 && <ListRow title="Archived habits" icon={{ icon: 'archive', color: 'gray' }} value={String(data.archived.length)} accessory="chevron" onPress={() => setArchive(true)} />}
-    </GroupedList>}
+    subtitle={subtitle} scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
+    <TabSwipeArea tab="habits" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
+      <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={setPeriodDate} />
+      {error || !data ? <LoadState error={error} retry={refresh} /> : !data.habits.length ?
+        <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
+        <ReorderableStack items={data.habits} gap={theme.spacing.md} onReorder={reorder} onDraggingChange={setDragging}
+          renderItem={(habit) => <AnimatedListItem><HabitCard habit={habit} anchor={anchor} counts={Object.fromEntries(data.logs.filter((log) => log.habitId === habit.id).map((l) => [l.date, l.count]))} onEdit={() => setEditor(habit)} onScrubChange={setDragging} /></AnimatedListItem>} />}
+      {/* Like Expenses' "Add expense" row: the next habit is one tap away at the end of the
+          list (the empty state has its own button). Archived habits sit beside it. */}
+      {data && (data.habits.length > 0 || data.archived.length > 0) && <GroupedList>
+        {data.habits.length > 0 && <ListRow title="New habit" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />}
+        {data.archived.length > 0 && <ListRow title="Archived habits" icon={{ icon: 'archive', color: 'gray' }} value={String(data.archived.length)} accessory="chevron" onPress={() => setArchive(true)} />}
+      </GroupedList>}
+    </TabSwipeArea>
     {archive && data && <ArchivedHabitsSheet {...archiveTransition} habits={data.archived} onClose={() => setArchive(null)} />}
     {editor && <HabitSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
   </LargeTitleScreen>;

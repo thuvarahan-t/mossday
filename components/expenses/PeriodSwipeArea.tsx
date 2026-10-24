@@ -21,13 +21,17 @@ const RESTORE_AFTER_MS = 800;
  * back). The old view slides out and fades; the new one slides in from the far side once
  * its data has rendered (`contentKey` changes), so stale totals never flash. Section taps
  * and date steps (arrows, date picker) get the same slide-in, in the direction they move.
- * Controls with their own horizontal drag activate sooner and keep it.
+ * Swiping past the first or last section calls `onSwipePast` (Expenses moves on to the
+ * neighbouring tab). Controls with their own horizontal drag activate sooner and keep it.
  */
-export function PeriodSwipeArea<T extends string>({ children, contentKey, periods, onSwipe, style }: {
+export function PeriodSwipeArea<T extends string>({ children, contentKey, periods, onSwipe, onSwipePast, style }: {
   children: ReactNode; contentKey: { period: T; from: string };
   /** Section order: both the swipe order and the direction new views slide in from. */
   periods: readonly T[];
-  onSwipe: (period: T) => void; style?: StyleProp<ViewStyle>;
+  onSwipe: (period: T) => void;
+  /** Where a swipe beyond the sections goes, per direction; without one it springs back. */
+  onSwipePast?: { previous?: () => void; next?: () => void };
+  style?: StyleProp<ViewStyle>;
 }) {
   const reduced = useReducedMotion();
   const { width } = useWindowDimensions();
@@ -39,6 +43,10 @@ export function PeriodSwipeArea<T extends string>({ children, contentKey, period
   const index = periods.indexOf(period);
   const canGoBack = index > 0;
   const canGoForward = index < periods.length - 1;
+  const pastPrevious = canGoBack ? undefined : onSwipePast?.previous;
+  const pastNext = canGoForward ? undefined : onSwipePast?.next;
+  const hasPrevious = canGoBack || !!pastPrevious;
+  const hasNext = canGoForward || !!pastNext;
 
   useEffect(() => {
     const before = shown.current;
@@ -62,18 +70,28 @@ export function PeriodSwipeArea<T extends string>({ children, contentKey, period
       opacity.set(withTiming(1, { duration: durations.fast }));
     }, RESTORE_AFTER_MS);
   };
+  // Leaving for another tab: no slide-out, as the tab switches at once; spring back behind it.
+  const leave = (delta: -1 | 1) => {
+    haptics.selection();
+    (delta === 1 ? pastNext : pastPrevious)?.();
+  };
   const pan = usePanGesture({
     activeOffsetX: [-24, 24],
     failOffsetY: [-14, 14],
     onUpdate: (event) => {
       if (reduced) return;
-      const blocked = event.translationX < 0 ? !canGoForward : !canGoBack;
+      const blocked = event.translationX < 0 ? !hasNext : !hasPrevious;
       offset.set(event.translationX * (blocked ? BLOCKED_FOLLOW : FOLLOW));
     },
     onDeactivate: (event) => {
       const delta = swipeDelta(event.translationX, event.velocityX);
-      if (delta === 0 || (delta === 1 && !canGoForward) || (delta === -1 && !canGoBack)) {
+      if (delta === 0 || (delta === 1 && !hasNext) || (delta === -1 && !hasPrevious)) {
         offset.set(animateTo(0, 'snappy', reduced));
+        return;
+      }
+      if ((delta === 1 && !canGoForward) || (delta === -1 && !canGoBack)) {
+        offset.set(animateTo(0, 'snappy', reduced));
+        scheduleOnRN(leave, delta);
         return;
       }
       // Next leaves to the left, previous to the right; the section changes once it is out.

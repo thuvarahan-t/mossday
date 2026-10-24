@@ -13,3 +13,8 @@ export const tabs = [
 ] as const satisfies readonly { name: string; href: string; title: string; icon: IconName }[];
 
 export type TabName = typeof tabs[number]['name'];
+
+/** The tab beside `tab` in the bar: 1 for the one on its right, -1 for the one on its left. */
+export function tabNeighbour(tab: TabName, delta: -1 | 1) {
+  return tabs[tabs.findIndex((item) => item.name === tab) + delta]?.href;
+}
