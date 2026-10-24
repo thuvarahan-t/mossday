@@ -172,6 +172,9 @@ async function main() {
   assert.equal((await diary.listTodos(today)).length, 2);
   await diary.saveJournal(today, 'Saved locally', 3);
   assert.equal((await diary.getJournal(today)).text, 'Saved locally');
+  await diary.saveJournal(yesterday, 'No mood picked', null);
+  assert.deepEqual((await diary.listMoods(yesterday, today)).map((row) => [row.date, row.mood]), [[today, 3]],
+    'Only days with a mood appear in the month calendar');
   await settings.setSetting('appearance', 'dark');
   await settings.setSetting('dailyBudget', 200000);
   assert.equal((await settings.getSettings()).dailyBudget, 200000);

@@ -14,10 +14,12 @@ export type MonthGridProps = {
   month: LocalDate;
   today: LocalDate;
   selected: LocalDate;
-  /** 0–4 spending tint per day (Diary calendar). */
-  spendLevels: Readonly<Record<LocalDate, number>>;
+  /** Optional 0–4 spending tint per day. */
+  spendLevels?: Readonly<Record<LocalDate, number>>;
   todoDates: ReadonlySet<LocalDate>;
   onSelect: (date: LocalDate) => void;
+  /** Small content at the corner of a day's circle (the Diary's mood emoji). */
+  renderBadge?: (date: LocalDate) => ReactNode;
 };
 
 function DayCircle({ selected, tint, children }: { selected: boolean; tint: string; children: ReactNode }) {
@@ -32,8 +34,8 @@ function DayCircle({ selected, tint, children }: { selected: boolean; tint: stri
   return <Animated.View style={[styles.center, { width: theme.sizes.dayCircle, height: theme.sizes.dayCircle, borderRadius: theme.sizes.dayCircle / 2, borderColor: theme.colors.accentBar }, style]}>{children}</Animated.View>;
 }
 
-/** Diary calendar month: orange tint = spending level, dot = has to-dos, green = today. */
-export const MonthGrid = memo(function MonthGrid({ month, today, selected, spendLevels, todoDates, onSelect }: MonthGridProps) {
+/** A month of day circles: green = today, dot = has to-dos, optional spending tint and corner badge. */
+export const MonthGrid = memo(function MonthGrid({ month, today, selected, spendLevels, todoDates, onSelect, renderBadge }: MonthGridProps) {
   const theme = useTheme();
   const first = startOfMonth(month);
   const leading = weekdayIndex(first);
@@ -58,7 +60,7 @@ export const MonthGrid = memo(function MonthGrid({ month, today, selected, spend
             const isToday = date === today;
             const isFuture = date > today;
             const isSelected = date === selected && !isToday;
-            const tint = isToday ? theme.colors.accent : isFuture ? 'transparent' : theme.spend[spendLevels[date] ?? 0];
+            const tint = isToday ? theme.colors.accent : isFuture || !spendLevels ? 'transparent' : theme.spend[spendLevels[date] ?? 0];
             return (
               <PressableScale
                 key={date}
@@ -67,6 +69,7 @@ export const MonthGrid = memo(function MonthGrid({ month, today, selected, spend
                 accessibilityState={{ selected: date === selected }}
                 onPress={() => { haptics.selection(); onSelect(date); }}
               >
+                <View>
                 <DayCircle selected={isSelected} tint={tint}>
                   <Text
                     variant="title3"
@@ -77,6 +80,8 @@ export const MonthGrid = memo(function MonthGrid({ month, today, selected, spend
                     {dayOfMonth(date)}
                   </Text>
                 </DayCircle>
+                {renderBadge && <View pointerEvents="none" style={styles.badge}>{renderBadge(date)}</View>}
+                </View>
                 <View style={{
                   width: theme.sizes.dot, height: theme.sizes.dot, borderRadius: theme.radii.pill,
                   backgroundColor: todoDates.has(date) ? theme.accents.gray : 'transparent',
@@ -94,4 +99,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   cell: { flex: 1, alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', right: -8, bottom: -6 },
 });

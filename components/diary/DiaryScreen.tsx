@@ -13,7 +13,7 @@ import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import { addDays, dayOfMonth, endOfMonth, monthName, startOfMonth, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
-import { getJournal, listTodos, moveIncomplete } from '@/lib/repos/diary';
+import { getJournal, listMoods, listTodos, moveIncomplete } from '@/lib/repos/diary';
 import { listExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits } from '@/lib/repos/habits';
 import { isActiveDay } from '@/lib/heatmap';
@@ -37,12 +37,12 @@ export function DiaryScreen() {
   const [adding, selectAdding, addingTransition] = useSheetState<true>();
   const setAdding = useCallback((open: boolean) => selectAdding(open ? true : null), [selectAdding]);
   const { data, error, refresh } = useResource(useCallback(async () => {
-    const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, nearbyTodos] = await Promise.all([
+    const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyMoods, nearbyTodos] = await Promise.all([
       listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listExpenses(date), listHabits(), listHabitLogs(date, date),
-      listTodos(startOfMonth(month), endOfMonth(month)), listExpenses(startOfMonth(month), endOfMonth(month)),
+      listTodos(startOfMonth(month), endOfMonth(month)), listMoods(startOfMonth(month), endOfMonth(month)),
       listTodos(addDays(date, -MARKED_RANGE), addDays(date, MARKED_RANGE)),
     ]);
-    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, monthlyExpenses, nearbyTodos };
+    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, moods: Object.fromEntries(monthlyMoods.map((row) => [row.date, row.mood])), nearbyTodos };
   }, [date, month]));
   const spend = data?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, date)) ?? [];
@@ -57,7 +57,7 @@ export function DiaryScreen() {
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data.nearbyTodos.map((t) => t.date))}
-        monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />
+        moods={data.moods} monthlyTodos={data.monthlyTodos} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />
       <TodoList todos={data.todos} onDraggingChange={setDragging} onAdd={() => setAdding(true)} header={data.previous.length > 0 &&
         <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
           <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>

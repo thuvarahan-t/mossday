@@ -61,8 +61,9 @@ schema v5), new habits append, and accessibility actions move a habit up or down
 
 Diary dates: the strip under the title scrolls freely by day (any seven days, not
 Monday–Sunday pages). Drag it down and it expands into the month, following the finger;
-drag up, pick a day, or tap the grabber to fold it back. The month shows spending tints
-and to-do dots; swipe it left for the next month and right for the previous one, or
+drag up, pick a day, or tap the grabber to fold it back. The month shows to-do dots and
+each day's journal mood beside its date (the badges pop in as the month opens; the
+selected day's one animates); swipe it left for the next month and right for the previous one, or
 use its ‹ › arrows.
 
 To-dos (Diary and Today share one list): hold a to-do and release for Edit / Delete,

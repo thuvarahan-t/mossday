@@ -3,6 +3,8 @@ export type Todo = { id: number; date: string; text: string; isDone: number; tim
 export type DiaryEntry = { date: string; text: string | null; mood: number | null };
 /** Open to-dos first, then done ones, each in the saved order. */
 export const listTodos = (from: string, to = from) => read((db) => db.getAllAsync<Todo>('SELECT * FROM todos WHERE date BETWEEN ? AND ? ORDER BY isDone,sortOrder,id', from, to));
+/** Each day's journal mood (0–4) in a date range, for the month calendar. */
+export const listMoods = (from: string, to: string) => read((db) => db.getAllAsync<{ date: string; mood: number }>('SELECT date, mood FROM diary_entries WHERE date BETWEEN ? AND ? AND mood IS NOT NULL', from, to));
 export const getJournal = (date: string) => read((db) => db.getFirstAsync<DiaryEntry>('SELECT * FROM diary_entries WHERE date=?', date));
 /** Shared checks for new and edited to-dos; returns the trimmed text. */
 function validTodo(date: string, text: string, time: string | null) {
