@@ -19,10 +19,12 @@ export function MasonryGrid<T>({ items, keyOf, estimateHeight, renderItem, colum
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const gap = theme.spacing.md;
-  const columnWidth = (width - gap * (columns - 1)) / columns;
+  const inset = theme.sizes.screenInset;
+  // The measured width includes the side insets; cards get only what is left between them.
+  const columnWidth = (width - inset * 2 - gap * (columns - 1)) / columns;
   const placed = width ? masonryColumns(items.map((item) => estimateHeight(item, columnWidth)), columns, gap) : [];
   return <View onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
-    style={{ flexDirection: 'row', alignItems: 'flex-start', gap, paddingHorizontal: theme.sizes.screenInset }}>
+    style={{ flexDirection: 'row', alignItems: 'flex-start', gap, paddingHorizontal: inset }}>
     {placed.map((indexes, column) => <View key={column} style={{ flex: 1, gap }}>
       {indexes.map((index) => <AnimatedListItem key={keyOf(items[index])}>{renderItem(items[index], columnWidth)}</AnimatedListItem>)}
     </View>)}

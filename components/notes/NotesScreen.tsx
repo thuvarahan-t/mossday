@@ -79,7 +79,8 @@ export function NotesScreen() {
     {/* Swipe right to go back to the Diary tab. */}
     <TabSwipeArea tab="notes" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       <SearchField value={search} onChangeText={setSearch} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
+      {/* A horizontal ScrollView grows by default; in this flex-grown column it would push the grid down. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
         {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}
         <PressableScale haptic="tap" accessibilityLabel="New folder" onPress={() => { setNewFolderName(''); setCreatingFolder(true); }}
           style={{ width: theme.sizes.smallChipHeight, height: theme.sizes.smallChipHeight, borderRadius: theme.sizes.smallChipHeight / 2,
