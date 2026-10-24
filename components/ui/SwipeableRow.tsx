@@ -25,6 +25,9 @@ export function SwipeableRow({ children, onDelete, deleteLabel = 'Delete', enabl
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const [width, setWidth] = useState(0);
+  // A closed row only opens leftwards, so it ignores rightward drags and leaves them to the
+  // screen (tab swipes); an open row also takes rightward drags, to be dragged shut.
+  const [open, setOpen] = useState(false);
   const translateX = useSharedValue(0);
   const dragStart = useSharedValue(0);
   const actionWidth = gestures.swipeActionWidth;
@@ -43,7 +46,8 @@ export function SwipeableRow({ children, onDelete, deleteLabel = 'Delete', enabl
 
   const pan = usePanGesture({
     enabled,
-    activeOffsetX: [-12, 12],
+    activeOffsetX: open ? [-12, 12] : [-12, 10000],
+    failOffsetX: open ? undefined : [-10000, 12],
     failOffsetY: [-10, 10],
     onBegin: () => {
       dragStart.set(translateX.get());
@@ -59,8 +63,9 @@ export function SwipeableRow({ children, onDelete, deleteLabel = 'Delete', enabl
         swipeAway();
         return;
       }
-      const open = distance > actionWidth / 2 || event.velocityX < -gestures.dismissVelocity;
-      translateX.set(animateTo(open ? -actionWidth : 0, 'snappy', reduceMotion));
+      const opened = distance > actionWidth / 2 || event.velocityX < -gestures.dismissVelocity;
+      translateX.set(animateTo(opened ? -actionWidth : 0, 'snappy', reduceMotion));
+      scheduleOnRN(setOpen, opened);
     },
   });
 
