@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { ContextMenu, type ContextMenuHandle } from '@/components/ui/ContextMenu';
-import { GroupedList, Separator } from '@/components/ui/GroupedList';
+import { GroupedList, ListRow, Separator } from '@/components/ui/GroupedList';
 import { ReorderableStack, ReorderHandle, useReorderActions } from '@/components/ui/ReorderableStack';
 import { STRIKE_DURATION, StrikeText } from '@/components/ui/StrikeText';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
@@ -24,8 +24,10 @@ import { savedTodoOrder } from './todoOrder';
  * - Ticking shows the check and strike at once but saves after the strike has drawn, so
  *   the row finishes striking in place before it glides below the open to-dos.
  */
-export function TodoList({ todos, limit, header, onDraggingChange }: {
+export function TodoList({ todos, limit, header, onDraggingChange, onAdd }: {
   todos: Todo[]; limit?: number; header?: ReactNode; onDraggingChange?: (dragging: boolean) => void;
+  /** Adds an "Add to-do" row at the end of the list. */
+  onAdd?: () => void;
 }) {
   const theme = useTheme();
   const action = useAction();
@@ -62,6 +64,7 @@ export function TodoList({ todos, limit, header, onDraggingChange }: {
         renderItem={(todo) => <TodoRow todo={todo} done={pending[todo.id] ?? !!todo.isDone} separator={todo.id !== lastId}
           separatorInset={theme.sizes.rowPadding + theme.sizes.checkbox + theme.spacing.md}
           onToggle={() => toggle(todo)} onEdit={() => setEditing(todo)} onDelete={() => remove(todo)} />} />
+      {onAdd && <ListRow key="add" title="Add to-do" icon={{ icon: 'plus', color: 'green' }} onPress={onAdd} />}
     </GroupedList>
     {editing && <TodoSheet {...editingTransition} date={editing.date} initial={editing} onClose={() => setEditing(null)} />}
   </>;

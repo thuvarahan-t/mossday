@@ -59,7 +59,7 @@ export function DiaryScreen() {
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data.nearbyTodos.map((t) => t.date))}
         monthlyExpenses={data.monthlyExpenses} monthlyTodos={data.monthlyTodos} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />
-      {data.todos.length || data.previous.length ? <TodoList todos={data.todos} onDraggingChange={setDragging} header={data.previous.length > 0 &&
+      {data.todos.length || data.previous.length ? <TodoList todos={data.todos} onDraggingChange={setDragging} onAdd={() => setAdding(true)} header={data.previous.length > 0 &&
         <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
           <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
           <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
