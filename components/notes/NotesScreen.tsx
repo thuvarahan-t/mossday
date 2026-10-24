@@ -46,6 +46,8 @@ export function NotesScreen() {
     reclaimMediaLater(snapshot.blocks.flatMap((b) => b.filePath ? [b.filePath] : []));
     toast({ message: 'Note deleted', actionLabel: 'Undo', onAction: () => { void action(() => restoreNote(snapshot)); } });
   }); };
+  const pinned = filtered.filter((note) => note.isPinned);
+  const others = filtered.filter((note) => !note.isPinned);
   // Long press a card for Pin, Folder, Colour and Delete; tap to open it.
   const renderNote = (note: Note, width: number) => {
     const blocks = blocksFor(note.id);
@@ -73,8 +75,11 @@ export function NotesScreen() {
         {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}
       </ScrollView>
       {error || !data ? <LoadState error={error} retry={refresh} /> : !filtered.length ? <EmptyState icon="note" title={search ? 'No results' : 'No notes'} message={search ? 'Try another search or folder.' : 'Ideas, recipes and voice memos will show up here.'} action={{ label: 'New Note', onPress: newNote }} /> : <>
-        {filtered.some((n) => n.isPinned) && <><SectionHeader title="Pinned" />{grid(filtered.filter((n) => n.isPinned))}</>}
-      {filtered.some((n) => !n.isPinned) && <><SectionHeader title="Others" />{grid(filtered.filter((n) => !n.isPinned))}</>}
+        {/* Headings only when both groups exist; otherwise the grid starts right under the folders. */}
+        {pinned.length > 0 && others.length > 0 ? <>
+          <SectionHeader title="Pinned" />{grid(pinned)}
+          <SectionHeader title="Others" />{grid(others)}
+        </> : grid(filtered)}
       </>}
     </TabSwipeArea>
     {folderNote && <FormSheet {...folderTransition} title="Move to folder" onClose={() => setFolderNote(null)}><TextField value={folderName} onChangeText={setFolderName} placeholder="Folder name (empty for none)" accessibilityLabel="Folder name" />
