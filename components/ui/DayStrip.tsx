@@ -68,7 +68,10 @@ const DayCell = memo(function DayCell({ date, width, today, selected, marked, on
   return <PressableScale style={{ width, alignItems: 'center', gap: theme.spacing.sm }} accessibilityLabel={formatLongDate(date)} accessibilityState={{ selected }}
     onPress={() => { if (!selected) { haptics.selection(); onSelect(date); } }}>
     <Text variant="footnote" color={isToday ? 'accent' : 'secondaryLabel'} weight={isToday ? 'semibold' : 'regular'}>{WEEKDAY_LETTERS[weekdayIndex(date)]}</Text>
-    <View style={{ width: circle, height: circle, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? theme.colors.accent : 'transparent' }}>
+    {/* The fill is its own view, mounted only when selected, with an exact radius: Android
+        could draw a recoloured view with an oversized radius as a square. */}
+    <View style={{ width: circle, height: circle, alignItems: 'center', justifyContent: 'center' }}>
+      {selected && <View style={{ position: 'absolute', width: circle, height: circle, borderRadius: circle / 2, backgroundColor: theme.colors.accent }} />}
       <Text variant="title3" tabular weight={selected ? 'semibold' : 'regular'} color={selected ? 'onAccent' : isToday ? 'accent' : 'label'}>{dayOfMonth(date)}</Text>
     </View>
     <View style={{ width: theme.sizes.dot, height: theme.sizes.dot, borderRadius: theme.radii.pill, backgroundColor: marked ? theme.accents.gray : 'transparent' }} />

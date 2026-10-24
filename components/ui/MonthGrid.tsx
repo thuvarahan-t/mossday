@@ -28,7 +28,8 @@ function DayCircle({ selected, tint, children }: { selected: boolean; tint: stri
   useEffect(() => { selection.set(animateTo(selected ? 2 : 0, 'snappy', reduced)); }, [selection, selected, reduced]);
   useEffect(() => { fill.set(withTiming(tint, { duration: durations.fast })); }, [fill, tint]);
   const style = useAnimatedStyle(() => ({ borderWidth: Math.max(0, selection.get()), backgroundColor: fill.get() }));
-  return <Animated.View style={[styles.center, { width: theme.sizes.dayCircle, height: theme.sizes.dayCircle, borderRadius: theme.radii.pill, borderColor: theme.colors.accentBar }, style]}>{children}</Animated.View>;
+  // An exact radius (not the oversized pill value) keeps Android from drawing it square.
+  return <Animated.View style={[styles.center, { width: theme.sizes.dayCircle, height: theme.sizes.dayCircle, borderRadius: theme.sizes.dayCircle / 2, borderColor: theme.colors.accentBar }, style]}>{children}</Animated.View>;
 }
 
 /** Diary calendar month: orange tint = spending level, dot = has to-dos, green = today. */
