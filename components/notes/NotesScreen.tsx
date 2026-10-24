@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, ScrollView, View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
+import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareImage';
 import { notesShareContent } from './notesShare';
 import { Button } from '@/components/ui/Button';
@@ -79,15 +80,18 @@ export function NotesScreen() {
   const shareNotes = () => {
     void shareImage(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })) }));
   };
-  return <LargeTitleScreen title="Notes" titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} addLabel="New note" onAdd={newNote} />} contentContainerStyle={{ gap: theme.spacing.md }}>
-    <SearchField value={search} onChangeText={setSearch} />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
-      {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}
-    </ScrollView>
-    {error || !data ? <LoadState error={error} retry={refresh} /> : !filtered.length ? <EmptyState icon="note" title={search ? 'No results' : 'No notes'} message={search ? 'Try another search or folder.' : 'Ideas, recipes and voice memos will show up here.'} action={{ label: 'New Note', onPress: newNote }} /> : <>
-      {filtered.some((n) => n.isPinned) && <><SectionHeader title="Pinned" /><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg }}>{filtered.filter((n) => n.isPinned).map((n) => renderNote(n, true))}</View></>}
-      {filtered.some((n) => !n.isPinned) && <><SectionHeader title="Others" /><GroupedList>{filtered.filter((n) => !n.isPinned).map((n) => renderNote(n, false))}</GroupedList></>}
-    </>}
+  return <LargeTitleScreen title="Notes" titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} addLabel="New note" onAdd={newNote} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
+    {/* Swipe right to go back to the Diary tab. */}
+    <TabSwipeArea tab="notes" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
+      <SearchField value={search} onChangeText={setSearch} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
+        {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}
+      </ScrollView>
+      {error || !data ? <LoadState error={error} retry={refresh} /> : !filtered.length ? <EmptyState icon="note" title={search ? 'No results' : 'No notes'} message={search ? 'Try another search or folder.' : 'Ideas, recipes and voice memos will show up here.'} action={{ label: 'New Note', onPress: newNote }} /> : <>
+        {filtered.some((n) => n.isPinned) && <><SectionHeader title="Pinned" /><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg }}>{filtered.filter((n) => n.isPinned).map((n) => renderNote(n, true))}</View></>}
+        {filtered.some((n) => !n.isPinned) && <><SectionHeader title="Others" /><GroupedList>{filtered.filter((n) => !n.isPinned).map((n) => renderNote(n, false))}</GroupedList></>}
+      </>}
+    </TabSwipeArea>
     {folderNote && <FormSheet {...folderTransition} title="Move to folder" onClose={() => setFolderNote(null)}><TextField value={folderName} onChangeText={setFolderName} placeholder="Folder name (empty for none)" accessibilityLabel="Folder name" />
       <Button title="Save" onPress={() => { void action(() => setNoteProperty(folderNote.id, 'folder', folderName.trim() || null), () => setFolderNote(null)); }} /></FormSheet>}
   </LargeTitleScreen>;

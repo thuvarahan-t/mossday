@@ -66,6 +66,9 @@ each day's journal mood beside its date (the badges pop in as the month opens; t
 selected day's one animates); swipe it left for the next month and right for the previous one, or
 use its ‹ › arrows.
 
+Tab swipes: on Diary (below the dates) swipe right for Today and left for Notes; on Notes
+swipe right for Diary. Tabs follow the tab bar's order (components/navigation/tabs.ts).
+
 To-dos (Diary and Today share one list): hold a to-do and release for Edit / Delete,
 or hold and drag to reorder it live; tap its text to edit, swipe left to delete. The
 order is saved per day, so Today shows the Diary's order. Done to-dos always sit below

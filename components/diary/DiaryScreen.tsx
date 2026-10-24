@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
+import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareImage';
 import { Button } from '@/components/ui/Button';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
@@ -54,17 +55,20 @@ export function DiaryScreen() {
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
     titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
-    scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg }}>
+    scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       <DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data.nearbyTodos.map((t) => t.date))}
         moods={data.moods} monthlyTodos={data.monthlyTodos} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />
-      <TodoList todos={data.todos} onDraggingChange={setDragging} onAdd={() => setAdding(true)} header={data.previous.length > 0 &&
-        <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
-          <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
-          <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
-        </View>} />
-      <JournalEditor key={date} date={date} initial={data.journal} />
-      <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
+      {/* Swipe below the dates to reach Today (right) or Notes (left); the strip and month keep their own swipes. */}
+      <TabSwipeArea tab="diary" style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
+        <TodoList todos={data.todos} onDraggingChange={setDragging} onAdd={() => setAdding(true)} header={data.previous.length > 0 &&
+          <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
+            <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
+            <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
+          </View>} />
+        <JournalEditor key={date} date={date} initial={data.journal} />
+        <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
+      </TabSwipeArea>
     </>}
     {adding && <TodoSheet {...addingTransition} date={date} onClose={() => setAdding(false)} />}
   </LargeTitleScreen>;
