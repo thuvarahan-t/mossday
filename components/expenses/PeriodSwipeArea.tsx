@@ -6,7 +6,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { durations, easing } from '@/constants/motion';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
-import { periodSwipeDelta } from './periodSwipe';
+import { swipeDelta } from '@/lib/swipe';
 
 /** How far the content follows the finger, and the stiffer pull past the first or last section. */
 const FOLLOW = 0.35;
@@ -71,7 +71,7 @@ export function PeriodSwipeArea<T extends string>({ children, contentKey, period
       offset.set(event.translationX * (blocked ? BLOCKED_FOLLOW : FOLLOW));
     },
     onDeactivate: (event) => {
-      const delta = periodSwipeDelta(event.translationX, event.velocityX);
+      const delta = swipeDelta(event.translationX, event.velocityX);
       if (delta === 0 || (delta === 1 && !canGoForward) || (delta === -1 && !canGoBack)) {
         offset.set(animateTo(0, 'snappy', reduced));
         return;

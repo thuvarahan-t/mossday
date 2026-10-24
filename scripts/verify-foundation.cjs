@@ -119,12 +119,12 @@ async function main() {
   assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1, 3, 4])), [2, 1, 4, 3], 'Open to-dos stay above done ones');
   assert.deepEqual(Array.from(savedTodoOrder(day, [3, 1, 2, 4])), [1, 2, 4, 3], 'A done row dragged to the top falls back below');
   assert.deepEqual(Array.from(savedTodoOrder(day, [2, 1])), [2, 1, 4, 3], 'Rows hidden by a display limit keep their place');
-  const { periodSwipeDelta } = load('components/expenses/periodSwipe.ts');
-  assert.equal(periodSwipeDelta(-80, 0), 1, 'Swiping left moves to the next section (Day → Week → Month)');
-  assert.equal(periodSwipeDelta(80, 0), -1, 'Swiping right moves back a section');
-  assert.equal(periodSwipeDelta(30, 0), 0, 'Short, slow drags do nothing');
-  assert.equal(periodSwipeDelta(30, 900), -1, 'A quick flick counts even when short');
-  assert.equal(periodSwipeDelta(-30, 900), 0, 'A flick against the drag direction does nothing');
+  const { swipeDelta } = load('lib/swipe.ts');
+  assert.equal(swipeDelta(-80, 0), 1, 'Swiping left moves to the next section (Day → Week → Month)');
+  assert.equal(swipeDelta(80, 0), -1, 'Swiping right moves back a section');
+  assert.equal(swipeDelta(30, 0), 0, 'Short, slow drags do nothing');
+  assert.equal(swipeDelta(30, 900), -1, 'A quick flick counts even when short');
+  assert.equal(swipeDelta(-30, 900), 0, 'A flick against the drag direction does nothing');
   process.env.TZ = 'Asia/Colombo';
   const date = load('lib/date.ts');
   const { todayLocalDate } = date;

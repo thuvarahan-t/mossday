@@ -3,18 +3,11 @@ import { router, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { TabSceneSlot } from '@/components/navigation/TabSceneSlot';
 import { TabBar, TabBarItem } from '@/components/navigation/TabBar';
+import { tabs } from '@/components/navigation/tabs';
 import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
 import { useTabBarBottom } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
 
-// Today sits in the middle of the bar, within thumb reach from either side.
-const tabs = [
-  { name: 'habits', href: '/habits', title: 'Habits', icon: 'habits' },
-  { name: 'expenses', href: '/expenses', title: 'Expenses', icon: 'wallet' },
-  { name: 'index', href: '/', title: 'Today', icon: 'home' },
-  { name: 'diary', href: '/diary', title: 'Diary', icon: 'calendar' },
-  { name: 'notes', href: '/notes', title: 'Notes', icon: 'note' },
-] as const;
 const routeOrder = [...tabs].sort((a, b) => Number(b.name === 'index') - Number(a.name === 'index'));
 
 export default function TabLayout() {
