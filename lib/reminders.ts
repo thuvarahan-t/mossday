@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 import { listHabits } from './repos/habits';
+import { listNoteReminders } from './repos/notes';
 import { read, write } from './repos/store';
 
 export type MealReminder = { name: string; time: string; enabled: boolean };
@@ -40,25 +41,34 @@ export async function saveMealReminder(reminder: MealReminder) {
   await write(async (db) => { await db.runAsync('INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', `meal:${reminder.name}`, JSON.stringify(reminder)); }, 'reminders');
 }
 
+type Wanted = { body: string; trigger: Notifications.SchedulableNotificationTriggerInput; url?: string };
+const repeating = (time: string, weekday?: number): Notifications.SchedulableNotificationTriggerInput => {
+  validateTime(time);
+  const [hour, minute] = time.split(':').map(Number);
+  return weekday ? { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday, hour, minute, channelId: CHANNEL }
+    : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL };
+};
+
 /** Reconcile OS schedules from saved preferences; never ask for permissions at startup. */
 export async function syncReminders() {
-  const [meals, habits, scheduled] = await Promise.all([getMealReminders(), listHabits(), Notifications.getAllScheduledNotificationsAsync()]);
-  const wanted = new Map<string, { title: string; time: string; weekday?: number }>();
-  for (const meal of meals) if (meal.enabled) wanted.set(`${PREFIX}meal:${meal.name}:${meal.time}`, { title: `Log your ${meal.name.toLowerCase()}`, time: meal.time });
+  const [meals, habits, notes, scheduled] = await Promise.all([getMealReminders(), listHabits(), listNoteReminders(), Notifications.getAllScheduledNotificationsAsync()]);
+  const wanted = new Map<string, Wanted>();
+  for (const meal of meals) if (meal.enabled) wanted.set(`${PREFIX}meal:${meal.name}:${meal.time}`, { body: `Log your ${meal.name.toLowerCase()}`, trigger: repeating(meal.time) });
   for (const habit of habits) if (habit.reminderTime) {
     for (let day = 0; day < 7; day += 1) if (habit.activeDays & (1 << day)) {
-      wanted.set(`${PREFIX}habit:${habit.id}:${day}:${habit.reminderTime}:${habit.name}`, { title: habit.name, time: habit.reminderTime, weekday: (day + 1) % 7 + 1 });
+      wanted.set(`${PREFIX}habit:${habit.id}:${day}:${habit.reminderTime}:${habit.name}`, { body: habit.name, trigger: repeating(habit.reminderTime, (day + 1) % 7 + 1) });
     }
+  }
+  // One-off note reminders; past ones have fired and stay only as a mark on the note.
+  for (const note of notes) if (note.reminderAt && Date.parse(note.reminderAt) > Date.now()) {
+    wanted.set(`${PREFIX}note:${note.id}:${note.reminderAt}:${note.title}`, { body: note.title.trim() || 'Note reminder', url: `/note/${note.id}`,
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(note.reminderAt), channelId: CHANNEL } });
   }
   for (const existing of scheduled) if (existing.identifier.startsWith(PREFIX) && !wanted.has(existing.identifier)) await Notifications.cancelScheduledNotificationAsync(existing.identifier);
   if (!(await Notifications.getPermissionsAsync()).granted) return;
   const existingIds = new Set(scheduled.map((item) => item.identifier));
   for (const [identifier, reminder] of wanted) if (!existingIds.has(identifier)) {
-    validateTime(reminder.time);
-    const [hour, minute] = reminder.time.split(':').map(Number);
-    await Notifications.scheduleNotificationAsync({ identifier, content: { title: 'Mossday', body: reminder.title, sound: 'default' },
-      trigger: reminder.weekday ? { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: reminder.weekday, hour, minute, channelId: CHANNEL }
-        : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL },
-    });
+    await Notifications.scheduleNotificationAsync({ identifier, trigger: reminder.trigger,
+      content: { title: 'Mossday', body: reminder.body, sound: 'default', data: reminder.url ? { url: reminder.url } : {} } });
   }
 }

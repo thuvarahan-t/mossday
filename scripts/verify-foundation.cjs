@@ -19,6 +19,9 @@ function load(file, dependencies = {}) {
   return exports;
 }
 
+/** Rewinds the notes table to before v6, so older upgrade paths can run again. */
+const DROP_V6_NOTE_COLUMNS = 'ALTER TABLE notes DROP COLUMN isArchived; ALTER TABLE notes DROP COLUMN reminderAt;';
+
 async function main() {
   const sqlite = new DatabaseSync(':memory:');
   const adapter = {
@@ -64,11 +67,19 @@ async function main() {
   }
   sqlite.exec('PRAGMA user_version = 1');
   sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; ALTER TABLE habits DROP COLUMN sortOrder;');
+  sqlite.exec(`${DROP_V6_NOTE_COLUMNS} INSERT INTO notes(id,title,createdAt,updatedAt) VALUES (5,'Kept','now','now');
+    INSERT INTO note_blocks(noteId,type,content,position) VALUES (5,'TEXT','Body',0);`);
   sqlite.exec("INSERT INTO habits(id,name,createdAt) VALUES (7,'Read','now'),(3,'Walk','now')");
   sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
   sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 5);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=5').get().content, 'Body', 'Rebuilding note blocks keeps their rows');
+  assert.equal(sqlite.prepare('SELECT isArchived FROM notes WHERE id=5').get().isArchived, 0);
+  sqlite.exec("INSERT INTO note_blocks(noteId,type,content,position) VALUES (5,'DRAWING','{}',1)");
+  assert.throws(() => sqlite.exec("INSERT INTO note_blocks(noteId,type,position) VALUES (5,'BAD',2)"));
+  sqlite.exec('DELETE FROM notes WHERE id=5');
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM note_blocks').get().n, 0, 'Rebuilt blocks still cascade with their note');
   assert.deepEqual(sqlite.prepare('SELECT name FROM habits ORDER BY sortOrder').all().map((row) => row.name), ['Walk', 'Read'],
     'Upgraded habits keep their previous creation order');
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE isUserCreated=1').get().n, 0, 'Seed categories remain protected after upgrade');
@@ -79,6 +90,7 @@ async function main() {
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name LIKE '%_by_%'").get().n, 5);
   sqlite.exec("INSERT INTO categories(name,icon,color,type) VALUES ('My custom category','tag','green','OTHER')");
   sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; ALTER TABLE habits DROP COLUMN sortOrder; PRAGMA user_version=3;');
+  sqlite.exec(DROP_V6_NOTE_COLUMNS);
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare("SELECT isUserCreated FROM categories WHERE name='My custom category'").get().isUserCreated, 1,
     'Upgrade recognizes existing user-created categories');

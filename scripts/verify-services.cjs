@@ -98,7 +98,7 @@ async function main() {
   const preferences = new Map();
   const scheduled = new Map([['mossday:obsolete', { identifier: 'mossday:obsolete' }], ['other-app', { identifier: 'other-app' }]]);
   const notifications = {
-    AndroidImportance: { DEFAULT: 3 }, SchedulableTriggerInputTypes: { DAILY: 'daily', WEEKLY: 'weekly' },
+    AndroidImportance: { DEFAULT: 3 }, SchedulableTriggerInputTypes: { DAILY: 'daily', WEEKLY: 'weekly', DATE: 'date' },
     setNotificationChannelAsync: async () => {}, requestPermissionsAsync: async () => ({ granted: allowed }), getPermissionsAsync: async () => ({ granted: allowed }),
     getAllScheduledNotificationsAsync: async () => [...scheduled.values()],
     cancelScheduledNotificationAsync: async (id) => { scheduled.delete(id); },
@@ -108,9 +108,12 @@ async function main() {
     getAllAsync: async () => [...preferences].map(([key, value]) => ({ key, value })),
     runAsync: async (_sql, key, value) => { preferences.set(key, value); },
   };
+  const soon = new Date(Date.now() + 3_600_000).toISOString();
+  let noteReminders = [{ id: 4, title: 'Call Amma', reminderAt: soon }, { id: 5, title: 'Fired', reminderAt: '2020-01-01T09:00:00.000Z' }];
   const reminders = load('lib/reminders.ts', {
     'expo-notifications': notifications, 'react-native': { Platform: { OS: 'android' } },
     './repos/habits': { listHabits: async () => [{ id: 1, name: 'Water', activeDays: 65, reminderTime: '10:15' }] },
+    './repos/notes': { listNoteReminders: async () => noteReminders },
     './repos/store': { read: async (operation) => operation(reminderDb), write: async (operation) => operation(reminderDb) },
   });
   await reminders.saveMealReminder({ name: 'Lunch', time: '14:00', enabled: true });
@@ -120,6 +123,13 @@ async function main() {
   const weekly = [...scheduled.values()].filter((s) => s.trigger?.type === 'weekly');
   assert.deepEqual(weekly.map((s) => s.trigger.weekday).sort(), [1, 2], 'Monday bit 0 maps to weekday 2; Sunday bit 6 maps to 1');
   assert.ok([...scheduled.values()].some((s) => s.trigger?.type === 'daily' && s.trigger.hour === 14));
+  const notes = [...scheduled.values()].filter((s) => s.trigger?.type === 'date');
+  assert.equal(notes.length, 1, 'Only future note reminders are scheduled');
+  assert.equal(notes[0].trigger.date.toISOString(), soon);
+  assert.equal(notes[0].content.data.url, '/note/4', 'Tapping a note reminder opens the note');
+  noteReminders = [];
+  await reminders.syncReminders();
+  assert.equal([...scheduled.values()].some((s) => s.trigger?.type === 'date'), false, 'Cleared reminders are cancelled');
   const count = scheduled.size;
   await reminders.syncReminders();
   assert.equal(scheduled.size, count, 'Sync is idempotent');
@@ -127,6 +137,6 @@ async function main() {
   await assert.rejects(reminders.saveMealReminder({ name: 'Breakfast', time: '09:00', enabled: true }));
   assert.equal(preferences.has('meal:Breakfast'), false, 'Denied permission does not enable reminder');
   await assert.rejects(reminders.saveMealReminder({ name: 'Breakfast', time: '99:99', enabled: true }));
-  console.log('Services verified: media ownership/cleanup, ZIP contents, schedule reconciliation, weekday masks, permissions.');
+  console.log('Services verified: media ownership/cleanup, ZIP contents, schedule reconciliation, weekday masks, note reminders, permissions.');
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

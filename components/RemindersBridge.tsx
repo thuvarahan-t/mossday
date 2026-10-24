@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import { syncReminders } from '@/lib/reminders';
@@ -20,8 +21,23 @@ if (Platform.OS !== 'web') {
   }
 }
 
+/** Tapping a reminder that carries a `url` (note reminders do) opens that screen. */
+function openFromNotification(response: Notifications.NotificationResponse | null) {
+  const url = response?.notification.request.content.data?.url;
+  if (response?.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER || typeof url !== 'string' || !url.startsWith('/note/')) return;
+  router.push({ pathname: '/note/[id]', params: { id: url.slice('/note/'.length) } });
+  void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+}
+
 export function RemindersBridge() {
   const toast = useToast();
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    // A tap that launched the app arrives as the last response; later taps through the listener.
+    void Notifications.getLastNotificationResponseAsync().then(openFromNotification, () => undefined);
+    const subscription = Notifications.addNotificationResponseReceivedListener(openFromNotification);
+    return () => subscription.remove();
+  }, []);
   useEffect(() => {
     if (Platform.OS === 'web') return;
     let timer: ReturnType<typeof setTimeout>;

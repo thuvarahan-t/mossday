@@ -1,7 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { read, requireName, write } from './store';
-export type Note = { id: number; title: string; folder: string | null; color: string | null; isPinned: number; createdAt: string; updatedAt: string };
-export type NoteBlock = { id: number; noteId: number; type: 'TEXT' | 'IMAGE' | 'VOICE' | 'CHECKLIST'; content: string | null; filePath: string | null; durationMs: number | null; position: number };
+export type Note = {
+  id: number; title: string; folder: string | null; color: string | null; isPinned: number; isArchived: number;
+  /** ISO time of a one-off reminder; it stays after it fires, shown as past, until removed. */
+  reminderAt: string | null; createdAt: string; updatedAt: string;
+};
+export type NoteBlock = { id: number; noteId: number; type: 'TEXT' | 'IMAGE' | 'VOICE' | 'CHECKLIST' | 'DRAWING'; content: string | null; filePath: string | null; durationMs: number | null; position: number };
 export type NoteDraft = { title: string; folder: string | null; color: string | null; isPinned: number; blocks: NoteBlock[] };
 export type ChecklistItem = { text: string; done: boolean };
 
@@ -21,12 +25,13 @@ async function savedFolders(db: SQLiteDatabase): Promise<string[]> {
     return Array.isArray(names) ? names.filter((name): name is string => typeof name === 'string') : [];
   } catch { return []; }
 }
-export const listNotes = () => read(async (db) => {
-  const notes = await db.getAllAsync<Note>('SELECT * FROM notes ORDER BY isPinned DESC,updatedAt DESC,id DESC');
-  const used = notes.flatMap((note) => note.folder ? [note.folder] : []);
+/** Notes on the main grid, or with `archived` the archive, with their blocks and the folder list. */
+export const listNotes = (archived = false) => read(async (db) => {
+  const notes = await db.getAllAsync<Note>('SELECT * FROM notes WHERE isArchived=? ORDER BY isPinned DESC,updatedAt DESC,id DESC', archived ? 1 : 0);
+  const used = (await db.getAllAsync<{ folder: string }>('SELECT DISTINCT folder FROM notes WHERE folder IS NOT NULL')).map((row) => row.folder);
   return {
     notes,
-    blocks: await db.getAllAsync<NoteBlock>('SELECT * FROM note_blocks ORDER BY position,id'),
+    blocks: await db.getAllAsync<NoteBlock>('SELECT b.* FROM note_blocks b JOIN notes n ON n.id=b.noteId WHERE n.isArchived=? ORDER BY b.position,b.id', archived ? 1 : 0),
     /** Created folders and folders notes use, alphabetically, each once. */
     folders: [...new Set([...await savedFolders(db), ...used])].sort((a, b) => a.localeCompare(b)),
   };
@@ -64,23 +69,48 @@ export const saveNote = (id: number, draft: NoteDraft) => write(async (db) => {
     await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position) VALUES (?,?,?,?,?,?)', id, block.type, block.content, block.filePath, block.durationMs, position);
   }
 });
+/** Keep's "Make a copy": same content and look, a fresh note that is not pinned, archived or reminded. */
+export const duplicateNote = (id: number) => write(async (db) => {
+  const note = await db.getFirstAsync<Note>('SELECT * FROM notes WHERE id=?', id);
+  if (!note) throw new Error('This note was deleted.');
+  const now = new Date().toISOString();
+  const copy = await db.runAsync('INSERT INTO notes(title,folder,color,createdAt,updatedAt) VALUES (?,?,?,?,?)', note.title, note.folder, note.color, now, now);
+  // Copies share photo and voice files; media is only reclaimed once no block refers to it.
+  await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position) SELECT ?,type,content,filePath,durationMs,position FROM note_blocks WHERE noteId=? ORDER BY position,id',
+    copy.lastInsertRowId, id);
+  return copy.lastInsertRowId;
+});
+/** Archived notes leave the grid; like Keep, they also lose their pin. */
+export const setNoteArchived = (id: number, archived: boolean) => write(async (db) => {
+  await db.runAsync('UPDATE notes SET isArchived=?,isPinned=CASE WHEN ? THEN 0 ELSE isPinned END,updatedAt=? WHERE id=?',
+    archived ? 1 : 0, archived ? 1 : 0, new Date().toISOString(), id);
+});
+/** Sets (an ISO time in the future) or clears the note's reminder; the OS schedule follows. */
+export function setNoteReminder(id: number, at: string | null) {
+  if (at !== null && (Number.isNaN(Date.parse(at)) || Date.parse(at) <= Date.now())) throw new Error('Choose a time in the future.');
+  return write(async (db) => { await db.runAsync('UPDATE notes SET reminderAt=? WHERE id=?', at, id); }, 'reminders');
+}
+export const listNoteReminders = () => read((db) =>
+  db.getAllAsync<Pick<Note, 'id' | 'title' | 'reminderAt'>>('SELECT id,title,reminderAt FROM notes WHERE reminderAt IS NOT NULL'));
 export function setNoteProperty(id: number, key: 'isPinned' | 'folder' | 'color', value: string | number | null) {
   if (!['isPinned', 'folder', 'color'].includes(key)) throw new Error('Invalid note property.');
   return write(async (db) => { await db.runAsync(`UPDATE notes SET ${key}=?,updatedAt=? WHERE id=?`, value, new Date().toISOString(), id); });
 }
+// Deleting and restoring publish 'reminders' so a deleted note's reminder is cancelled (and comes back).
 export const deleteNote = (id: number) => write(async (db) => {
   const note = await db.getFirstAsync<Note>('SELECT * FROM notes WHERE id=?', id);
   const blocks = await db.getAllAsync<NoteBlock>('SELECT * FROM note_blocks WHERE noteId=? ORDER BY position,id', id);
   await db.runAsync('DELETE FROM notes WHERE id=?', id);
   return { note, blocks };
-});
+}, 'reminders');
 export const restoreNote = (snapshot: Awaited<ReturnType<typeof deleteNote>>) => write(async (db) => {
   const n = snapshot.note;
   if (!n) return;
-  await db.runAsync('INSERT INTO notes(id,title,folder,color,isPinned,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?)', n.id, n.title, n.folder, n.color, n.isPinned, n.createdAt, n.updatedAt);
+  await db.runAsync('INSERT INTO notes(id,title,folder,color,isPinned,isArchived,reminderAt,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)',
+    n.id, n.title, n.folder, n.color, n.isPinned, n.isArchived, n.reminderAt, n.createdAt, n.updatedAt);
   for (const b of snapshot.blocks) await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position) VALUES (?,?,?,?,?,?)', n.id, b.type, b.content, b.filePath, b.durationMs, b.position);
-});
+}, 'reminders');
 
 export function notePreview(blocks: NoteBlock[]) {
-  return blocks.map((block) => block.type === 'TEXT' ? block.content : block.type === 'CHECKLIST' ? checklistItems(block.content).map((i) => `${i.done ? '✓' : '☐'} ${i.text}`).join(' · ') : block.type === 'VOICE' ? 'Voice note' : 'Photo').filter(Boolean).join(' · ');
+  return blocks.map((block) => block.type === 'TEXT' ? block.content : block.type === 'CHECKLIST' ? checklistItems(block.content).map((i) => `${i.done ? '✓' : '☐'} ${i.text}`).join(' · ') : block.type === 'VOICE' ? 'Voice note' : block.type === 'DRAWING' ? 'Drawing' : 'Photo').filter(Boolean).join(' · ');
 }

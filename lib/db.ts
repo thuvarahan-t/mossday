@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 // A shared promise prevents duplicate initialization under React Strict Mode.
 let databasePromise: Promise<SQLiteDatabase> | undefined;
 
@@ -126,10 +126,31 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         await db.execAsync('PRAGMA user_version = 4;');
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 5) {
       await db.withTransactionAsync(async () => {
         // Existing habits keep the creation order they were listed in before.
         await db.execAsync('ALTER TABLE habits ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0; UPDATE habits SET sortOrder=id; PRAGMA user_version = 5;');
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        // Notes gain archiving and one-off reminders. Drawings are a new block type, and SQLite
+        // cannot widen a CHECK constraint in place, so the blocks table is rebuilt with its rows.
+        await db.execAsync(`
+          ALTER TABLE notes ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE notes ADD COLUMN reminderAt TEXT;
+          CREATE TABLE note_blocks_v6 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            noteId INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+            type TEXT NOT NULL CHECK(type IN ('TEXT','IMAGE','VOICE','CHECKLIST','DRAWING')),
+            content TEXT, filePath TEXT, durationMs INTEGER, position INTEGER NOT NULL
+          );
+          INSERT INTO note_blocks_v6 SELECT id,noteId,type,content,filePath,durationMs,position FROM note_blocks;
+          DROP TABLE note_blocks;
+          ALTER TABLE note_blocks_v6 RENAME TO note_blocks;
+          CREATE INDEX IF NOT EXISTS blocks_by_note ON note_blocks(noteId, position);
+          PRAGMA user_version = 6;
+        `);
       });
     }
     return db;
