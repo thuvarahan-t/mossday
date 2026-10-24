@@ -1,4 +1,5 @@
-import { read, write } from './store';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import { read, requireName, write } from './store';
 export type Note = { id: number; title: string; folder: string | null; color: string | null; isPinned: number; createdAt: string; updatedAt: string };
 export type NoteBlock = { id: number; noteId: number; type: 'TEXT' | 'IMAGE' | 'VOICE' | 'CHECKLIST'; content: string | null; filePath: string | null; durationMs: number | null; position: number };
 export type NoteDraft = { title: string; folder: string | null; color: string | null; isPinned: number; blocks: NoteBlock[] };
@@ -11,10 +12,37 @@ export function checklistItems(content: string | null): ChecklistItem[] {
     return items.filter((item): item is ChecklistItem => typeof item === 'object' && item !== null && typeof item.text === 'string' && typeof item.done === 'boolean');
   } catch { return []; }
 }
-export const listNotes = () => read(async (db) => ({
-  notes: await db.getAllAsync<Note>('SELECT * FROM notes ORDER BY isPinned DESC,updatedAt DESC,id DESC'),
-  blocks: await db.getAllAsync<NoteBlock>('SELECT * FROM note_blocks ORDER BY position,id'),
-}));
+/** Folders made with "+" are kept in settings, so a new folder shows before any note is in it. */
+const FOLDERS_KEY = 'noteFolders';
+async function savedFolders(db: SQLiteDatabase): Promise<string[]> {
+  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key=?', FOLDERS_KEY);
+  try {
+    const names: unknown = JSON.parse(row?.value ?? '[]');
+    return Array.isArray(names) ? names.filter((name): name is string => typeof name === 'string') : [];
+  } catch { return []; }
+}
+export const listNotes = () => read(async (db) => {
+  const notes = await db.getAllAsync<Note>('SELECT * FROM notes ORDER BY isPinned DESC,updatedAt DESC,id DESC');
+  const used = notes.flatMap((note) => note.folder ? [note.folder] : []);
+  return {
+    notes,
+    blocks: await db.getAllAsync<NoteBlock>('SELECT * FROM note_blocks ORDER BY position,id'),
+    /** Created folders and folders notes use, alphabetically, each once. */
+    folders: [...new Set([...await savedFolders(db), ...used])].sort((a, b) => a.localeCompare(b)),
+  };
+});
+/** Adds an empty folder. "All" is the built-in filter, and names are unique ignoring case. */
+export function addFolder(name: string) {
+  const clean = requireName(name);
+  if (clean.toLowerCase() === 'all') throw new Error('"All" is already there. Choose another name.');
+  return write(async (db) => {
+    const saved = await savedFolders(db);
+    const used = await db.getFirstAsync('SELECT 1 FROM notes WHERE lower(folder)=lower(?)', clean);
+    if (used || saved.some((folder) => folder.toLowerCase() === clean.toLowerCase())) throw new Error('That folder already exists.');
+    await db.runAsync('INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', FOLDERS_KEY, JSON.stringify([...saved, clean]));
+    return clean;
+  });
+}
 export const getNote = (id: number) => read(async (db) => ({
   note: await db.getFirstAsync<Note>('SELECT * FROM notes WHERE id=?', id),
   blocks: await db.getAllAsync<NoteBlock>('SELECT * FROM note_blocks WHERE noteId=? ORDER BY position,id', id),

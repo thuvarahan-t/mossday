@@ -14,14 +14,16 @@ import { FormSheet } from '@/components/ui/FormSheet';
 import { SectionHeader } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { MasonryGrid } from '@/components/ui/MasonryGrid';
+import { Icon } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { SearchField, TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
 import { reclaimMediaLater } from '@/lib/media';
-import { createNote, deleteNote, listNotes, notePreview, restoreNote, setNoteProperty, type Note } from '@/lib/repos/notes';
+import { addFolder, createNote, deleteNote, listNotes, notePreview, restoreNote, setNoteProperty, type Note } from '@/lib/repos/notes';
 
 export function useNewNote() {
   const action = useAction();
@@ -37,7 +39,13 @@ export function NotesScreen() {
   const [folder, setFolder] = useState('All');
   const [folderNote, setFolderNote, folderTransition] = useSheetState<Note>();
   const [folderName, setFolderName] = useState('');
-  const folders = ['All', ...new Set(['University', 'Ideas', 'Recipes', ...(data?.notes.flatMap((n) => n.folder ? [n.folder] : []) ?? [])])];
+  // Only folders the user made or uses; "+" at the end of the row adds one.
+  const folders = ['All', ...(data?.folders ?? [])];
+  const [creatingFolder, setCreatingFolder, creatingTransition] = useSheetState<true>();
+  const [newFolderName, setNewFolderName] = useState('');
+  const createFolder = () => {
+    void action(async () => { setFolder(await addFolder(newFolderName)); }, () => setCreatingFolder(null));
+  };
   const blocksFor = (id: number) => data?.blocks.filter((b) => b.noteId === id) ?? [];
   const filtered = data?.notes.filter((note) => (folder === 'All' || note.folder === folder) &&
     `${note.title} ${notePreview(blocksFor(note.id))}`.toLowerCase().includes(search.toLowerCase())) ?? [];
@@ -73,6 +81,11 @@ export function NotesScreen() {
       <SearchField value={search} onChangeText={setSearch} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
         {folders.map((name) => <Chip key={name} label={name} selected={folder === name} onPress={() => setFolder(name)} size="small" />)}
+        <PressableScale haptic="tap" accessibilityLabel="New folder" onPress={() => { setNewFolderName(''); setCreatingFolder(true); }}
+          style={{ width: theme.sizes.smallChipHeight, height: theme.sizes.smallChipHeight, borderRadius: theme.sizes.smallChipHeight / 2,
+            alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.fill }}>
+          <Icon name="plus" size={theme.sizes.iconSmall} color="accent" strokeWidth={2.6} />
+        </PressableScale>
       </ScrollView>
       {error || !data ? <LoadState error={error} retry={refresh} /> : !filtered.length ? <EmptyState icon="note" title={search ? 'No results' : 'No notes'} message={search ? 'Try another search or folder.' : 'Ideas, recipes and voice memos will show up here.'} action={{ label: 'New Note', onPress: newNote }} /> : <>
         {/* Headings only when both groups exist; otherwise the grid starts right under the folders. */}
@@ -82,6 +95,11 @@ export function NotesScreen() {
         </> : grid(filtered)}
       </>}
     </TabSwipeArea>
+    {creatingFolder && <FormSheet {...creatingTransition} size="fit" dense dockToKeyboard title="New folder" onClose={() => setCreatingFolder(null)}
+      trailing={<Button title="Add" size="small" disabled={!newFolderName.trim()} onPress={createFolder} />}>
+      <TextField value={newFolderName} onChangeText={setNewFolderName} placeholder="Folder name" accessibilityLabel="New folder name" autoFocus
+        returnKeyType="done" submitBehavior="blurAndSubmit" onSubmitEditing={() => { if (newFolderName.trim()) createFolder(); }} />
+    </FormSheet>}
     {folderNote && <FormSheet {...folderTransition} title="Move to folder" onClose={() => setFolderNote(null)}><TextField value={folderName} onChangeText={setFolderName} placeholder="Folder name (empty for none)" accessibilityLabel="Folder name" />
       <Button title="Save" onPress={() => { void action(() => setNoteProperty(folderNote.id, 'folder', folderName.trim() || null), () => setFolderNote(null)); }} /></FormSheet>}
   </LargeTitleScreen>;

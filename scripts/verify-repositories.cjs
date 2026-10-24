@@ -199,6 +199,16 @@ async function main() {
   assert.equal(notes.checklistItems('[null,1,{}]').length, 0);
   await notes.setNoteProperty(noteId, 'isPinned', 0);
   assert.equal((await notes.getNote(noteId)).note.isPinned, 0);
+  await notes.setNoteProperty(noteId, 'folder', null);
+  assert.deepEqual(Array.from((await notes.listNotes()).folders), [], 'No folders until the user makes or uses one');
+  assert.equal(await notes.addFolder('  Recipes '), 'Recipes');
+  assert.deepEqual(Array.from((await notes.listNotes()).folders), ['Recipes'], 'A new folder shows while still empty');
+  await assert.rejects(notes.addFolder('recipes'), 'Folder names are unique ignoring case');
+  assert.throws(() => notes.addFolder('All'), '"All" is the built-in filter');
+  assert.throws(() => notes.addFolder('   '));
+  await notes.setNoteProperty(noteId, 'folder', 'Ideas');
+  assert.deepEqual(Array.from((await notes.listNotes()).folders), ['Ideas', 'Recipes'], 'Folders that notes use are listed too, alphabetically');
+  await assert.rejects(notes.addFolder('IDEAS'), 'A folder in use cannot be added again');
   sqlite.close();
   console.log('Repositories verified: CRUD, undo, rollback, concurrent ticks, streaks, carry-over, reorder, journal, settings.');
 }
