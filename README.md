@@ -99,7 +99,8 @@ Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe lef
 tab on the right and right for the one on the left, on Habits, Today, Diary (below the
 dates) and Notes. Expenses swipes through Day → Week → Month first, then on to Today past
 Month, or back to Habits past Day.
-Changing tabs slides the old content out and brings the destination in from its
+Changing tabs slides the page content, never the share and settings actions or the
+floating add button, which stay fixed. It takes the old content out and brings the destination in from its
 side of the tab bar. Swipes must cover about 38% of a phone's width (bounded to
 120–180 pt); quick short flicks and canceled gestures never switch pages.
 

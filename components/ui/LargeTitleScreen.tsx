@@ -9,6 +9,7 @@ import { useTabBarInset } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
 import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
 import { FloatingAddButton, FLOATING_ADD_SIZE, type FloatingAddAction } from '@/components/navigation/FloatingAddButton';
+import { useSceneMotionStyles } from '@/components/navigation/SceneMotion';
 import { Icon } from './Icon';
 import { Text } from './Text';
 import { DragScrollContext } from './DragScrollContext';
@@ -35,7 +36,8 @@ export type LargeTitleScreenProps = {
 
 /**
  * The header floats over the scroll view, so its title and actions never move. Content
- * scrolls beneath it, and a glass bar (blur + tint + hairline) fades in once it does.
+ * scrolls beneath it, and a glass bar (blur + tint + hairline) fades in once it does. A tab
+ * switch moves the page's content only; the actions and floating add button stay still.
  */
 export function LargeTitleScreen({
   title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
@@ -43,6 +45,7 @@ export function LargeTitleScreen({
 }: LargeTitleScreenProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const scene = useSceneMotionStyles();
   const tabBarInset = useTabBarInset();
   const scrollY = useSharedValue(0);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -73,7 +76,7 @@ export function LargeTitleScreen({
   return <BlurTargetProvider>
     <View style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
       <BlurTargetContent style={styles.fill}>
-        <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEnabled={scrollEnabled} scrollEventThrottle={16} refreshControl={refreshControl}
+        <Animated.View style={[styles.fill, scene.content]}><Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEnabled={scrollEnabled} scrollEventThrottle={16} refreshControl={refreshControl}
           onLayout={(event) => {
             viewportHeight.set(event.nativeEvent.layout.height);
             dragMax.set(Math.max(0, scrollContentHeight.get() - viewportHeight.get()));
@@ -91,7 +94,7 @@ export function LargeTitleScreen({
             paddingBottom: (bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl) + (floatingAdd ? FLOATING_ADD_SIZE + theme.spacing.md : 0) }, contentContainerStyle]}>
           <DragScrollContext.Provider value={{ ref: scrollRef, offset: scrollY, top: dragTop, bottom: dragBottom, max: dragMax }}>{children}</DragScrollContext.Provider>
           <Animated.View style={keyboardSpace} />
-        </Animated.ScrollView>
+        </Animated.ScrollView></Animated.View>
       </BlurTargetContent>
       {floatingAdd && <FloatingAddButton {...floatingAdd} />}
       <View style={styles.header} onLayout={(event) => setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))}>
@@ -106,12 +109,14 @@ export function LargeTitleScreen({
             <View style={[styles.row, { gap: theme.spacing.sm, minHeight: theme.sizes.circleButton }]}>
               {showBack && <GlassButton accessibilityLabel="Back" haptic="tap" onPress={onBack}><Icon name="chevronLeft" /></GlassButton>}
               {titleLeading}
-              <Text variant="title2" weight="bold" accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit style={{ flex: 1, minWidth: 0 }}>{title}</Text>
+              <Animated.View style={[{ flex: 1, minWidth: 0 }, scene.fade]}>
+                <Text variant="title2" weight="bold" accessibilityRole="header" numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
+              </Animated.View>
               <View style={[styles.row, { gap: theme.spacing.sm }]}>{titleAccessory}{headerRight}</View>
             </View>
-            {subtitle ? <Text variant="footnote" color="secondaryLabel" style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text> : null}
+            {subtitle ? <Animated.View style={scene.fade}><Text variant="footnote" color="secondaryLabel" style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text></Animated.View> : null}
           </View>
-          {fixedContent}
+          {fixedContent ? <Animated.View style={scene.content}>{fixedContent}</Animated.View> : null}
         </OnGlassBar></BlurTargetBoundary>
       </View>
     </View>

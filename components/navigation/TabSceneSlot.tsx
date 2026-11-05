@@ -1,18 +1,20 @@
 import { TabSlot, type TabSlotProps } from 'expo-router/ui';
 import { usePathname } from 'expo-router';
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Screen } from 'react-native-screens';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { durations, easing } from '@/constants/motion';
 import { animateTo } from '@/lib/animation';
+import { SceneMotionContext } from './SceneMotion';
 import { tabs } from './tabs';
 
 type RenderFn = NonNullable<TabSlotProps['renderFn']>;
 
 /**
  * Expo Router's lazy tab slot with scenes layered on top of each other. Tabs switch
- * with a directional slide and fade on focus. Hidden scenes keep their state.
+ * with a directional slide and fade on focus, which each screen applies to its own content
+ * (see `useSceneMotionStyles`) so its fixed controls stay put. Hidden scenes keep their state.
  */
 function SceneTransition({ focused, direction, children }: { focused: boolean; direction: number; children: ReactNode }) {
   const reduced = useReducedMotion();
@@ -34,8 +36,8 @@ function SceneTransition({ focused, direction, children }: { focused: boolean; d
     }
     visited.current = true;
   }, [focused, direction, reduced, width, offset, opacity]);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: offset.get() }] }));
-  return <Animated.View style={[styles.fill, style]}>{children}</Animated.View>;
+  const motion = useMemo(() => ({ offset, opacity }), [offset, opacity]);
+  return <SceneMotionContext.Provider value={motion}><View style={styles.fill}>{children}</View></SceneMotionContext.Provider>;
 }
 
 export function TabSceneSlot() {
