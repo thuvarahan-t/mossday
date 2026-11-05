@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 // A shared promise prevents duplicate initialization under React Strict Mode.
 let databasePromise: Promise<SQLiteDatabase> | undefined;
 
@@ -132,7 +132,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         await db.execAsync('ALTER TABLE habits ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0; UPDATE habits SET sortOrder=id; PRAGMA user_version = 5;');
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 6) {
       await db.withTransactionAsync(async () => {
         // Notes gain archiving and one-off reminders. Drawings are a new block type, and SQLite
         // cannot widen a CHECK constraint in place, so the blocks table is rebuilt with its rows.
@@ -151,6 +151,11 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
           CREATE INDEX IF NOT EXISTS blocks_by_note ON note_blocks(noteId, position);
           PRAGMA user_version = 6;
         `);
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync('ALTER TABLE note_blocks ADD COLUMN layout TEXT; PRAGMA user_version = 7;');
       });
     }
     return db;

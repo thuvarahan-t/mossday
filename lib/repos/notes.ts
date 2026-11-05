@@ -1,11 +1,12 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { read, requireName, write } from './store';
+import { parseBlockLayout } from '../noteCanvas';
 export type Note = {
   id: number; title: string; folder: string | null; color: string | null; isPinned: number; isArchived: number;
   /** ISO time of a one-off reminder; it stays after it fires, shown as past, until removed. */
   reminderAt: string | null; createdAt: string; updatedAt: string;
 };
-export type NoteBlock = { id: number; noteId: number; type: 'TEXT' | 'IMAGE' | 'VOICE' | 'CHECKLIST' | 'DRAWING'; content: string | null; filePath: string | null; durationMs: number | null; position: number };
+export type NoteBlock = { id: number; noteId: number; type: 'TEXT' | 'IMAGE' | 'VOICE' | 'CHECKLIST' | 'DRAWING'; content: string | null; filePath: string | null; durationMs: number | null; position: number; layout?: string | null };
 export type NoteDraft = { title: string; folder: string | null; color: string | null; isPinned: number; blocks: NoteBlock[] };
 export type ChecklistItem = { text: string; done: boolean };
 
@@ -92,7 +93,8 @@ export const saveNote = (id: number, draft: NoteDraft) => write(async (db) => {
   await db.runAsync('DELETE FROM note_blocks WHERE noteId=?', id);
   for (const [position, block] of draft.blocks.entries()) {
     if ((block.type === 'IMAGE' || block.type === 'VOICE') && !block.filePath) throw new Error('Media file is missing.');
-    await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position) VALUES (?,?,?,?,?,?)', id, block.type, block.content, block.filePath, block.durationMs, position);
+    if (block.layout && !parseBlockLayout(block.layout)) throw new Error('Invalid block position or size.');
+    await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position,layout) VALUES (?,?,?,?,?,?,?)', id, block.type, block.content, block.filePath, block.durationMs, position, block.layout ?? null);
   }
 });
 /** Keep's "Make a copy": same content and look, a fresh note that is not pinned, archived or reminded. */
@@ -102,7 +104,7 @@ export const duplicateNote = (id: number) => write(async (db) => {
   const now = new Date().toISOString();
   const copy = await db.runAsync('INSERT INTO notes(title,folder,color,createdAt,updatedAt) VALUES (?,?,?,?,?)', note.title, note.folder, note.color, now, now);
   // Copies share photo and voice files; media is only reclaimed once no block refers to it.
-  await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position) SELECT ?,type,content,filePath,durationMs,position FROM note_blocks WHERE noteId=? ORDER BY position,id',
+  await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position,layout) SELECT ?,type,content,filePath,durationMs,position,layout FROM note_blocks WHERE noteId=? ORDER BY position,id',
     copy.lastInsertRowId, id);
   return copy.lastInsertRowId;
 });
@@ -134,7 +136,7 @@ export const restoreNote = (snapshot: Awaited<ReturnType<typeof deleteNote>>) =>
   if (!n) return;
   await db.runAsync('INSERT INTO notes(id,title,folder,color,isPinned,isArchived,reminderAt,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)',
     n.id, n.title, n.folder, n.color, n.isPinned, n.isArchived, n.reminderAt, n.createdAt, n.updatedAt);
-  for (const b of snapshot.blocks) await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position) VALUES (?,?,?,?,?,?)', n.id, b.type, b.content, b.filePath, b.durationMs, b.position);
+  for (const b of snapshot.blocks) await db.runAsync('INSERT INTO note_blocks(noteId,type,content,filePath,durationMs,position,layout) VALUES (?,?,?,?,?,?,?)', n.id, b.type, b.content, b.filePath, b.durationMs, b.position, b.layout ?? null);
 }, 'reminders');
 
 export function notePreview(blocks: NoteBlock[]) {

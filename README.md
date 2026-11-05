@@ -80,8 +80,20 @@ list. Release to save; cancel to restore. Ordering survives restarts and edits, 
 folder/search reorders preserve hidden notes' slots (`settings.noteOrder`). New notes
 appear first. Hold and release without moving for Pin, Folder, Colour and Delete.
 Tap opens the note; Colour opens the full palette, including a plain-card option.
-Accessibility actions also move notes earlier or later. Expenses and Notes have
+Accessibility actions also move notes earlier or later. Every main tab has
 a green circular add button fixed above the right end of the bottom tab bar.
+Diary adds an inline task, Habits opens New habit, and Today opens Quick add.
+
+Inside a note, content lives on a free-position canvas. Tap blank space to start
+text at that point, or add a photo, audio recording, checklist or drawing from the
+toolbar. A selected empty text box becomes the insertion point for media. Drag
+each block's dotted handle in any direction; drag its corner to resize (photos
+resize in both dimensions, text/audio/checklists change width). Dragging near
+the viewport edge scrolls the page, and More space extends the writing area.
+Positions and image proportions persist in `note_blocks.layout` (schema v7),
+including after Undo, copying and delete/restore. Old notes retain their vertical
+order until arranged. Horizontal fractions adapt the composition to phone width;
+photos fit inside their frames without cropping.
 
 Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe left for the
 tab on the right and right for the one on the left, on Habits, Today, Diary (below the

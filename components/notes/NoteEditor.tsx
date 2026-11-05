@@ -2,14 +2,13 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Keyboard, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
-import { ReorderableRow } from '@/components/ui/ReorderableRow';
-import { SwipeableRow } from '@/components/ui/SwipeableRow';
+import { DragScrollView } from '@/components/ui/DragScrollView';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
@@ -41,6 +40,8 @@ import { NoteTag } from './NoteTag';
 import { PhotoViewer } from './PhotoViewer';
 import { ReminderSheet } from './ReminderSheet';
 import { formatReminder } from './reminderTimes';
+import { NoteCanvas } from './NoteCanvas';
+import { insertCanvasBlock, serializeBlockLayout, type BlockFrame, type BlockLayout } from '@/lib/noteCanvas';
 
 type ToolId = 'format' | 'gallery' | 'camera' | 'voice' | 'checklist' | 'drawing' | 'tools' | 'text' | 'bullets' | 'numbers' | 'checkboxes' | 'timestamp';
 type Tool = { id: ToolId; icon: IconName; label: string };
@@ -83,6 +84,9 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formatting, setFormatting] = useState(false);
+  const [manipulating, setManipulating] = useState(false);
+  const [selectedBlockId, setSelectedBlockId] = useState<number | null>(null);
+  const frames = useRef<Record<number, BlockFrame>>({});
   /** The text block or checklist being typed in, for the format bar; null in the heading. */
   const focus = useRef<Focus | null>(null);
   const [autoFocusId, setAutoFocusId] = useState<number | null>(null);
@@ -120,8 +124,10 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     edit({ ...latest.current, blocks: latest.current.blocks.map((b) => b.id === id ? { ...b, ...change } : b) }, group);
   const newBlock = (type: NoteBlock['type'], content: string | null = '', filePath: string | null = null, durationMs: number | null = null): NoteBlock =>
     ({ id: nextId.current--, noteId: note.id, type, content, filePath, durationMs, position: 0 });
-  const addBlock = (block: NoteBlock, focusIt = false) => {
-    edit({ ...latest.current, blocks: [...latest.current.blocks, block] });
+  const addBlock = (block: NoteBlock, focusIt = false, at?: BlockLayout) => {
+    const current = latest.current;
+    edit({ ...current, blocks: insertCanvasBlock(current.blocks, block, contentWidth, frames.current, selectedBlockId, at) });
+    setSelectedBlockId(block.id);
     if (focusIt) setAutoFocusId(block.id);
   };
   const focused = () => {
@@ -236,6 +242,16 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     setReminderAt(at);
     setSheet(null);
   }); };
+  const removeBlock = (block: NoteBlock) => {
+    const index = latest.current.blocks.findIndex((item) => item.id === block.id);
+    if (focus.current?.blockId === block.id) focus.current = null;
+    edit({ ...latest.current, blocks: latest.current.blocks.filter((item) => item.id !== block.id) });
+    if (block.filePath) reclaimMediaLater([block.filePath]);
+    toast({ message: 'Block deleted', actionLabel: 'Undo', onAction: () => {
+      const restored = [...latest.current.blocks]; restored.splice(Math.min(index, restored.length), 0, block);
+      edit({ ...latest.current, blocks: restored });
+    } });
+  };
 
   const palette = draft.color ? dataColors(theme, draft.color) : null;
   // Coloured notes take their colour's tint as the page, like Keep.
@@ -266,26 +282,19 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           <Icon name="check" color="onAccent" strokeWidth={2.8} />
         </PressableScale>
       </View>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
+      <DragScrollView keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating} contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <Text align="center" variant="footnote" color="secondaryLabel">{formatTimestamp(note.createdAt)}</Text>
-        <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; }}
+        <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; setSelectedBlockId(null); }}
           appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />
-        {draft.blocks.map((block, index) => <ReorderableRow key={block.id} label={`Reorder ${block.type.toLowerCase()} block`} onMove={(offset) => {
-          const reordered = [...latest.current.blocks]; const from = reordered.findIndex((b) => b.id === block.id);
-          const [moved] = reordered.splice(from, 1); reordered.splice(Math.max(0, Math.min(reordered.length, from + offset)), 0, moved);
-          edit({ ...latest.current, blocks: reordered });
-        }}><SwipeableRow onDelete={() => {
-          if (focus.current?.blockId === block.id) focus.current = null;
-          edit({ ...latest.current, blocks: latest.current.blocks.filter((b) => b.id !== block.id) });
-          if (block.filePath) reclaimMediaLater([block.filePath]);
-          toast({ message: 'Block deleted', actionLabel: 'Undo', onAction: () => {
-            const restored = [...latest.current.blocks]; restored.splice(Math.min(index, restored.length), 0, block); edit({ ...latest.current, blocks: restored });
-          } });
-        }}>
-          <View style={{ paddingVertical: theme.spacing.sm, backgroundColor: background }}>
+        <NoteCanvas blocks={draft.blocks} width={contentWidth} selectedId={selectedBlockId} onSelect={setSelectedBlockId}
+          onFrames={(next) => { frames.current = next; }} onManipulating={setManipulating} onDelete={removeBlock}
+          onPlaceText={(layout) => addBlock(newBlock('TEXT'), true, layout)}
+          onChangeLayout={(layouts) => edit({ ...latest.current, blocks: latest.current.blocks.map((block) =>
+            layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
+          renderBlock={(block, blockWidth, imageStyle) => <View style={{ backgroundColor: background }}>
             {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder="Write something…" value={block.content ?? ''} accessibilityLabel="Note text"
               autoFocus={block.id === autoFocusId}
-              onFocus={() => { const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; }}
+              onFocus={() => { setSelectedBlockId(block.id); const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; }}
               selection={cursor?.blockId === block.id ? { start: cursor.at, end: cursor.at } : undefined}
               onSelectionChange={(event) => {
                 const { selection } = event.nativeEvent;
@@ -298,10 +307,12 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
                 replaceBlock(block.id, { content }, `text:${block.id}`);
                 setCursor(content !== text ? { blockId: block.id, at: listCursor(text, content) } : null);
               }} />}
-            {block.type === 'IMAGE' && block.filePath && <PressableScale haptic="tap" accessibilityLabel="Open photo" onPress={() => setPhoto(mediaFile(block.filePath!).uri)}>
-              <Image source={{ uri: mediaFile(block.filePath).uri }} contentFit="cover" transition={150} accessibilityLabel="Attached photo"
-                style={{ width: '100%', height: contentWidth * 0.75, borderRadius: theme.radii.card }} />
-            </PressableScale>}
+            {block.type === 'IMAGE' && block.filePath && <Animated.View style={imageStyle}>
+              <PressableScale haptic="tap" accessibilityLabel="Open photo" style={{ flex: 1 }} onPress={() => setPhoto(mediaFile(block.filePath!).uri)}>
+                <Image source={{ uri: mediaFile(block.filePath).uri }} contentFit="contain" transition={150} accessibilityLabel="Attached photo"
+                  style={{ width: '100%', height: '100%', borderRadius: theme.radii.card }} />
+              </PressableScale>
+            </Animated.View>}
             {block.type === 'VOICE' && block.filePath && <VoicePlayer uri={mediaFile(block.filePath).uri} durationMs={block.durationMs ?? 0} />}
             {block.type === 'CHECKLIST' && <ChecklistBlock blockId={block.id} content={block.content} autoFocus={block.id === autoFocusId}
               onFocus={() => { focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; }}
@@ -309,16 +320,15 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
             {block.type === 'DRAWING' && <PressableScale haptic="tap" accessibilityLabel="Edit drawing"
               onPress={() => { Keyboard.dismiss(); setDrawing({ blockId: block.id, initial: parseDrawing(block.content) }); }}
               style={{ borderRadius: theme.radii.card, overflow: 'hidden', backgroundColor: theme.colors.card }}>
-              <DrawingView drawing={parseDrawing(block.content)} width={contentWidth} />
+              <DrawingView drawing={parseDrawing(block.content)} width={Math.max(1, blockWidth - 2)} />
             </PressableScale>}
-          </View>
-        </SwipeableRow></ReorderableRow>)}
+          </View>} />
         {(reminderAt || draft.folder) && <View style={[styles.row, { flexWrap: 'wrap', gap: theme.spacing.sm }]}>
           {reminderAt && <NoteTag icon="bell" label={formatReminder(reminderAt)} past={Date.parse(reminderAt) <= openedAt} onPress={() => setSheet('reminder')} />}
           {draft.folder && <NoteTag icon="folder" label={draft.folder} onPress={() => setSheet('options')} />}
         </View>}
         <Text align="center" variant="caption1" color="tertiaryLabel">{`Edited ${formatRelativeTimestamp(editedAt)}`}</Text>
-      </ScrollView>
+      </DragScrollView>
       {recording ? <VoiceRecorder onCancel={() => setRecording(false)} onError={(message) => toast({ message })} onSave={(uri, durationMs) => {
         void action(async () => { addBlock(newBlock('VOICE', '', importMedia(uri, 'm4a'), durationMs)); setRecording(false); });
       }} /> : <GlassSurface style={{ marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm }}

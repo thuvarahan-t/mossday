@@ -199,6 +199,12 @@ async function main() {
     { type: 'CHECKLIST', content: '[{"text":"Rice","done":true}]', filePath: null, durationMs: null },
   ] };
   await notes.saveNote(noteId, draft);
+  const placedDraft = { ...draft, blocks: draft.blocks.map((block, index) => ({ ...block,
+    layout: JSON.stringify({ x: index === 0 ? 0.1 : 0, y: index * 160, width: 0.8, ratio: 1.5 }) })) };
+  await notes.saveNote(noteId, placedDraft);
+  assert.equal((await notes.getNote(noteId)).blocks[0].layout, placedDraft.blocks[0].layout, 'Canvas coordinates survive a reload');
+  await assert.rejects(notes.saveNote(noteId, { ...placedDraft, blocks: [{ ...placedDraft.blocks[0], layout: '{"x":3}' }] }));
+  assert.equal((await notes.getNote(noteId)).blocks.length, 3, 'Invalid canvas layout rolls back the complete note');
   assert.equal((await notes.getNote(noteId)).blocks.length, 3);
   assert.equal((await notes.getNote(noteId)).note.folder, 'Ideas');
   await assert.rejects(notes.saveNote(noteId, { ...draft, blocks: [{ type: 'INVALID' }] }));
@@ -206,6 +212,7 @@ async function main() {
   const deleted = await notes.deleteNote(noteId);
   assert.equal((await notes.listNotes()).notes.length, 0);
   await notes.restoreNote(deleted);
+  assert.equal((await notes.getNote(noteId)).blocks[1].layout, placedDraft.blocks[1].layout, 'Delete Undo restores canvas placement');
   assert.equal((await notes.getNote(noteId)).blocks[1].filePath, 'test.m4a');
   assert.equal(notes.checklistItems('[{"text":"Rice","done":true}]')[0].done, true);
   assert.equal(notes.checklistItems('bad json').length, 0);
@@ -224,6 +231,7 @@ async function main() {
   await assert.rejects(notes.addFolder('IDEAS'), 'A folder in use cannot be added again');
   const copyId = await notes.duplicateNote(noteId);
   const copy = await notes.getNote(copyId);
+  assert.equal(copy.blocks[0].layout, (await notes.getNote(noteId)).blocks[0].layout, 'Copy preserves canvas placement and image sizing');
   assert.equal(copy.note.title, 'Recipe');
   assert.deepEqual(copy.blocks.map((b) => b.type), (await notes.getNote(noteId)).blocks.map((b) => b.type), 'A copy keeps every block in order');
   assert.equal(copy.note.isPinned, 0);

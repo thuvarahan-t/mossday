@@ -60,6 +60,12 @@ async function main() {
   sqlite.exec("DELETE FROM categories WHERE name='Fun'");
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10, 'Restart must not reseed deleted categories');
+  sqlite.exec("INSERT INTO notes(id,title,createdAt,updatedAt) VALUES (99,'Before canvas','now','now'); INSERT INTO note_blocks(noteId,type,content,position) VALUES (99,'TEXT','Preserved',0); ALTER TABLE note_blocks DROP COLUMN layout; PRAGMA user_version=6;");
+  await load('lib/db.ts', dependencies).getDatabase();
+  assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=99').get().content, 'Preserved', 'v6 canvas upgrade keeps old note content');
+  assert.equal(sqlite.prepare('SELECT layout FROM note_blocks WHERE noteId=99').get().layout, null);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 7);
+  sqlite.exec('DELETE FROM notes WHERE id=99');
   // Reopen an existing v1 database: indexing must preserve records and deleted seeds.
   sqlite.exec("INSERT INTO expenses(amount,date,createdAt) VALUES (45000,'2026-10-23','now')");
   for (const index of ['expenses_by_date', 'todos_by_date', 'logs_by_date', 'blocks_by_note', 'notes_by_update']) {
@@ -73,8 +79,9 @@ async function main() {
   sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
   sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 7);
   assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=5').get().content, 'Body', 'Rebuilding note blocks keeps their rows');
+  assert.equal(sqlite.prepare('SELECT layout FROM note_blocks WHERE noteId=5').get().layout, null, 'Old blocks open in their original vertical order');
   assert.equal(sqlite.prepare('SELECT isArchived FROM notes WHERE id=5').get().isArchived, 0);
   sqlite.exec("INSERT INTO note_blocks(noteId,type,content,position) VALUES (5,'DRAWING','{}',1)");
   assert.throws(() => sqlite.exec("INSERT INTO note_blocks(noteId,type,position) VALUES (5,'BAD',2)"));
@@ -143,7 +150,7 @@ async function main() {
   assert.equal(tabNeighbour('index', -1), '/expenses');
   assert.equal(tabNeighbour('habits', -1), undefined, 'Habits is the first tab');
   assert.equal(tabNeighbour('notes', 1), undefined, 'Notes is the last tab');
-  const notesRepo = load('lib/repos/notes.ts', { './store': {} });
+  const notesRepo = load('lib/repos/notes.ts', { './store': {}, '../noteCanvas': load('lib/noteCanvas.ts') });
   const noteText = load('components/notes/noteText.ts', { '@/lib/repos/notes': notesRepo });
   assert.equal(noteText.continueList('• Milk', '• Milk\n'), '• Milk\n• ', 'Return after a bullet starts the next bullet');
   assert.equal(noteText.continueList('1. Rice\n2. Dal', '1. Rice\n2. Dal\n'), '1. Rice\n2. Dal\n3. ', 'Numbers count on');
