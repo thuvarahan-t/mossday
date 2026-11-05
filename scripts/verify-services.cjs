@@ -44,7 +44,7 @@ async function main() {
   const fileSystem = { File, Directory, Paths: { document: 'file:///documents', cache: 'file:///cache' } };
   const media = load('lib/media.ts', { 'expo-file-system': fileSystem, './repos/store': store });
   assert.throws(() => media.mediaFile('../escape.jpg'));
-  const imported = media.importMedia('file:///source.jpg', 'jpg');
+  const imported = await media.importMedia('file:///source.jpg', 'jpg');
   assert.ok(media.mediaFile(imported).exists);
   references = [imported];
   await media.collectMedia();
@@ -60,7 +60,7 @@ async function main() {
   assert.equal(await backup.storageBytes(), 8195);
   await backup.exportBackup();
   const archive = unzipSync(sharedBytes);
-  assert.equal(files.has(shared), false, 'Export does not leave temporary ZIPs in cache');
+  assert.equal(files.has(shared), true, 'The ZIP stays for the receiving app, which may read it after the share sheet returns');
   assert.equal(archive['mossday.db'][0], 83);
   assert.deepEqual([...archive[`media/${imported}`]], [1, 2, 3]);
   assert.equal(JSON.parse(strFromU8(archive['manifest.json'])).app, 'Mossday');

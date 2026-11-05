@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useShare } from '@/components/share/ShareProvider';
+import { useShareWithOptions } from '@/components/share/ShareProvider';
 import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
@@ -266,13 +266,10 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     setBusy(true);
     void action(() => saveNote(note.id, latest.current), () => router.back()).finally(() => setBusy(false));
   };
-  const openShare = useShare();
-  // The share choices are a sheet of their own, so they wait for this note's menu to close.
-  const shareAfterMenu = useRef(false);
-  const share = () => { void action(async () => {
+  const openShare = useShareWithOptions();
+  const share = () => { Keyboard.dismiss(); void action(async () => {
     await saveNote(note.id, latest.current);
-    shareAfterMenu.current = true;
-    setSheet(null);
+    openShare(noteShareContent({ theme, title: latest.current.title, blocks: latest.current.blocks }));
   }); };
   const copy = () => { void action(async () => {
     await saveNote(note.id, latest.current);
@@ -322,13 +319,13 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   // Coloured notes take their colour's tint as the page, like Keep.
   const background = palette?.tint ?? theme.colors.background;
   const contentWidth = window.width - theme.spacing.xl * 2;
-  const pill = { height: theme.sizes.circleButton, paddingHorizontal: theme.spacing.md, gap: theme.spacing.lg };
+  const pill = { height: theme.sizes.circleButton, paddingHorizontal: theme.spacing.sm, gap: theme.spacing.md };
 
   return <SafeAreaView style={{ flex: 1, backgroundColor: background }}>
     {/* Follows the keyboard frame directly: Android may neither resize the window nor report
         coordinates that KeyboardAvoidingView can use (Expo Go draws below the status bar). */}
     <Animated.View style={[{ flex: 1 }, keyboardPadding]}>
-      <View style={[styles.row, { padding: theme.spacing.lg, gap: theme.spacing.sm }]}>
+      <View style={[styles.row, { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, gap: theme.spacing.xs }]}>
         <GlassButton accessibilityLabel="Save and go back" onPress={saveAndLeave}><Icon name="chevronLeft" size={theme.sizes.iconLarge} /></GlassButton>
         <GlassSurface contentStyle={[styles.row, pill]}>
           <HeaderIcon icon="undo" label="Undo" onPress={() => step(undo)} disabled={!steps.past.length} />
@@ -338,6 +335,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
         <GlassSurface contentStyle={[styles.row, pill]}>
           <HeaderIcon icon="pin" label={draft.isPinned ? 'Unpin note' : 'Pin note'} selected={!!draft.isPinned}
             onPress={() => edit({ ...latest.current, isPinned: latest.current.isPinned ? 0 : 1 })} />
+          <HeaderIcon icon="share" label="Share note" onPress={share} />
           <HeaderIcon icon="bell" label={reminderAt ? `Reminder, ${formatReminder(reminderAt)}` : 'Add reminder'} selected={!!reminderAt}
             onPress={() => { Keyboard.dismiss(); setSheet('reminder'); }} />
           <HeaderIcon icon="more" label="More options" onPress={() => { Keyboard.dismiss(); setSheet('options'); }} />
@@ -409,7 +407,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
         <Text align="center" variant="caption1" color="tertiaryLabel">{`Edited ${formatRelativeTimestamp(editedAt)}`}</Text>
       </DragScrollView>
       {recording ? <VoiceRecorder onCancel={() => setRecording(false)} onError={(message) => toast({ message })} onSave={(uri, durationMs) => {
-        void action(async () => { addBlock(newBlock('VOICE', '', importMedia(uri, 'm4a'), durationMs)); setRecording(false); });
+        void action(async () => { addBlock(newBlock('VOICE', '', await importMedia(uri, 'm4a'), durationMs)); setRecording(false); });
       }} /> : selectedText && !drawingOn ? <TextFormatBar onToggle={toggleSelection} onColor={colorSelection} active={{
         bold: rangeHas(selectionSpans, selectedText.start, selectedText.end, 'bold'),
         underline: rangeHas(selectionSpans, selectedText.start, selectedText.end, 'underline'),
@@ -426,15 +424,10 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
         </PressableScale>)}
       </GlassSurface></View>}
     </Animated.View>
-    {sheet === 'options' && <NoteOptionsSheet {...sheetTransition} onClose={() => setSheet(null)} onDismissed={() => {
-      sheetTransition.onDismissed();
-      if (!shareAfterMenu.current) return;
-      shareAfterMenu.current = false;
-      openShare(noteShareContent({ theme, title: latest.current.title, blocks: latest.current.blocks }));
-    }}
+    {sheet === 'options' && <NoteOptionsSheet {...sheetTransition} onClose={() => setSheet(null)}
       options={{ color: draft.color, folder: draft.folder, folders, archived: !!note.isArchived, counts: noteCounts(draft.title, draft.blocks), createdAt: note.createdAt, updatedAt: editedAt }}
       onColor={(color) => edit({ ...latest.current, color })} onFolder={(folder) => edit({ ...latest.current, folder })}
-      onShare={share} onCopy={copy} onArchive={archive} onDelete={remove} />}
+      onCopy={copy} onArchive={archive} onDelete={remove} />}
     {sheet === 'reminder' && <ReminderSheet {...sheetTransition} reminderAt={reminderAt} onSet={remind} onClose={() => setSheet(null)} />}
     {photo && <PhotoViewer uri={photo} onClose={() => setPhoto(null)} />}
   </SafeAreaView>;

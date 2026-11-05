@@ -10,10 +10,23 @@ export function mediaFile(path: string) {
   if (!/^[a-zA-Z0-9_.-]+$/.test(path) || path === '.' || path === '..') throw new Error('Invalid media path.');
   return new File(mediaDirectory(), path);
 }
-export function importMedia(uri: string, extension: string) {
+export async function importMedia(uri: string, extension: string) {
   const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension.replace(/[^a-z0-9]/gi, '') || 'bin'}`;
-  new File(uri).copy(mediaFile(name));
+  // Copying is asynchronous: the name is only good once the file is really there.
+  await new File(uri).copy(mediaFile(name));
   return name;
+}
+
+/**
+ * A new, empty place for the next file to share, clearing out the previous one. Files stay until
+ * then rather than being deleted after sharing: Android only hands the receiving app a link, and
+ * it may read the file long after the share sheet has returned.
+ */
+export function shareFile(name: string) {
+  const directory = new Directory(Paths.cache, 'shared');
+  if (directory.exists) directory.delete();
+  directory.create({ idempotent: true, intermediates: true });
+  return new File(directory, name);
 }
 
 /** Only reclaim unreferenced files after the Undo window and on a subsequent app launch. */

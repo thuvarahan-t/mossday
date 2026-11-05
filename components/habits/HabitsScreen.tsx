@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
-import { useShare } from '@/components/share/ShareProvider';
+import { useShareImage } from '@/components/share/ShareProvider';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { useToday } from '@/hooks/useToday';
@@ -40,7 +40,7 @@ export function HabitsScreen() {
   const active = data?.habits.filter((habit) => isActiveDay(habit.activeDays, today)) ?? [];
   const done = active.filter((habit) => (data?.logs.find((l) => l.habitId === habit.id && l.date === today)?.count ?? 0) >= habit.dailyGoal).length;
   const subtitle = active.length ? `${done} of ${active.length} done today` : 'Small daily wins';
-  const share = useShare();
+  const share = useShareImage();
   const shareHabits = () => {
     if (data) share(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitYear(anchor).label, anchor }));
   };

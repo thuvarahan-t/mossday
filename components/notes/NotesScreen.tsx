@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
-import { useShare } from '@/components/share/ShareProvider';
+import { useShareWithOptions } from '@/components/share/ShareProvider';
 import { estimateNoteHeight, NoteCard, noteSummary } from './NoteCard';
 import { audioPaths, notesShareContent } from './notesShare';
 import { NoteColorPicker } from './NoteColorPicker';
@@ -70,7 +70,7 @@ export function NotesScreen() {
       ]}
     renderItem={(note, width) => <NoteCard note={note} blocks={blocksFor(note.id)} width={width} />}
     estimateHeight={(note, width) => estimateNoteHeight(note, blocksFor(note.id), width)} />;
-  const share = useShare();
+  const share = useShareWithOptions();
   const shareNotes = () => {
     share(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })),
       audio: filtered.flatMap((note) => audioPaths(blocksFor(note.id))) }));

@@ -1,8 +1,7 @@
-import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { strToU8, zipSync } from 'fflate';
 import { Platform } from 'react-native';
-import { mediaDirectory, mediaFile } from './media';
+import { mediaDirectory, mediaFile, shareFile } from './media';
 import { read, write } from './repos/store';
 
 const MAX_BACKUP_BYTES = 32 * 1024 * 1024;
@@ -27,12 +26,7 @@ export async function exportBackup() {
     return archive;
   });
   files['manifest.json'] = strToU8(JSON.stringify({ app: 'Mossday', version: 1, createdAt: new Date().toISOString(), database: 'mossday.db' }));
-  const output = new File(Paths.cache, `mossday-${Date.now()}.zip`);
+  const output = shareFile(`mossday-${Date.now()}.zip`);
   await output.write(zipSync(files, { level: 0 }));
-  try {
-    await Sharing.shareAsync(output.uri, { mimeType: 'application/zip', dialogTitle: 'Save your Mossday backup' });
-  } finally {
-    // Sharing copies the file before resolving; repeated exports must not fill cache.
-    if (output.exists) output.delete();
-  }
+  await Sharing.shareAsync(output.uri, { mimeType: 'application/zip', dialogTitle: 'Save your Mossday backup' });
 }

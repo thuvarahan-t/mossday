@@ -1,8 +1,8 @@
-import { File, Paths } from 'expo-file-system';
+import { File } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { zipSync } from 'fflate';
-import { mediaFile } from './media';
+import { mediaFile, shareFile } from './media';
 
 /** A readable file name for the share sheet, safe on every platform. */
 export function shareFileName(title: string, extension: string) {
@@ -18,26 +18,11 @@ export function cardPdfHtml(base64Png: string) {
     `<body><img src="data:image/png;base64,${base64Png}"/></body></html>`;
 }
 
-/** Replaces any earlier file of that name, shares it, and leaves nothing behind in the cache. */
-async function shareTemporary(file: File, options: Sharing.SharingOptions) {
-  try {
-    await Sharing.shareAsync(file.uri, options);
-  } finally {
-    if (file.exists) file.delete();
-  }
-}
-
-function cacheFile(name: string) {
-  const file = new File(Paths.cache, name);
-  if (file.exists) file.delete();
-  return file;
-}
-
 export async function sharePdf(html: string, title: string, size?: { width: number; height: number }) {
   const { uri } = await Print.printToFileAsync({ html, ...size });
-  const output = cacheFile(shareFileName(title, 'pdf'));
-  new File(uri).move(output);
-  await shareTemporary(output, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: `Share ${title}` });
+  const output = shareFile(shareFileName(title, 'pdf'));
+  await new File(uri).move(output);
+  await Sharing.shareAsync(output.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: `Share ${title}` });
 }
 
 /**
@@ -47,15 +32,15 @@ export async function sharePdf(html: string, title: string, size?: { width: numb
 export async function shareAudioFiles(paths: readonly string[], title: string) {
   if (!paths.length) throw new Error('There is no audio to share.');
   if (paths.length === 1) {
-    const output = cacheFile(shareFileName(title, 'm4a'));
-    mediaFile(paths[0]).copy(output);
-    await shareTemporary(output, { mimeType: 'audio/mp4', UTI: 'public.mpeg-4-audio', dialogTitle: `Share ${title}` });
+    const output = shareFile(shareFileName(title, 'm4a'));
+    await mediaFile(paths[0]).copy(output);
+    await Sharing.shareAsync(output.uri, { mimeType: 'audio/mp4', UTI: 'public.mpeg-4-audio', dialogTitle: `Share ${title}` });
     return;
   }
   const archive: Record<string, Uint8Array> = {};
   for (const [index, path] of paths.entries()) archive[`Audio ${index + 1}.m4a`] = await mediaFile(path).bytes();
-  const output = cacheFile(shareFileName(`${title} audio`, 'zip'));
+  const output = shareFile(shareFileName(`${title} audio`, 'zip'));
   // Audio is already compressed, so zipping it again would only cost time.
   await output.write(zipSync(archive, { level: 0 }));
-  await shareTemporary(output, { mimeType: 'application/zip', dialogTitle: `Share ${title} audio` });
+  await Sharing.shareAsync(output.uri, { mimeType: 'application/zip', dialogTitle: `Share ${title} audio` });
 }

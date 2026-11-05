@@ -18,19 +18,23 @@ async function main() {
   class FakeFile {
     constructor(...parts) { this.uri = parts.map((part) => part.uri ?? part).join('/'); this.exists = false; files.push(this); }
     delete() { this.exists = false; this.deleted = true; }
-    move(target) { target.exists = true; }
-    copy(target) { target.exists = true; this.copiedTo = target; }
+    // Asynchronous on the device: forgetting to await these shared files that were not there yet.
+    async move(target) { await new Promise((resolve) => setImmediate(resolve)); target.exists = true; }
+    async copy(target) { await new Promise((resolve) => setImmediate(resolve)); target.exists = true; }
     async write(data) { this.written = data; this.exists = true; }
     async bytes() { return new Uint8Array([1, 2, 3]); }
     async base64() { return 'QkFTRTY0'; }
   }
   let printed;
   const shareFiles = load('lib/shareFiles.ts', {
-    'expo-file-system': { File: FakeFile, Paths: { cache: { uri: 'cache:' } } },
+    'expo-file-system': { File: FakeFile },
     'expo-print': { printToFileAsync: async (options) => { printed = options; return { uri: 'print.pdf' }; } },
-    'expo-sharing': { shareAsync: async (uri, options) => { shared.push({ uri, ...options }); } },
+    'expo-sharing': { shareAsync: async (uri, options) => {
+      assert.ok(files.find((file) => file.uri === uri).exists, 'A file exists by the time the share sheet opens');
+      shared.push({ uri, ...options });
+    } },
     fflate: { zipSync: (archive) => ({ names: Object.keys(archive) }) },
-    './media': { mediaFile: (path) => new FakeFile(`media/${path}`) },
+    './media': { mediaFile: (path) => new FakeFile(`media/${path}`), shareFile: (name) => new FakeFile('shared', name) },
   });
 
   assert.equal(shareFiles.shareFileName('Trip: plan/2026?', 'pdf'), 'Trip plan 2026.pdf', 'File names are safe on every platform');
@@ -41,7 +45,7 @@ async function main() {
   await shareFiles.sharePdf('<p>x</p>', 'My note', { width: 380, height: 900 });
   assert.equal(printed.width, 380); assert.equal(printed.height, 900);
   assert.ok(shared[0].uri.endsWith('My note.pdf')); assert.equal(shared[0].mimeType, 'application/pdf');
-  assert.ok(files.find((file) => file.uri.endsWith('My note.pdf')).deleted, 'The temporary PDF is removed after sharing');
+  assert.equal(files.find((file) => file.uri.endsWith('My note.pdf')).deleted, undefined, 'The receiving app may read the file after the share sheet returns, so it stays');
 
   shared.length = 0;
   await shareFiles.shareAudioFiles(['one.m4a'], 'My note');
@@ -63,7 +67,7 @@ async function main() {
   let stateSlot = 0;
   const states = [];
   const react = {
-    createContext: () => ({ Provider: 'ContextProvider' }), useCallback: (fn) => fn, useContext: () => null, useRef: (value) => ({ current: value }),
+    createContext: () => ({ Provider: 'ContextProvider' }), useCallback: (fn) => fn, useContext: () => null, useMemo: (fn) => fn(), useRef: (value) => ({ current: value }),
     useState: (initial) => {
       const slot = stateSlot++;
       if (!(slot in states)) states[slot] = initial;
@@ -85,10 +89,11 @@ async function main() {
     './ShareCard': { ShareCard: 'ShareCard', SHARE_CARD_WIDTH: 380 },
   });
   const render = () => { stateSlot = 0; return ShareProvider({ children: null }); };
+  const openImage = () => render().props.value.shareImage;
   const flatten = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(flatten) : [node, ...flatten(node.props?.children)];
   const rows = (tree) => flatten(tree).filter((node) => node.type === 'ListRow');
   const flush = () => new Promise((resolve) => setImmediate(resolve));
-  const open = render().props.value;
+  const open = render().props.value.shareWithOptions;
   const content = { icon: 'note', title: 'Trip', body: 'body', text: 'Plain words' };
 
   open(content);
@@ -132,6 +137,12 @@ async function main() {
   await finishCapture();
   assert.equal(sent[0].html, 'html:BASE', 'Without its own document, the PDF is the captured card');
   assert.equal(sent[0].size.width, 380); assert.equal(sent[0].size.height, 640, 'The page is exactly the card');
+  sent.length = 0;
+
+  openImage()(content);
+  assert.equal(sheetValue, null, 'A tab shares its image with no questions');
+  await finishCapture();
+  assert.equal(sent[0].uri, 'card.png');
   sent.length = 0;
 
   open({ ...content, pdfHtml: async () => 'document' });

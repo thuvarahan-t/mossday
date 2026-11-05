@@ -5,7 +5,7 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { tabNeighbour } from '@/components/navigation/tabs';
-import { useShare } from '@/components/share/ShareProvider';
+import { useShareImage } from '@/components/share/ShareProvider';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
@@ -99,7 +99,7 @@ export function ExpensesScreen() {
   const summary = periodSummary(view.period, total, result ? sum(result.previous) : 0, average, view.date === today);
   const label = periodLabel(view, today);
 
-  const share = useShare();
+  const share = useShareImage();
   const shareExpenses = () => {
     if (!data) return;
     share(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));

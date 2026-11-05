@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
-import { useShare } from '@/components/share/ShareProvider';
+import { useShareImage } from '@/components/share/ShareProvider';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ExpenseSheet, preloadCategories } from '@/components/expenses/ExpenseSheet';
 import { TodoList } from '@/components/diary/TodoList';
@@ -64,7 +64,7 @@ export function TodayScreen() {
   const countFor = (id: number) => data?.logs.find((l) => l.habitId === id)?.count ?? 0;
   const done = active.filter((h) => countFor(h.id) >= h.dailyGoal).length;
   const sectionIconButton = { width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center' } as const;
-  const share = useShare();
+  const share = useShareImage();
   const shareToday = () => {
     if (!data) return;
     share(todayShareContent({

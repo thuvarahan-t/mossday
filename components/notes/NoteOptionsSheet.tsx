@@ -16,12 +16,12 @@ export type NoteOptions = {
 };
 
 /**
- * The note's ⋮ menu: colour and folder (Keep), share, copy, archive and delete, and
+ * The note's ⋮ menu: colour and folder (Keep), copy, archive and delete, and
  * Samsung's note info, when it was made and changed and how long it is.
  */
-export function NoteOptionsSheet({ options, onColor, onFolder, onShare, onCopy, onArchive, onDelete, onClose, ...transition }: {
+export function NoteOptionsSheet({ options, onColor, onFolder, onCopy, onArchive, onDelete, onClose, ...transition }: {
   options: NoteOptions; onColor: (color: string | null) => void; onFolder: (folder: string | null) => void;
-  onShare: () => void; onCopy: () => void; onArchive: () => void; onDelete: () => void; onClose: () => void;
+  onCopy: () => void; onArchive: () => void; onDelete: () => void; onClose: () => void;
 } & Partial<FormSheetTransition>) {
   const theme = useTheme();
   const [naming, setNaming] = useState(false);
@@ -44,7 +44,6 @@ export function NoteOptionsSheet({ options, onColor, onFolder, onShare, onCopy, 
       <Button title="Add" size="small" disabled={!name.trim()} onPress={addFolder} />
     </View>}
     <GroupedList style={{ marginHorizontal: 0 }}>
-      <ListRow title="Share" icon={{ icon: 'share', color: 'blue' }} onPress={onShare} />
       <ListRow title="Make a copy" icon={{ icon: 'copy', color: 'teal' }} onPress={onCopy} />
       <ListRow title={archived ? 'Unarchive' : 'Archive'} icon={{ icon: archived ? 'unarchive' : 'archive', color: 'indigo' }} onPress={onArchive} />
       <ListRow title="Delete note" icon={{ icon: 'trash', color: 'red' }} onPress={onDelete} />
