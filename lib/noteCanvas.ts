@@ -3,8 +3,10 @@ import type { NoteBlock } from './repos/notes';
 /** Horizontal fractions keep the same composition on different phone widths; y is in pt. */
 export type BlockLayout = { x: number; y: number; width: number; ratio?: number };
 export type BlockFrame = BlockLayout & { height: number };
-export const BLOCK_CHROME = 60;
 export const CANVAS_GAP = 16;
+/** Half a line of body text: a new line is centred on the touch that placed it. */
+const HALF_LINE = 12;
+const isEmptyText = (block: NoteBlock) => block.type === 'TEXT' && !block.content?.trim();
 export const serializeBlockLayout = ({ x, y, width, ratio }: BlockLayout): string =>
   JSON.stringify({ x, y, width, ...(ratio === undefined ? {} : { ratio }) });
 
@@ -33,8 +35,7 @@ export function canvasFrames(blocks: readonly NoteBlock[], width: number, measur
       : Math.max(44, Math.ceil((block.content?.length ?? 0) * 8 / pixels) * 24);
     // Image heights follow the saved ratio even when a height-only resize never changes
     // the measured width. Text/checklist heights still follow their native content.
-    const height = block.type === 'IMAGE' ? estimate + BLOCK_CHROME + 2
-      : actual && Math.abs(actual.width - pixels) < 1 ? actual.height : estimate + BLOCK_CHROME;
+    const height = block.type === 'IMAGE' ? estimate : actual && Math.abs(actual.width - pixels) < 1 ? actual.height : estimate;
     frames[block.id] = { ...layout, height };
     bottom = Math.max(bottom, layout.y + height + CANVAS_GAP);
   }
@@ -46,11 +47,25 @@ export function moveBlockLayout(layout: BlockLayout, dx: number, dy: number, can
   return { ...layout, x: Math.max(0, Math.min(1 - layout.width, layout.x + dx / Math.max(1, canvasWidth))), y: Math.max(0, Math.min(100000, layout.y + dy)) };
 }
 
-export function resizeBlockLayout(layout: BlockLayout, dx: number, dy: number, canvasWidth: number): BlockLayout {
+/** Two-finger resize: keeps the block's proportions and centre, sliding it back onto the page. */
+export function scaleBlockLayout(layout: BlockLayout, scale: number, canvasWidth: number): BlockLayout {
   'worklet';
-  const width = Math.max(0.2, Math.min(1 - layout.x, layout.width + dx / Math.max(1, canvasWidth)));
-  const height = Math.max(48, canvasWidth * layout.width / (layout.ratio ?? 4 / 3) + dy);
-  return { ...layout, width, ratio: Math.max(0.2, Math.min(5, canvasWidth * width / height)) };
+  const width = Math.max(0.2, Math.min(1, layout.width * scale));
+  const grown = width - layout.width;
+  const x = Math.max(0, Math.min(1 - width, layout.x - grown / 2));
+  const y = Math.max(0, Math.min(100000, layout.y - canvasWidth * grown / (layout.ratio ?? 4 / 3) / 2));
+  return { ...layout, x, y, width };
+}
+
+/** A touch on blank space writes at the left edge of that line, below any block that reaches it. */
+export function textPlacement(blocks: readonly NoteBlock[], frames: Readonly<Record<number, BlockFrame>>, touchY: number): BlockLayout {
+  let y = Math.max(0, touchY - HALF_LINE);
+  for (const block of blocks) {
+    const frame = frames[block.id];
+    // Empty text is removed by this insertion, so it must not push the new line down.
+    if (!isEmptyText(block) && frame.y <= touchY) y = Math.max(y, frame.y + frame.height);
+  }
+  return { x: 0, y, width: 1 };
 }
 
 /** Freeze legacy positions before inserting, replacing an empty insertion box with media. */
@@ -58,8 +73,7 @@ export function insertCanvasBlock(blocks: readonly NoteBlock[], block: NoteBlock
   measuredFrames: Record<number, BlockFrame>, selectedId: number | null, at?: BlockLayout): NoteBlock[] {
   const frames = { ...canvasFrames(blocks, width), ...measuredFrames };
   const selected = blocks.find((item) => item.id === selectedId);
-  const isEmpty = (item: NoteBlock) => item.type === 'TEXT' && !item.content?.trim();
-  const empty = selected && isEmpty(selected) ? selected : !selected ? blocks.find(isEmpty) : undefined;
+  const empty = selected && isEmptyText(selected) ? selected : !selected ? blocks.find(isEmptyText) : undefined;
   const bottom = Math.max(0, ...blocks.map((item) => frames[item.id].y + frames[item.id].height));
   let target = at;
   if (!target && empty) target = frames[empty.id];
@@ -67,10 +81,10 @@ export function insertCanvasBlock(blocks: readonly NoteBlock[], block: NoteBlock
     const frame = frames[selected.id];
     target = { x: frame.x, y: frame.y + frame.height + CANVAS_GAP, width: frame.width };
   }
-  target ??= { x: 0, y: bottom + CANVAS_GAP, width: 0.8 };
+  target ??= { x: 0, y: bottom + CANVAS_GAP, width: block.type === 'TEXT' || block.type === 'CHECKLIST' ? 1 : 0.8 };
   // Playback and duration controls must remain usable on narrow phone screens.
   const blockWidth = block.type === 'VOICE' ? Math.max(Math.min(0.8, target.width), Math.min(1, 220 / width)) : target.width;
   const layout = { ...target, width: blockWidth, x: Math.min(target.x, 1 - blockWidth) };
-  const existing = blocks.filter((item) => !isEmpty(item)).map((item) => ({ ...item, layout: serializeBlockLayout(frames[item.id]) }));
+  const existing = blocks.filter((item) => !isEmptyText(item)).map((item) => ({ ...item, layout: serializeBlockLayout(frames[item.id]) }));
   return [...existing, { ...block, layout: serializeBlockLayout(layout) }];
 }

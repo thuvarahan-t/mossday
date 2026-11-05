@@ -33,9 +33,10 @@ later. Only the label changes; saved amounts are never converted.
 Expenses shows the month's budget as a progress line on every period; tapping it
 (or the daily budget bar) opens one Budget sheet with a Daily / Monthly switch. The
 "a day" average divides by days that have at least one expense, not by calendar days.
-In Month, the green add button opens Monthly expense with Rent, Electricity and
-Water shortcuts plus a custom title. Payments use the selected month's date and
-the existing Bills category. The Monthly bills list supports edit, swipe-delete
+The add expense sheet has a Daily / Monthly switch in its header and opens on Monthly
+from the Month tab. Monthly has the same layout as Daily, with Electricity, Water and
+Rent in place of the meals, and Groceries, Internet, Phone and others under Other.
+The mode is saved with each expense. The Monthly bills list supports edit, swipe-delete
 and Undo. These are payments for that month, with no automatic recurrence; day
 totals, month totals, budgets and charts all count the same saved payment once.
 Swipe left on Expenses to move Day → Week → Month and right to move back (past either
@@ -84,12 +85,14 @@ Accessibility actions also move notes earlier or later. Every main tab has
 a green circular add button fixed above the right end of the bottom tab bar.
 Diary adds an inline task, Habits opens New habit, and Today opens Quick add.
 
-Inside a note, content lives on a free-position canvas. Tap blank space to start
-text at that point, or add a photo, audio recording, checklist or drawing from the
-toolbar. A selected empty text box becomes the insertion point for media. Drag
-each block's dotted handle in any direction; drag its corner to resize (photos
-resize in both dimensions, text/audio/checklists change width). Dragging near
-the viewport edge scrolls the page, and More space extends the writing area.
+Inside a note, content lives on a free-position canvas with no boxes or handles.
+Touch blank space and the cursor appears at the left edge of that line, or add a
+photo, audio recording, checklist or drawing from the toolbar. An empty line that
+has the cursor becomes the insertion point for media. Hold a photo, audio clip or
+drawing to pick it up and drag it anywhere (it then shows a delete button until the
+next touch on blank space); pinch a photo to resize it and tap it to open it, where
+pinch or double tap zooms. Text keeps its long press for selection. Dragging near
+the viewport edge scrolls the page, and the cursor always scrolls above the keyboard.
 Positions and image proportions persist in `note_blocks.layout` (schema v7),
 including after Undo, copying and delete/restore. Old notes retain their vertical
 order until arranged. Horizontal fractions adapt the composition to phone width;

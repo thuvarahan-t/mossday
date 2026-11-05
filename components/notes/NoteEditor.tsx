@@ -8,7 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
-import { DragScrollView } from '@/components/ui/DragScrollView';
+import { DragScrollView, type RevealCaret } from '@/components/ui/DragScrollView';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
@@ -22,6 +22,7 @@ import { useSheetState } from '@/hooks/useSheetState';
 import { useTheme } from '@/hooks/useTheme';
 import { dataColors } from '@/lib/dataColors';
 import { formatRelativeTimestamp, formatTimestamp } from '@/lib/date';
+import { haptics } from '@/lib/haptics';
 import { importNotePhoto } from '@/lib/images';
 import { importMedia, mediaFile, reclaimMediaLater } from '@/lib/media';
 import { ensureReminderPermission } from '@/lib/reminders';
@@ -87,6 +88,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const [manipulating, setManipulating] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<number | null>(null);
   const frames = useRef<Record<number, BlockFrame>>({});
+  const revealCaret = useRef<RevealCaret>(null);
   /** The text block or checklist being typed in, for the format bar; null in the heading. */
   const focus = useRef<Focus | null>(null);
   const [autoFocusId, setAutoFocusId] = useState<number | null>(null);
@@ -282,7 +284,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           <Icon name="check" color="onAccent" strokeWidth={2.8} />
         </PressableScale>
       </View>
-      <DragScrollView keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating} contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
+      <DragScrollView revealCaret={revealCaret} keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating} contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <Text align="center" variant="footnote" color="secondaryLabel">{formatTimestamp(note.createdAt)}</Text>
         <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; setSelectedBlockId(null); }}
           appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />
@@ -291,10 +293,15 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           onPlaceText={(layout) => addBlock(newBlock('TEXT'), true, layout)}
           onChangeLayout={(layouts) => edit({ ...latest.current, blocks: latest.current.blocks.map((block) =>
             layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
-          renderBlock={(block, blockWidth, imageStyle) => <View style={{ backgroundColor: background }}>
-            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder="Write something…" value={block.content ?? ''} accessibilityLabel="Note text"
+          renderBlock={(block, blockWidth, imageStyle, wasHeld) => <View style={{ backgroundColor: background }}>
+            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} value={block.content ?? ''} accessibilityLabel="Note text"
               autoFocus={block.id === autoFocusId}
-              onFocus={() => { setSelectedBlockId(block.id); const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; }}
+              onFocus={() => { setSelectedBlockId(block.id); const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; revealCaret.current?.(); }}
+              onContentSizeChange={() => {
+                // Typing a new last line must keep it above the keyboard too.
+                const typing = focus.current?.blockId === block.id && focus.current.selection.end >= (block.content?.length ?? 0) - 1;
+                if (typing) revealCaret.current?.(true);
+              }}
               selection={cursor?.blockId === block.id ? { start: cursor.at, end: cursor.at } : undefined}
               onSelectionChange={(event) => {
                 const { selection } = event.nativeEvent;
@@ -308,17 +315,18 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
                 setCursor(content !== text ? { blockId: block.id, at: listCursor(text, content) } : null);
               }} />}
             {block.type === 'IMAGE' && block.filePath && <Animated.View style={imageStyle}>
-              <PressableScale haptic="tap" accessibilityLabel="Open photo" style={{ flex: 1 }} onPress={() => setPhoto(mediaFile(block.filePath!).uri)}>
+              <PressableScale accessibilityLabel="Open photo" accessibilityHint="Hold to move, or pinch to resize" style={{ flex: 1 }}
+                onPress={() => { if (wasHeld()) return; haptics.tap(); setSelectedBlockId(null); setPhoto(mediaFile(block.filePath!).uri); }}>
                 <Image source={{ uri: mediaFile(block.filePath).uri }} contentFit="contain" transition={150} accessibilityLabel="Attached photo"
                   style={{ width: '100%', height: '100%', borderRadius: theme.radii.card }} />
               </PressableScale>
             </Animated.View>}
-            {block.type === 'VOICE' && block.filePath && <VoicePlayer uri={mediaFile(block.filePath).uri} durationMs={block.durationMs ?? 0} />}
+            {block.type === 'VOICE' && block.filePath && <VoicePlayer uri={mediaFile(block.filePath).uri} durationMs={block.durationMs ?? 0} ignorePress={wasHeld} />}
             {block.type === 'CHECKLIST' && <ChecklistBlock blockId={block.id} content={block.content} autoFocus={block.id === autoFocusId}
-              onFocus={() => { focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; }}
-              onChange={(content, group) => replaceBlock(block.id, { content }, group)} />}
-            {block.type === 'DRAWING' && <PressableScale haptic="tap" accessibilityLabel="Edit drawing"
-              onPress={() => { Keyboard.dismiss(); setDrawing({ blockId: block.id, initial: parseDrawing(block.content) }); }}
+              onFocus={() => { setSelectedBlockId(block.id); focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; revealCaret.current?.(); }}
+              onChange={(content, group) => { if (content === '[]') removeBlock(block); else replaceBlock(block.id, { content }, group); }} />}
+            {block.type === 'DRAWING' && <PressableScale accessibilityLabel="Edit drawing" accessibilityHint="Hold to move"
+              onPress={() => { if (wasHeld()) return; haptics.tap(); Keyboard.dismiss(); setDrawing({ blockId: block.id, initial: parseDrawing(block.content) }); }}
               style={{ borderRadius: theme.radii.card, overflow: 'hidden', backgroundColor: theme.colors.card }}>
               <DrawingView drawing={parseDrawing(block.content)} width={Math.max(1, blockWidth - 2)} />
             </PressableScale>}

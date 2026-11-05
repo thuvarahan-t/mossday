@@ -11,13 +11,15 @@ import { Waveform, waveformFromSeed } from './Waveform';
 export type VoicePlayerProps = {
   uri: string;
   durationMs: number;
+  /** Lets the owner ignore the release of a long press that moved this player instead. */
+  ignorePress?: () => boolean;
 };
 
 const PLAY_BUTTON = 40;
 const BAR_COUNT = 28;
 
 /** Voice-note block: green play button, waveform that fills as it plays, duration. */
-export function VoicePlayer({ uri, durationMs }: VoicePlayerProps) {
+export function VoicePlayer({ uri, durationMs, ignorePress }: VoicePlayerProps) {
   const theme = useTheme();
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
@@ -30,6 +32,7 @@ export function VoicePlayer({ uri, durationMs }: VoicePlayerProps) {
   }, [player, status.didJustFinish]);
 
   const toggle = () => {
+    if (ignorePress?.()) return;
     if (status.playing) player.pause();
     else player.play();
   };
