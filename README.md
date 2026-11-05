@@ -168,11 +168,13 @@ Run `npm run lint` and `npm run typecheck` before committing. Tests also cover
 backup/reminder services, photo cleanup, midnight refresh and sheet sequencing.
 Use [the motion checklist](docs/MOTION-CHECKLIST.md) for device acceptance.
 
-## Android preview APK
+## Building a release
 
 Run `npx eas-cli@latest login`, then `npx eas-cli@latest init` to link your Expo
-project, and `npx eas-cli@latest build --platform android --profile preview`.
-The checked-in `eas.json` requests an APK; production requests an AAB.
-EAS is currently not logged in; no cloud build or APK install has been verified.
+project. `npx eas-cli@latest build --platform android --profile preview` makes an APK to
+install directly, and `--profile production` an AAB for Google Play, raising the version
+code each time. No cloud build or APK install has been verified yet. The app's icons are
+rendered from `assets/images/icon-source.html`.
 
-Dependency audit: the generated SDK 58 dependency tree reports 19 high-severity advisories. npm proposes incompatible Expo/React Native downgrades; these have not been applied. Review compatible upstream fixes before release.
+Dependency audit: `npm audit --omit=dev` reports 5 moderate advisories; npm's only
+proposed fix is a forced, breaking change, which has not been applied.

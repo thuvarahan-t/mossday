@@ -7,7 +7,13 @@
     "scheme": "mossday",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.thuvarahan.mossday"
+      "package": "com.thuvarahan.mossday",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-foreground.png",
+        "monochromeImage": "./assets/images/adaptive-monochrome.png",
+        "backgroundColor": "#27945A"
+      }
     },
     "plugins": [
       "expo-router",
@@ -15,15 +21,30 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 160,
           "backgroundColor": "#F2F2F7",
           "dark": {
+            "image": "./assets/images/splash-icon.png",
             "backgroundColor": "#000000"
           }
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Mossday to record voice notes.",
+          "enableBackgroundPlayback": false
+        }
+      ],
       "expo-sharing",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#27945A"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -38,6 +59,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "icon": "./assets/images/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.thuvarahan.mossday",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
     }
   }
 }

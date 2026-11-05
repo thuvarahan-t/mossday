@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- The Mossday sprout, the source of every icon PNG in this folder. Open with ?variant=icon|foreground|mono|splash. -->
+<html>
+<head>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  svg { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="moss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38B26A" />
+      <stop offset="1" stop-color="#1F7F47" />
+    </linearGradient>
+  </defs>
+  <rect id="background" width="1024" height="1024" fill="url(#moss)" />
+  <g id="sprout" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M512 770 V430" stroke="currentColor" stroke-width="58" />
+    <path d="M512 520 C512 395 420 318 282 318 C282 452 372 520 512 520 Z" fill="currentColor" stroke="currentColor" stroke-width="20" />
+    <path d="M512 440 C512 325 596 250 742 250 C742 378 650 440 512 440 Z" fill="currentColor" stroke="currentColor" stroke-width="20" />
+  </g>
+</svg>
+<script>
+  const variant = new URLSearchParams(location.search).get('variant') || 'icon';
+  const sprout = document.getElementById('sprout');
+  const background = document.getElementById('background');
+  // Adaptive icons mask their edges, so the sprout stays inside Android's safe zone.
+  const safeZone = 'translate(512 512) scale(0.62) translate(-512 -512)';
+  if (variant === 'icon') { sprout.style.color = '#FFFFFF'; }
+  if (variant === 'foreground' || variant === 'mono') { background.remove(); sprout.style.color = '#FFFFFF'; sprout.setAttribute('transform', safeZone); }
+  if (variant === 'splash') { background.remove(); sprout.style.color = '#2A9B5A'; }
+</script>
+</body>
+</html>
