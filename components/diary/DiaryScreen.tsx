@@ -52,7 +52,8 @@ export function DiaryScreen() {
     if (data) void shareImage(diaryShareContent({ theme, date, todos: data.todos, journal: data.journal, summary }));
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
-    titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={addInline} />}
+    floatingAdd={{ label: 'Add to-do', onPress: addInline }}
+    titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} />}
     fixedContent={<DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data?.nearbyTodos.map((t) => t.date) ?? [])}
       moods={data?.moods ?? {}} monthlyTodos={data?.monthlyTodos ?? []} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>

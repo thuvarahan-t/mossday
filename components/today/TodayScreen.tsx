@@ -73,7 +73,8 @@ export function TodayScreen() {
     }));
   };
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
-    titleAccessory={<TabHeaderActions shareLabel="Share today" onShare={shareToday} addLabel="Quick add" onAdd={() => setSheet('quick')} />}
+    floatingAdd={{ label: 'Quick add', onPress: () => setSheet('quick') }}
+    titleAccessory={<TabHeaderActions shareLabel="Share today" onShare={shareToday} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
     <TabSwipeArea tab="index" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       {error || !data ? <LoadState error={error} retry={refresh} /> : <>

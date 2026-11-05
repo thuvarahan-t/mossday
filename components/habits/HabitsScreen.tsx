@@ -44,7 +44,8 @@ export function HabitsScreen() {
   const shareHabits = () => {
     if (data) void shareImage(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitYear(anchor).label, anchor }));
   };
-  return <LargeTitleScreen title="Habits" titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} addLabel="New habit" onAdd={() => setEditor('new')} />}
+  return <LargeTitleScreen title="Habits" floatingAdd={{ label: 'New habit', onPress: () => setEditor('new') }}
+    titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} />}
     subtitle={subtitle} scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
     <TabSwipeArea tab="habits" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={setPeriodDate} />
