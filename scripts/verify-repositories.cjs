@@ -275,6 +275,14 @@ async function main() {
   assert.equal((await orderedIds())[1], newId, 'New notes lead the unpinned group');
   await notes.setNoteArchived(orderIds[1], true);
   await assert.rejects(notes.reorderNotes([orderIds[0], orderIds[1]]));
+  const spanNote = await notes.createNote();
+  const spans = JSON.stringify([{ start: 0, end: 4, bold: true }]);
+  await notes.saveNote(spanNote, { title: 'Rich', folder: null, color: null, isPinned: 0, blocks: [{ id: -1, noteId: spanNote, type: 'TEXT', content: 'Bold words', filePath: null, durationMs: null, position: 0, spans }] });
+  assert.equal((await notes.getNote(spanNote)).blocks[0].spans, spans, 'Formatting is saved with its text');
+  assert.equal((await notes.getNote(await notes.duplicateNote(spanNote))).blocks[0].spans, spans, 'A copy keeps its formatting');
+  const deletedSpans = await notes.deleteNote(spanNote);
+  await notes.restoreNote(deletedSpans);
+  assert.equal((await notes.getNote(spanNote)).blocks[0].spans, spans, 'Undoing a delete keeps formatting');
   const monthlyCategories = await expenses.listCategories();
   assert.deepEqual(Array.from(bills.monthlyPrimaryCategories(monthlyCategories), (category) => category.name), ['Electricity', 'Water', 'Rent']);
   assert.ok(monthlyCategories.some((category) => category.name === 'Groceries'));

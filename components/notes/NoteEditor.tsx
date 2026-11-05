@@ -42,6 +42,10 @@ import { checklistToText, continueList, noteCounts, textToChecklist, toggleList,
 import { NoteOptionsSheet } from './NoteOptionsSheet';
 import { noteShareContent } from './notesShare';
 import { NoteTag } from './NoteTag';
+import { RichSegments } from './RichSegments';
+import { adjustSpans, parseSpans, rangeHas, serializeSpans, setFormatColor, toggleFormat, type FormatColor, type FormatToggle } from './richText';
+import { TextFormatBar } from './TextFormatBar';
+import type { AccentName } from '@/constants/colors';
 import { PhotoViewer } from './PhotoViewer';
 import { ReminderSheet } from './ReminderSheet';
 import { formatReminder } from './reminderTimes';
@@ -100,6 +104,10 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const [autoFocusId, setAutoFocusId] = useState<number | null>(null);
   /** Where to put the cursor after the app changed the text being typed (a list marker, a time). */
   const [cursor, setCursor] = useState<{ blockId: number; at: number } | null>(null);
+  /** The selected words, while any are; formatting them replaces the toolbar. */
+  const [selectedText, setSelectedText] = useState<{ blockId: number; start: number; end: number } | null>(null);
+  /** Re-applied for one update after formatting, which redraws the text under the selection. */
+  const [keptSelection, setKeptSelection] = useState<{ blockId: number; start: number; end: number } | null>(null);
   const [reminderAt, setReminderAt] = useState(note.reminderAt);
   const [editedAt, setEditedAt] = useState(note.updatedAt);
   const [openedAt] = useState(() => Date.now());
@@ -133,7 +141,13 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     commit(result.draft);
   };
   const replaceBlock = (id: number, change: Partial<NoteBlock>, group: string | null = null) =>
-    edit({ ...latest.current, blocks: latest.current.blocks.map((b) => b.id === id ? { ...b, ...change } : b) }, group);
+    edit({ ...latest.current, blocks: latest.current.blocks.map((b) => {
+      if (b.id !== id) return b;
+      // Formatting follows its words through every kind of text change, and leaves with the text.
+      const spans = change.type && change.type !== 'TEXT' ? null
+        : change.content !== undefined && b.spans ? serializeSpans(adjustSpans(parseSpans(b.spans), b.content ?? '', change.content ?? '')) : b.spans;
+      return { ...b, spans, ...change };
+    }) }, group);
   const newBlock = (type: NoteBlock['type'], content: string | null = '', filePath: string | null = null, durationMs: number | null = null): NoteBlock =>
     ({ id: nextId.current--, noteId: note.id, type, content, filePath, durationMs, position: 0 });
   const addBlock = (block: NoteBlock, focusIt = false, at?: BlockLayout) => {
@@ -186,6 +200,19 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     const at = Math.min(current.selection.end, text.length);
     replaceBlock(current.block.id, { content: text.slice(0, at) + stamp + text.slice(at) });
     setCursor({ blockId: current.block.id, at: at + stamp.length });
+  };
+  const selectionSpans = parseSpans(draft.blocks.find((b) => b.id === selectedText?.blockId)?.spans);
+  const formatSelection = (spans: ReturnType<typeof parseSpans>) => {
+    if (!selectedText) return;
+    replaceBlock(selectedText.blockId, { spans: serializeSpans(spans) });
+    setKeptSelection(selectedText);
+    setTimeout(() => setKeptSelection(null), 50);
+  };
+  const toggleSelection = (key: FormatToggle) => {
+    if (selectedText) formatSelection(toggleFormat(selectionSpans, selectedText.start, selectedText.end, key));
+  };
+  const colorSelection = (key: FormatColor, value: AccentName | null) => {
+    if (selectedText) formatSelection(setFormatColor(selectionSpans, selectedText.start, selectedText.end, key, value));
   };
   const startDrawing = () => { Keyboard.dismiss(); inkBlock.current = null; setSelectedBlockId(null); setFormatting(false); setDrawingOn(true); };
   const addStroke = (stroke: Stroke) => {
@@ -331,7 +358,9 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           onChangeLayout={(layouts) => edit({ ...latest.current, blocks: latest.current.blocks.map((block) =>
             layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
           renderBlock={(block, imageStyle, wasHeld) => <View style={block.type === 'DRAWING' ? undefined : { backgroundColor: background }}>
-            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} value={block.content ?? ''} accessibilityLabel="Note text"
+            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} accessibilityLabel="Note text"
+              // A text input takes formatted text as children instead of a plain value.
+              value={block.spans ? undefined : block.content ?? ''}
               autoFocus={block.id === autoFocusId}
               onFocus={() => { setSelectedBlockId(block.id); const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; revealCaret.current?.(); }}
               onContentSizeChange={() => {
@@ -339,18 +368,24 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
                 const typing = focus.current?.blockId === block.id && focus.current.selection.end >= (block.content?.length ?? 0) - 1;
                 if (typing) revealCaret.current?.(true);
               }}
-              selection={cursor?.blockId === block.id ? { start: cursor.at, end: cursor.at } : undefined}
+              selection={keptSelection?.blockId === block.id ? { start: keptSelection.start, end: keptSelection.end }
+                : cursor?.blockId === block.id ? { start: cursor.at, end: cursor.at } : undefined}
               onSelectionChange={(event) => {
                 const { selection } = event.nativeEvent;
                 focus.current = { blockId: block.id, selection };
+                setSelectedText((current) => {
+                  if (selection.start === selection.end) return current?.blockId === block.id ? null : current;
+                  return current?.blockId === block.id && current.start === selection.start && current.end === selection.end ? current : { blockId: block.id, ...selection };
+                });
                 // Released once the cursor has arrived; the typing's own selection event may come first.
                 if (cursor?.blockId === block.id && selection.start === cursor.at) setCursor(null);
               }}
+              onBlur={() => setSelectedText((current) => current?.blockId === block.id ? null : current)}
               onChangeText={(text) => {
                 const content = continueList(block.content ?? '', text);
                 replaceBlock(block.id, { content }, `text:${block.id}`);
                 setCursor(content !== text ? { blockId: block.id, at: listCursor(text, content) } : null);
-              }} />}
+              }}>{block.spans ? <RichSegments text={block.content ?? ''} spans={parseSpans(block.spans)} /> : undefined}</TextField>}
             {block.type === 'IMAGE' && block.filePath && <Animated.View style={imageStyle}>
               <PressableScale accessibilityLabel="Open photo" accessibilityHint="Hold to move, or pinch to resize" style={{ flex: 1 }}
                 onPress={() => { if (wasHeld()) return; haptics.tap(); setSelectedBlockId(null); setPhoto(mediaFile(block.filePath!).uri); }}>
@@ -375,6 +410,10 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
       </DragScrollView>
       {recording ? <VoiceRecorder onCancel={() => setRecording(false)} onError={(message) => toast({ message })} onSave={(uri, durationMs) => {
         void action(async () => { addBlock(newBlock('VOICE', '', importMedia(uri, 'm4a'), durationMs)); setRecording(false); });
+      }} /> : selectedText && !drawingOn ? <TextFormatBar onToggle={toggleSelection} onColor={colorSelection} active={{
+        bold: rangeHas(selectionSpans, selectedText.start, selectedText.end, 'bold'),
+        underline: rangeHas(selectionSpans, selectedText.start, selectedText.end, 'underline'),
+        strike: rangeHas(selectionSpans, selectedText.start, selectedText.end, 'strike'),
       }} /> : <View>
         {drawingOn && <DrawingTools tool={inkTool} color={inkColor} onTool={setInkTool} onColor={(color) => { setInkColor(color); if (inkTool === 'eraser') setInkTool('pen'); }} />}
         <GlassSurface style={{ marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm }}

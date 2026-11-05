@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const monthlyCategories = [
   ['Electricity', 'bills', 'yellow'], ['Water', 'bills', 'blue'], ['Rent', 'home', 'green'],
   ['Internet', 'bills', 'indigo'], ['Phone', 'bills', 'teal'], ['Insurance', 'health', 'purple'],
@@ -170,7 +170,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         await db.execAsync("UPDATE expenses SET frequency='MONTHLY' WHERE categoryId IN (SELECT id FROM categories WHERE icon='bills') AND title IS NOT NULL; PRAGMA user_version = 8;");
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 9) {
       await db.withTransactionAsync(async () => {
         for (const [name, icon, color] of monthlyCategories) {
           // A category the user already made under this name keeps its own look and history.
@@ -179,6 +179,13 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
             WHERE NOT EXISTS (SELECT 1 FROM categories WHERE lower(name)=lower(?) AND archived=0)`, name, icon, color, name);
         }
         await db.execAsync('PRAGMA user_version = 9;');
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        const column = await db.getFirstAsync<{ n: number }>("SELECT count(*) AS n FROM pragma_table_info('note_blocks') WHERE name='spans'");
+        if (!column?.n) await db.execAsync('ALTER TABLE note_blocks ADD COLUMN spans TEXT;');
+        await db.execAsync('PRAGMA user_version = 10;');
       });
     }
     return db;

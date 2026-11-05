@@ -64,7 +64,7 @@ async function main() {
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=99').get().content, 'Preserved', 'v6 canvas upgrade keeps old note content');
   assert.equal(sqlite.prepare('SELECT layout FROM note_blocks WHERE noteId=99').get().layout, null);
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 9);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 10);
   sqlite.exec('DELETE FROM notes WHERE id=99');
   // Reopen an existing v1 database: indexing must preserve records and deleted seeds.
   sqlite.exec("INSERT INTO expenses(amount,date,createdAt) VALUES (45000,'2026-10-23','now')");
@@ -79,7 +79,7 @@ async function main() {
   sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
   sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 9);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 10);
   assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=5').get().content, 'Body', 'Rebuilding note blocks keeps their rows');
   assert.equal(sqlite.prepare('SELECT layout FROM note_blocks WHERE noteId=5').get().layout, null, 'Old blocks open in their original vertical order');
   assert.equal(sqlite.prepare('SELECT isArchived FROM notes WHERE id=5').get().isArchived, 0);

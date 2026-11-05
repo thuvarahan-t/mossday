@@ -4,6 +4,7 @@ import { mediaFile } from '@/lib/media';
 import { readingOrder } from '@/lib/noteCanvas';
 import { checklistItems, type NoteBlock } from '@/lib/repos/notes';
 import { escapeHtml } from '@/lib/shareFiles';
+import { parseSpans, textSegments, type TextFormat } from './richText';
 import { drawingViewBox, parseDrawing, strokePath, TOOL_STYLE, type Drawing, type InkColor } from './drawing';
 
 /** The page is white, so ink that follows the theme's text colour is always dark here. */
@@ -16,9 +17,18 @@ function drawingSvg(drawing: Drawing) {
   return `<svg width="100%" viewBox="${box.x} ${box.y} ${box.width} ${box.height}" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
 }
 
+function formattedHtml(text: string, format: TextFormat) {
+  const css = [format.color && `color:${accents.light[format.color]}`, format.highlight && `background:${accents.light[format.highlight]}66`].filter(Boolean).join(';');
+  let html = escapeHtml(text);
+  if (format.bold) html = `<strong>${html}</strong>`;
+  if (format.underline) html = `<u>${html}</u>`;
+  if (format.strike) html = `<s>${html}</s>`;
+  return css ? `<span style="${css}">${html}</span>` : html;
+}
+
 async function blockHtml(block: NoteBlock) {
   switch (block.type) {
-    case 'TEXT': return block.content?.trim() ? `<p>${escapeHtml(block.content)}</p>` : '';
+    case 'TEXT': return block.content?.trim() ? `<p>${textSegments(block.content, parseSpans(block.spans)).map((run) => formattedHtml(run.text, run.format)).join('')}</p>` : '';
     case 'CHECKLIST': return `<ul>${checklistItems(block.content).map((item) => `<li class="${item.done ? 'done' : ''}">${item.done ? '☑' : '☐'} ${escapeHtml(item.text)}</li>`).join('')}</ul>`;
     // WebViews cannot read the app's files, so photos are inlined (Expo's documented approach).
     case 'IMAGE': return block.filePath ? `<img src="data:image/jpeg;base64,${await mediaFile(block.filePath).base64()}"/>` : '';

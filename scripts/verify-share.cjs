@@ -143,20 +143,20 @@ async function main() {
   // A note as a document.
   const layout = (y) => JSON.stringify({ x: 0, y, width: 1 });
   const notePdf = load('components/notes/notePdf.ts', {
-    '@/constants/colors': { accents: { light: { red: '#FF3B30' } } }, '@/lib/date': { formatDuration: () => '0:05' },
+    '@/constants/colors': { accents: { light: { red: '#FF3B30', yellow: '#FFCC00' } } }, '@/lib/date': { formatDuration: () => '0:05' },
     '@/lib/media': { mediaFile: (path) => new FakeFile(path) }, '@/lib/noteCanvas': load('lib/noteCanvas.ts'),
     '@/lib/repos/notes': { checklistItems: (content) => JSON.parse(content) }, '@/lib/shareFiles': { escapeHtml: shareFiles.escapeHtml },
-    './drawing': load('components/notes/drawing.ts'),
+    './drawing': load('components/notes/drawing.ts'), './richText': load('components/notes/richText.ts'),
   });
   const html = await notePdf.notePdfHtml('A <title>', [
-    { id: 1, type: 'TEXT', content: 'Second & last', layout: layout(300) },
+    { id: 1, type: 'TEXT', content: 'Second & last', layout: layout(300), spans: JSON.stringify([{ start: 0, end: 6, bold: true, highlight: 'yellow' }]) },
     { id: 2, type: 'IMAGE', filePath: 'photo.jpg', layout: layout(100) },
     { id: 3, type: 'CHECKLIST', content: JSON.stringify([{ text: 'Done', done: true }]), layout: layout(50) },
     { id: 4, type: 'VOICE', filePath: 'v.m4a', durationMs: 5000, layout: layout(400) },
     { id: 5, type: 'DRAWING', content: JSON.stringify({ aspect: 1, strokes: [{ tool: 'pen', color: 'red', points: [0, 0, 0.5, 0.5] }] }), layout: layout(500) },
   ]);
   assert.match(html, /<h1>A &lt;title&gt;<\/h1>/, 'Titles are escaped');
-  assert.match(html, /Second &amp; last/);
+  assert.match(html, /<span style="background:#FFCC0066"><strong>Second<\/strong><\/span> &amp; last/, 'Formatting carries into the PDF');
   assert.match(html, /data:image\/jpeg;base64,QkFTRTY0/, 'Photos are inlined because a WebView cannot read app files');
   assert.ok(html.indexOf('Done') < html.indexOf('QkFTRTY0') && html.indexOf('QkFTRTY0') < html.indexOf('Second'), 'The document reads top to bottom as placed');
   assert.match(html, /stroke="#FF3B30"/);

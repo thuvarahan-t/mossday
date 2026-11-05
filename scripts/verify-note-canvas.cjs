@@ -82,6 +82,30 @@ const moved = { aspect: 1, strokes: [stroke([0.5, 0.5, 0.6, 0.6])], box: { x: 0.
 assert.equal(ink.eraseFromDrawing(moved, { x: 0, y: 0, width: 0.8 }, 0.2, 0.2, 0.03).length, 0, 'The eraser finds strokes where a moved and resized drawing now shows them');
 assert.equal(ink.eraseFromDrawing(moved, { x: 0, y: 0, width: 0.8 }, 0.5, 0.5, 0.03).length, 1);
 
+const rich = load('components/notes/richText.ts');
+const plain = (spans) => JSON.parse(JSON.stringify(spans));
+let spans = rich.toggleFormat([], 0, 5, 'bold');
+assert.deepEqual(plain(spans), [{ start: 0, end: 5, bold: true }]);
+assert.equal(rich.rangeHas(spans, 1, 4, 'bold'), true); assert.equal(rich.rangeHas(spans, 3, 8, 'bold'), false, 'Partly bold is not bold');
+spans = rich.toggleFormat(spans, 3, 8, 'bold');
+assert.deepEqual(plain(spans), [{ start: 0, end: 8, bold: true }], 'Bold joins up with bold beside it');
+spans = rich.toggleFormat(spans, 2, 6, 'bold');
+assert.deepEqual(plain(spans), [{ start: 0, end: 2, bold: true }, { start: 6, end: 8, bold: true }], 'Toggling off leaves the rest');
+spans = rich.setFormatColor(spans, 1, 7, 'highlight', 'yellow');
+assert.deepEqual(plain(spans), [{ start: 0, end: 1, bold: true }, { start: 1, end: 2, bold: true, highlight: 'yellow' }, { start: 2, end: 6, highlight: 'yellow' },
+  { start: 6, end: 7, bold: true, highlight: 'yellow' }, { start: 7, end: 8, bold: true }], 'Formats layer without overlapping');
+assert.deepEqual(plain(rich.setFormatColor(rich.setFormatColor([], 0, 4, 'color', 'red'), 0, 4, 'color', null)), [], 'Removing the last format removes the span');
+const hello = [{ start: 6, end: 11, bold: true }];
+assert.deepEqual(plain(rich.adjustSpans(hello, 'hello world', 'hey hello world')), [{ start: 10, end: 15, bold: true }], 'Typing before moves the formatting along');
+assert.deepEqual(plain(rich.adjustSpans(hello, 'hello world', 'hello woXrld')), [{ start: 6, end: 12, bold: true }], 'Typing inside extends it');
+assert.deepEqual(plain(rich.adjustSpans(hello, 'hello world', 'hello world!')), hello, 'Typing right after does not');
+assert.deepEqual(plain(rich.adjustSpans(hello, 'hello world', 'hello ')), [], 'Deleting the words removes their formatting');
+assert.deepEqual(plain(rich.adjustSpans(hello, 'hello world', 'world')), [{ start: 0, end: 5, bold: true }], 'Deleting before moves it back');
+assert.deepEqual(plain(rich.textSegments('hello world', hello)), [{ text: 'hello ', format: {} }, { text: 'world', format: { bold: true } }]);
+assert.equal(rich.textSegments('hi', [{ start: 0, end: 99, bold: true }])[0].text, 'hi', 'A stale range cannot read past the text');
+assert.deepEqual(plain(rich.parseSpans('[{"start":3,"end":1},{"start":0,"end":2,"bold":true}]')), [{ start: 0, end: 2, bold: true }], 'Bad ranges are ignored');
+assert.deepEqual(plain(rich.parseSpans('nope')), []);
+
 const placedFrames = { 1: { x: 0, y: 0, width: 1, height: 100 }, 2: { x: 0, y: 300, width: 0.5, height: 50 } };
 const placedBlocks = [{ id: 1, type: 'TEXT', content: 'Written' }, { id: 2, type: 'IMAGE' }];
 assert.deepEqual({ ...geometry.textPlacement(placedBlocks, placedFrames, 200) }, { x: 0, y: 188, width: 1 }, 'A touch writes at the left edge, centred on that line');
@@ -307,4 +331,4 @@ assert.equal(photoTransform()[0].translateX, 300, 'A zoomed photo pans only as f
 viewerGestures.tap.onActivate();
 assert.equal(photoTransform()[2].scale, 1, 'Double tap zooms back out');
 assert.equal(photoTransform()[0].translateX, 0, 'Zooming out recentres the photo');
-console.log('Note canvas verified: making room, drawing on the page, drawing crops and erasing, photo zoom, legacy flow, line placement, no text chrome, hold to move, pinch resize and cancel, tap after hold, bounds, edge scrolling, deletion and cursor above the keyboard.');
+console.log('Note canvas verified: text formatting, making room, drawing on the page, drawing crops and erasing, photo zoom, legacy flow, line placement, no text chrome, hold to move, pinch resize and cancel, tap after hold, bounds, edge scrolling, deletion and cursor above the keyboard.');

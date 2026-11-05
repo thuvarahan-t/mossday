@@ -1,5 +1,5 @@
 import {
-  Archive, ArchiveRestore, Ban, Bell, Brush, Bus, ChevronDown, Clock, Copy, Eraser, Highlighter, List, ListOrdered, PenLine, Redo2, Type, Undo2, Calendar, Camera, Check, ChevronLeft, ChevronRight, CloudDownload,
+  Archive, ArchiveRestore, Ban, Bell, Bold, Strikethrough, Underline, Brush, Bus, ChevronDown, Clock, Copy, Eraser, Highlighter, List, ListOrdered, PenLine, Redo2, Type, Undo2, Calendar, Camera, Check, ChevronLeft, ChevronRight, CloudDownload,
   Coffee, Contrast, Coins, Database, Delete, Ellipsis, FileText, Film, Flame, Folder, GraduationCap, Heart,
   House, Image, LayoutGrid, ListChecks, Mic, Minus, Moon, Palette, Pause, Pencil, Pin, Play, Plus,
   ReceiptText, ScanFace, Search, Settings, Share, ShoppingBag, ShoppingCart, SquareCheck, Tag, Target,
@@ -16,6 +16,9 @@ import { useTheme } from '@/hooks/useTheme';
  */
 const icons = {
   archive: Archive,
+  bold: Bold,
+  underline: Underline,
+  strikethrough: Strikethrough,
   unarchive: ArchiveRestore,
   bell: Bell,
   brush: Brush,

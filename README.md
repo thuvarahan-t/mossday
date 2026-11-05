@@ -96,6 +96,11 @@ grows does the same. Pinch a photo or drawing to resize it; tap a photo to open 
 where pinch or double tap zooms. Text keeps its long press for selection. Dragging
 near the viewport edge scrolls the page, and the cursor always scrolls above the keyboard.
 
+Select words in a text block and the toolbar becomes a format bar: bold, underline,
+strikethrough, highlight and text colour. Formatting stays on its words as the text
+around it changes (`note_blocks.spans`, schema v10) and carries through Undo, copies,
+shared images and PDFs.
+
 The pen draws directly on the page. Its tools (pen, marker, highlighter, eraser and
 inks) expand above the toolbar's pen button and go away when any other tool is
 chosen. One finger draws and two scroll. Each round of drawing becomes one block

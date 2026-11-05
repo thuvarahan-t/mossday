@@ -12,6 +12,8 @@ import { checklistItems, type NoteBlock } from '@/lib/repos/notes';
 import { parseDrawing } from './drawing';
 import { DrawingView } from './DrawingView';
 import { notePdfHtml } from './notePdf';
+import { RichSegments } from './RichSegments';
+import { parseSpans } from './richText';
 
 /** Notes beyond this are summarised so the image stays readable. */
 const MAX_NOTES = 8;
@@ -59,7 +61,7 @@ export function noteShareContent({ theme, title, blocks }: { theme: Theme; title
     captureDelayMs: ordered.some((block) => block.type === 'IMAGE') ? PHOTO_PAINT_MS : undefined,
     body: <SharePanel>
       {ordered.map((block) => {
-        if (block.type === 'TEXT') return block.content?.trim() ? <Text key={block.id}>{block.content}</Text> : null;
+        if (block.type === 'TEXT') return block.content?.trim() ? <Text key={block.id}><RichSegments text={block.content} spans={parseSpans(block.spans)} /></Text> : null;
         if (block.type === 'CHECKLIST') return <View key={block.id} style={{ gap: theme.spacing.xs }}>
           {checklistItems(block.content).map((item, index) => <ShareLine key={index} title={item.text} muted={item.done} leading={<ShareCheck done={item.done} />} />)}
         </View>;
