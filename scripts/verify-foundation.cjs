@@ -202,10 +202,13 @@ async function main() {
   assert.equal(reminderTimes.formatReminder(at('2026-10-25T08:00:00').toISOString(), at('2026-10-24T10:00:00')), 'Tomorrow, 8:00');
   assert.equal(reminderTimes.formatReminder(at('2026-10-28T18:05:00').toISOString(), at('2026-10-24T10:00:00')), 'Wed, 28 Oct, 18:05');
   const { swipeDelta } = load('lib/swipe.ts');
-  assert.equal(swipeDelta(-80, 0), 1, 'Swiping left moves to the next section (Day → Week → Month)');
-  assert.equal(swipeDelta(80, 0), -1, 'Swiping right moves back a section');
+  assert.equal(swipeDelta(-160, 0), 1, 'A long left swipe moves to the next section');
+  assert.equal(swipeDelta(160, 0), -1, 'A long right swipe moves back a section');
   assert.equal(swipeDelta(30, 0), 0, 'Short, slow drags do nothing');
-  assert.equal(swipeDelta(30, 900), -1, 'A quick flick counts even when short');
+  assert.equal(swipeDelta(30, 900), 0, 'A quick short flick cannot accidentally switch tabs');
+  assert.equal(swipeDelta(-100, -2000, 390), 0, 'Fast swipes still need deliberate distance');
+  assert.equal(swipeDelta(-150, 0, 390), 1, 'Phone swipe threshold adapts to width');
+  assert.equal(swipeDelta(-160, 0, 800), 0, 'Wide screens need the longer bounded threshold');
   assert.equal(swipeDelta(-30, 900), 0, 'A flick against the drag direction does nothing');
   process.env.TZ = 'Asia/Colombo';
   const date = load('lib/date.ts');

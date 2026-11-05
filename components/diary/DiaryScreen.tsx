@@ -55,12 +55,12 @@ export function DiaryScreen() {
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
     titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
+    fixedContent={<DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data?.nearbyTodos.map((t) => t.date) ?? [])}
+      moods={data?.moods ?? {}} monthlyTodos={data?.monthlyTodos ?? []} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
-      <DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data.nearbyTodos.map((t) => t.date))}
-        moods={data.moods} monthlyTodos={data.monthlyTodos} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />
       {/* Swipe below the dates to reach Today (right) or Notes (left); the strip and month keep their own swipes. */}
-      <TabSwipeArea tab="diary" style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
+      <TabSwipeArea tab="diary" enabled={!dragging} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
         <TodoList todos={data.todos} onDraggingChange={setDragging} onAdd={() => setAdding(true)} header={data.previous.length > 0 &&
           <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
             <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>

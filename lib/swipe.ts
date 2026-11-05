@@ -1,15 +1,15 @@
-/** Drag distance (pt) or flick speed (pt/s) that turns a horizontal swipe into a step. */
-export const SWIPE_DISTANCE = 64;
-export const SWIPE_VELOCITY = 600;
+/** A deliberate swipe, about two fifths of a phone's width, turns a page. */
+export const SWIPE_DISTANCE = 140;
 
 /**
  * Page-turn direction, used for every horizontal step in the app (Expenses sections, tabs):
  * swiping left moves to the next item (1) and swiping right to the previous one (-1).
- * Short, slow drags, and flicks against the drag, change nothing (0).
+ * Short drags never change pages, even when released with a fast flick.
  */
-export function swipeDelta(translationX: number, velocityX: number): -1 | 0 | 1 {
+export function swipeDelta(translationX: number, _velocityX: number, width?: number): -1 | 0 | 1 {
   'worklet';
-  if (translationX < -SWIPE_DISTANCE || (translationX < 0 && velocityX < -SWIPE_VELOCITY)) return 1;
-  if (translationX > SWIPE_DISTANCE || (translationX > 0 && velocityX > SWIPE_VELOCITY)) return -1;
+  const threshold = width ? Math.max(120, Math.min(180, width * 0.38)) : SWIPE_DISTANCE;
+  if (translationX <= -threshold) return 1;
+  if (translationX >= threshold) return -1;
   return 0;
 }

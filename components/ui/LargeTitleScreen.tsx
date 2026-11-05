@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarInset } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
 import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
+import { FloatingAddButton, FLOATING_ADD_SIZE, type FloatingAddAction } from '@/components/navigation/FloatingAddButton';
 import { Icon } from './Icon';
 import { Text } from './Text';
 import { DragScrollContext } from './DragScrollContext';
@@ -21,6 +22,9 @@ export type LargeTitleScreenProps = {
   titleLeading?: ReactNode;
   /** Fixed actions beside the screen title. */
   titleAccessory?: ReactNode;
+  /** Controls that stay visible below the title while the page scrolls. */
+  fixedContent?: ReactNode;
+  floatingAdd?: FloatingAddAction;
   showBack?: boolean; onBack?: () => void; headerRight?: ReactNode;
   children: ReactNode; bottomInset?: 'tabBar' | 'safeArea';
   contentContainerStyle?: StyleProp<ViewStyle>; refreshControl?: React.ReactElement<RefreshControlProps>;
@@ -34,7 +38,7 @@ export type LargeTitleScreenProps = {
  * scrolls beneath it, and a glass bar (blur + tint + hairline) fades in once it does.
  */
 export function LargeTitleScreen({
-  title, subtitle, titleLeading, titleAccessory, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
+  title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
   contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true,
 }: LargeTitleScreenProps) {
   const theme = useTheme();
@@ -83,11 +87,13 @@ export function LargeTitleScreen({
             dragMax.set(Math.max(0, height - viewportHeight.get()));
           }}
           keyboardShouldPersistTaps={keyboardShouldPersistTaps} keyboardDismissMode="on-drag" scrollIndicatorInsets={{ top: headerHeight }}
-          contentContainerStyle={[{ paddingTop: headerHeight + theme.spacing.md, paddingBottom: bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl }, contentContainerStyle]}>
+          contentContainerStyle={[{ paddingTop: headerHeight + theme.spacing.md,
+            paddingBottom: (bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl) + (floatingAdd ? FLOATING_ADD_SIZE + theme.spacing.md : 0) }, contentContainerStyle]}>
           <DragScrollContext.Provider value={{ ref: scrollRef, offset: scrollY, top: dragTop, bottom: dragBottom, max: dragMax }}>{children}</DragScrollContext.Provider>
           <Animated.View style={keyboardSpace} />
         </Animated.ScrollView>
       </BlurTargetContent>
+      {floatingAdd && <FloatingAddButton {...floatingAdd} />}
       <View style={styles.header} onLayout={(event) => setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))}>
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, glassStyle]}>
           <GlassSurface material="bar" radius={0} flat style={styles.fill} />
@@ -105,6 +111,7 @@ export function LargeTitleScreen({
             </View>
             {subtitle ? <Text variant="footnote" color="secondaryLabel" style={{ marginTop: theme.spacing.xs }}>{subtitle}</Text> : null}
           </View>
+          {fixedContent}
         </OnGlassBar></BlurTargetBoundary>
       </View>
     </View>

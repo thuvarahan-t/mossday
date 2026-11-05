@@ -60,8 +60,9 @@ without dragging opens Edit / Archive / Delete. Archived habits appear under
 schema v5), new habits append, and accessibility actions move a habit up or down.
 
 Diary dates: the strip under the title scrolls freely by day (any seven days, not
-Monday–Sunday pages). Drag it down and it expands into the month, following the finger;
-drag up, pick a day, or tap the grabber to fold it back. The month shows to-do dots and
+Monday–Sunday pages). The day row stays fixed under the title when scrolling and
+never folds away. Drag it down to expand the month underneath it;
+drag up, pick a day, or tap the grabber to fold just the month back. The month shows to-do dots and
 each day's journal mood beside its date (the badges pop in as the month opens; the
 selected day's one animates); swipe it left for the next month and right for the previous one, or
 use its ‹ › arrows.
@@ -73,12 +74,17 @@ and a dashed placeholder marks the drop. Holding near the screen edges scrolls t
 list. Release to save; cancel to restore. Ordering survives restarts and edits, and
 folder/search reorders preserve hidden notes' slots (`settings.noteOrder`). New notes
 appear first. Hold and release without moving for Pin, Folder, Colour and Delete.
-Accessibility actions also move notes earlier or later.
+Tap opens the note; Colour opens the full palette, including a plain-card option.
+Accessibility actions also move notes earlier or later. Expenses and Notes have
+a green circular add button fixed above the right end of the bottom tab bar.
 
 Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe left for the
 tab on the right and right for the one on the left, on Habits, Today, Diary (below the
 dates) and Notes. Expenses swipes through Day → Week → Month first, then on to Today past
 Month, or back to Habits past Day.
+Changing tabs slides the old content out and brings the destination in from its
+side of the tab bar. Swipes must cover about 38% of a phone's width (bounded to
+120–180 pt); quick short flicks and canceled gestures never switch pages.
 
 To-dos (Diary and Today share one list): hold a to-do and release for Edit / Delete,
 or hold and drag to reorder it live; tap its text to edit, swipe left to delete. The

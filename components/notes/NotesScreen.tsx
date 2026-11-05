@@ -6,6 +6,7 @@ import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareImage';
 import { estimateNoteHeight, NoteCard, noteSummary } from './NoteCard';
 import { notesShareContent } from './notesShare';
+import { NoteColorPicker } from './NoteColorPicker';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -39,6 +40,7 @@ export function NotesScreen() {
   const [folder, setFolder] = useState('All');
   const [folderNote, setFolderNote, folderTransition] = useSheetState<Note>();
   const [folderName, setFolderName] = useState('');
+  const [colorNote, setColorNote, colorTransition] = useSheetState<Note>();
   // Only folders the user made or uses; "+" at the end of the row adds one.
   const folders = ['All', ...(data?.folders ?? [])];
   const [creatingFolder, setCreatingFolder, creatingTransition] = useSheetState<true>();
@@ -63,7 +65,7 @@ export function NotesScreen() {
     actions={(note) => [
         { label: note.isPinned ? 'Unpin' : 'Pin', icon: 'pin', onPress: () => { void action(() => setNoteProperty(note.id, 'isPinned', note.isPinned ? 0 : 1)); } },
         { label: 'Folder', icon: 'folder', onPress: () => { setFolderName(note.folder ?? ''); setFolderNote(note); } },
-        { label: 'Change colour', icon: 'palette', onPress: () => { void action(() => setNoteProperty(note.id, 'color', note.color ? null : 'yellow')); } },
+        { label: 'Change colour', icon: 'palette', onPress: () => setColorNote(note) },
         { label: 'Delete', icon: 'trash', destructive: true, onPress: () => remove(note) },
       ]}
     renderItem={(note, width) => <NoteCard note={note} blocks={blocksFor(note.id)} width={width} />}
@@ -72,7 +74,8 @@ export function NotesScreen() {
   const shareNotes = () => {
     void shareImage(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })) }));
   };
-  return <LargeTitleScreen title="Notes" scrollEnabled={!dragging} titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} addLabel="New note" onAdd={newNote} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
+  return <LargeTitleScreen title="Notes" scrollEnabled={!dragging} floatingAdd={{ label: 'New note', onPress: newNote }}
+    titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
     {/* Swipe right to go back to the Diary tab. */}
     <TabSwipeArea tab="notes" enabled={!dragging} style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       <SearchField value={search} onChangeText={setSearch} />
@@ -93,6 +96,11 @@ export function NotesScreen() {
         </> : grid(filtered)}
       </>}
     </TabSwipeArea>
+    {colorNote && <FormSheet {...colorTransition} size="fit" title="Note colour" onClose={() => setColorNote(null)}>
+      <NoteColorPicker color={colorNote.color} onChange={(color) => {
+        void action(() => setNoteProperty(colorNote.id, 'color', color), () => setColorNote(null));
+      }} />
+    </FormSheet>}
     {creatingFolder && <FormSheet {...creatingTransition} size="fit" dense dockToKeyboard title="New folder" onClose={() => setCreatingFolder(null)}
       trailing={<Button title="Add" size="small" disabled={!newFolderName.trim()} onPress={createFolder} />}>
       <TextField value={newFolderName} onChangeText={setNewFolderName} placeholder="Folder name" accessibilityLabel="New folder name" autoFocus

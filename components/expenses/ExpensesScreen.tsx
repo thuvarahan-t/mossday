@@ -99,7 +99,8 @@ export function ExpensesScreen() {
     if (!data) return;
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
-  return <LargeTitleScreen title="Expenses" titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} addLabel="Add expense" onAdd={() => setEditor('new')} />}
+  return <LargeTitleScreen title="Expenses" floatingAdd={{ label: 'Add expense', onPress: () => setEditor('new') }}
+    titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} />}
     contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {/* The Day / Week / Month switch stays put; only the period's content slides. */}
     <SegmentedControl segments={periods} selected={period} onChange={setPeriod} />

@@ -31,8 +31,8 @@ const BADGE_STAGGER_MS = 18;
 
 /**
  * The Diary's date control. Collapsed, it is a free-scrolling row of days. Drag it down and
- * it expands into the month, following the finger (the month unfolds from under the row and
- * fades in as the row fades out); drag up, or pick a day, to fold it back. The grabber
+ * it expands the month beneath the permanent day row. Drag up, or pick a day, to fold only
+ * the month back. The grabber
  * toggles it with a tap. The page stops scrolling while it is dragged. Open, swipe the month
  * sideways to turn it (left for next, as elsewhere in the app): it follows the finger, slides
  * out, and the new month slides in from the far side; the ‹ › arrows slide it the same way.
@@ -45,7 +45,6 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
 }) {
   const theme = useTheme();
   const reduced = useReducedMotion();
-  const [stripHeight, setStripHeight] = useState(0);
   const [monthHeight, setMonthHeight] = useState(0);
   const [expanded, setExpanded] = useState(false);
   // Counts openings: the mood badges are keyed by it, so they pop in again every time.
@@ -53,7 +52,7 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
   const [width, setWidth] = useState(0);
   const progress = useSharedValue(0);
   const start = useSharedValue(0);
-  const range = Math.max(1, monthHeight - stripHeight);
+  const range = Math.max(1, monthHeight);
   // Computed here: the gesture callbacks run on the UI thread and cannot call date helpers.
   const selectedMonth = startOfMonth(selected);
 
@@ -81,6 +80,7 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
       progress.set(Math.max(0, Math.min(1, start.get() + event.translationY / range)));
     },
     onDeactivate: (event) => {
+      if (event.canceled) { progress.set(animateTo(start.get(), 'gentle', reduced)); return; }
       const open = event.velocityY > FLICK_VELOCITY || (event.velocityY > -FLICK_VELOCITY && progress.get() > 0.5);
       progress.set(animateTo(open ? 1 : 0, 'gentle', reduced));
       scheduleOnRN(haptics.selection);
@@ -127,9 +127,7 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
   });
   const turnStyle = useAnimatedStyle(() => ({ opacity: fade.get(), transform: [{ translateX: slide.get() }] }));
 
-  const containerStyle = useAnimatedStyle(() => (monthHeight
-    ? { height: interpolate(progress.get(), [0, 1], [stripHeight, monthHeight]) } : {}));
-  const stripStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.get(), [0, 0.4], [1, 0], Extrapolation.CLAMP) }));
+  const containerStyle = useAnimatedStyle(() => ({ height: interpolate(progress.get(), [0, 1], [0, monthHeight], Extrapolation.CLAMP) }));
   const monthStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.get(), [0.15, 0.7], [0, 1], Extrapolation.CLAMP),
     transform: [{ translateY: interpolate(progress.get(), [0, 1], [-theme.spacing.xl, 0]) }],
@@ -145,12 +143,11 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
 
   return <GestureDetector gesture={pan}>
     <View style={{ paddingHorizontal: theme.spacing.sm }}>
+      {/* The week is independent of the clipped month, including its first measurement. */}
+      <DayStrip today={today} selected={selected} markedDates={markedDates} onSelect={onSelect} />
       <Animated.View style={[styles.clip, containerStyle]}>
-        <Animated.View pointerEvents={expanded ? 'none' : 'auto'} style={stripStyle}
-          onLayout={(event: LayoutChangeEvent) => setStripHeight(event.nativeEvent.layout.height)}>
-          <DayStrip today={today} selected={selected} markedDates={markedDates} onSelect={onSelect} />
-        </Animated.View>
-        <Animated.View pointerEvents={expanded ? 'auto' : 'none'} style={[styles.month, { gap: theme.spacing.sm }, monthStyle]}
+        <Animated.View pointerEvents={expanded ? 'auto' : 'none'} accessibilityElementsHidden={!expanded} importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+          style={[styles.month, { gap: theme.spacing.sm }, monthStyle]}
           onLayout={(event: LayoutChangeEvent) => setMonthHeight(event.nativeEvent.layout.height)}>
           <View style={styles.row}>
             <PressableScale haptic="selection" accessibilityLabel="Previous month" onPress={() => onMonthChange(addMonths(month, -1))} style={arrow}>

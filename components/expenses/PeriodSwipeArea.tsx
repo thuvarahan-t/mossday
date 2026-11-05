@@ -84,7 +84,7 @@ export function PeriodSwipeArea<T extends string>({ children, contentKey, period
       offset.set(event.translationX * (blocked ? BLOCKED_FOLLOW : FOLLOW));
     },
     onDeactivate: (event) => {
-      const delta = swipeDelta(event.translationX, event.velocityX);
+      const delta = event.canceled ? 0 : swipeDelta(event.translationX, event.velocityX, width);
       if (delta === 0 || (delta === 1 && !hasNext) || (delta === -1 && !hasPrevious)) {
         offset.set(animateTo(0, 'snappy', reduced));
         return;

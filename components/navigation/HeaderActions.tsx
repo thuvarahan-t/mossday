@@ -15,12 +15,12 @@ export type HeaderAction = {
 
 /** Main tabs share one action order and width, including screens without a subtitle. */
 export function TabHeaderActions({ shareLabel, onShare, addLabel, onAdd }: {
-  shareLabel: string; onShare: () => void; addLabel: string; onAdd: () => void;
+  shareLabel: string; onShare: () => void; addLabel?: string; onAdd?: () => void;
 }) {
   return <HeaderActions actions={[
     { icon: 'share', label: shareLabel, onPress: onShare },
     { icon: 'settings', label: 'Settings', onPress: () => router.push('/settings') },
-    { icon: 'plus', label: addLabel, primary: true, onPress: onAdd },
+    ...(addLabel && onAdd ? [{ icon: 'plus' as const, label: addLabel, primary: true, onPress: onAdd }] : []),
   ]} />;
 }
 

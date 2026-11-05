@@ -71,6 +71,7 @@ async function main() {
   const peerStyle = peer.props.children.props.style.at(-1);
   const before = peerStyle.evaluate().transform;
   assert.equal(first.activateAfterLongPress, 350);
+  assert.equal(first.minDistance, undefined, 'Native hold timer must not be bypassed by zero-distance activation');
   control.props.onPress(); assert.equal(opens, 1);
   first.onActivate({ absoluteY: 180 });
   first.onUpdate({ translationX: 162, translationY: 212, absoluteY: 390 });

@@ -119,7 +119,9 @@ function MasonryCard({ id, drag, width, gap, reduced, layout, disabled, label, a
   const activate = () => { suppressPress.current = true; haptics.selection(); onDraggingChange(true); };
   const openMenu = () => menu.current?.open();
   const gesture = usePanGesture({
-    enabled: !disabled, activateAfterLongPress: 350, minDistance: 0,
+    // minDistance: 0 activates Android's pan on touch-down, before its hold timer.
+    // Keep the native movement threshold so a quick tap reaches the note's onPress.
+    enabled: !disabled, activateAfterLongPress: 350,
     onActivate: (event) => {
       if (activeId.get() !== null) return;
       original.set(order.get().slice());

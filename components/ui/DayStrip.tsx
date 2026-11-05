@@ -78,7 +78,7 @@ export function DayStrip({ today, selected, markedDates, onSelect }: DayStripPro
       <Animated.View pointerEvents="none" style={[styles.circle, {
         top: circleTop, width: circle, height: circle, borderRadius: circle / 2, backgroundColor: theme.colors.accent,
       }, circleStyle]} />
-      <Animated.FlatList ref={list} horizontal data={days} keyExtractor={(day) => day} showsHorizontalScrollIndicator={false}
+      <Animated.FlatList ref={list} horizontal data={days} keyExtractor={(day) => day} showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}
         snapToInterval={cell} decelerationRate="fast" initialScrollIndex={centred(selected)} onScroll={onScroll} scrollEventThrottle={16}
         getItemLayout={(_data, index) => ({ length: cell, offset: cell * index, index })} initialNumToRender={VISIBLE_DAYS * 3} windowSize={5}
         renderItem={({ item, index }) => <DayCell date={item} index={index} width={cell} today={today} selected={item === selected}
