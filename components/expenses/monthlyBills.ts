@@ -1,6 +1,6 @@
 import type { Category, Expense } from '@/lib/repos/expenses';
 
-export const MONTHLY_BILL_PRESETS = ['Rent', 'Electricity', 'Water'] as const;
-/** Reuse the Bills category so month/day totals and charts count each payment once. */
-export const billCategoryId = (categories: readonly Category[]) => categories.find((category) => category.icon === 'bills')?.id ?? null;
-export const monthlyBills = (expenses: readonly Expense[]) => expenses.filter((expense) => expense.categoryIcon === 'bills');
+const MONTHLY_BILL_CHIPS = ['Electricity', 'Water', 'Rent'];
+/** Matched by name: a user's own "Rent" category takes the chip instead of a duplicate. */
+export const monthlyPrimaryCategories = (categories: readonly Category[]) => MONTHLY_BILL_CHIPS.flatMap((name) => categories.filter((category) => category.name.toLowerCase() === name.toLowerCase()));
+export const monthlyBills = (expenses: readonly Expense[]) => expenses.filter((expense) => expense.frequency === 'MONTHLY');

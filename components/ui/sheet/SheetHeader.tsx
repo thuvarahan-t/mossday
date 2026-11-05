@@ -9,18 +9,19 @@ export type SheetHeaderProps = {
   title: string;
   leading?: ReactNode;
   trailing?: ReactNode;
+  center?: ReactNode;
 };
 
 /** Sheet title row: 44 pt side controls with the title centred between them. */
-export function SheetHeader({ title, leading, trailing }: SheetHeaderProps) {
+export function SheetHeader({ title, leading, trailing, center }: SheetHeaderProps) {
   const theme = useTheme();
-  const side = { width: theme.sizes.circleButton * 2, minHeight: theme.sizes.circleButton };
+  const side = { width: theme.sizes.circleButton * (center ? 1 : 2), minHeight: theme.sizes.circleButton };
   return (
     <View style={[styles.row, { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }]}>
       <View style={[side, styles.leading]}>{leading}</View>
-      <Text variant="headline" align="center" numberOfLines={1} style={styles.title} accessibilityRole="header">
+      {center ? <View style={styles.title}>{center}</View> : <Text variant="headline" align="center" numberOfLines={1} style={styles.title} accessibilityRole="header">
         {title}
-      </Text>
+      </Text>}
       <View style={[side, styles.trailing]}>{trailing}</View>
     </View>
   );

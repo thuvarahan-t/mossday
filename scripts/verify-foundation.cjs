@@ -44,7 +44,7 @@ async function main() {
   assert.equal(first, module.getDatabase(), 'Startup calls must share one initialization');
   await first;
   assert.equal(sqlite.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
-  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 11);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 17);
   assert.deepEqual(sqlite.prepare('SELECT name FROM categories WHERE type = ? ORDER BY sortOrder')
     .all('MEAL').map((row) => row.name), ['Breakfast', 'Lunch', 'Dinner']);
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").get().n, 9);
@@ -59,12 +59,12 @@ async function main() {
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM note_blocks').get().n, 0);
   sqlite.exec("DELETE FROM categories WHERE name='Fun'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10, 'Restart must not reseed deleted categories');
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 16, 'Restart must not reseed deleted categories');
   sqlite.exec("INSERT INTO notes(id,title,createdAt,updatedAt) VALUES (99,'Before canvas','now','now'); INSERT INTO note_blocks(noteId,type,content,position) VALUES (99,'TEXT','Preserved',0); ALTER TABLE note_blocks DROP COLUMN layout; PRAGMA user_version=6;");
   await load('lib/db.ts', dependencies).getDatabase();
   assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=99').get().content, 'Preserved', 'v6 canvas upgrade keeps old note content');
   assert.equal(sqlite.prepare('SELECT layout FROM note_blocks WHERE noteId=99').get().layout, null);
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 9);
   sqlite.exec('DELETE FROM notes WHERE id=99');
   // Reopen an existing v1 database: indexing must preserve records and deleted seeds.
   sqlite.exec("INSERT INTO expenses(amount,date,createdAt) VALUES (45000,'2026-10-23','now')");
@@ -79,7 +79,7 @@ async function main() {
   sqlite.exec("UPDATE categories SET name='Snacks/Tea',icon='cafe-outline',color='#FEF3C7' WHERE name='Snacks'");
   sqlite.exec("UPDATE categories SET color='pink' WHERE name='Lunch'");
   await load('lib/db.ts', dependencies).getDatabase();
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 9);
   assert.equal(sqlite.prepare('SELECT content FROM note_blocks WHERE noteId=5').get().content, 'Body', 'Rebuilding note blocks keeps their rows');
   assert.equal(sqlite.prepare('SELECT layout FROM note_blocks WHERE noteId=5').get().layout, null, 'Old blocks open in their original vertical order');
   assert.equal(sqlite.prepare('SELECT isArchived FROM notes WHERE id=5').get().isArchived, 0);
@@ -89,11 +89,11 @@ async function main() {
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM note_blocks').get().n, 0, 'Rebuilt blocks still cascade with their note');
   assert.deepEqual(sqlite.prepare('SELECT name FROM habits ORDER BY sortOrder').all().map((row) => row.name), ['Walk', 'Read'],
     'Upgraded habits keep their previous creation order');
-  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE isUserCreated=1').get().n, 0, 'Seed categories remain protected after upgrade');
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE id<=11 AND isUserCreated=1').get().n, 0, 'Seed categories remain protected after upgrade');
   assert.equal(sqlite.prepare("SELECT icon FROM categories WHERE name='Snacks'").get().icon, 'coffee');
   assert.equal(sqlite.prepare("SELECT color FROM categories WHERE name='Lunch'").get().color, 'pink', 'Preserve edited seed colours');
   assert.equal(sqlite.prepare('SELECT amount FROM expenses').get().amount, 45000);
-  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 10);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories').get().n, 16);
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name LIKE '%_by_%'").get().n, 5);
   sqlite.exec("INSERT INTO categories(name,icon,color,type) VALUES ('My custom category','tag','green','OTHER')");
   sqlite.exec('ALTER TABLE categories DROP COLUMN isUserCreated; ALTER TABLE categories DROP COLUMN archived; ALTER TABLE habits DROP COLUMN sortOrder; PRAGMA user_version=3;');
@@ -102,6 +102,12 @@ async function main() {
   assert.equal(sqlite.prepare("SELECT isUserCreated FROM categories WHERE name='My custom category'").get().isUserCreated, 1,
     'Upgrade recognizes existing user-created categories');
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM categories WHERE id<=11 AND isUserCreated=1').get().n, 0);
+  // Upgrading a v8 database adds the monthly categories without duplicating the user's own.
+  sqlite.exec("DELETE FROM categories WHERE name IN ('Electricity','Water','Rent','Internet','Phone','Insurance'); INSERT INTO categories(name,icon,color,type) VALUES ('rent','tag','pink','OTHER'); PRAGMA user_version=8;");
+  await load('lib/db.ts', dependencies).getDatabase();
+  assert.equal(sqlite.prepare("SELECT count(*) AS n FROM categories WHERE lower(name)='rent'").get().n, 1, 'A category the user already made is not duplicated');
+  assert.equal(sqlite.prepare("SELECT color FROM categories WHERE lower(name)='rent'").get().color, 'pink');
+  assert.equal(sqlite.prepare("SELECT isUserCreated FROM categories WHERE name='Electricity'").get().isUserCreated, 0, 'Monthly categories are built in');
   sqlite.close();
 
   const currency = load('lib/currency.ts');

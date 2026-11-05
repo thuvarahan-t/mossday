@@ -5,6 +5,7 @@ export type Expense = {
   id: number; amount: number; categoryId: number | null; title: string | null; note: string | null;
   date: string; createdAt: string; paymentMethod: 'CASH' | 'CARD' | 'ONLINE'; isOneTime: number;
   categoryName?: string; categoryIcon?: string; categoryColor?: string;
+  frequency?: 'DAILY' | 'MONTHLY';
 };
 export type ExpenseInput = Omit<Expense, 'id' | 'createdAt' | 'categoryName' | 'categoryIcon' | 'categoryColor'>;
 
@@ -41,21 +42,22 @@ export function saveExpense(input: ExpenseInput, id?: number) {
   requireDate(input.date);
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new Error('Enter a valid amount.');
   if (!['CASH', 'CARD', 'ONLINE'].includes(input.paymentMethod)) throw new Error('Choose a payment method.');
+  if (input.frequency !== undefined && !['DAILY', 'MONTHLY'].includes(input.frequency)) throw new Error('Choose Daily or Monthly.');
   if (input.isOneTime) requireName(input.title ?? '');
   else if (!input.categoryId) throw new Error('Choose a category.');
   return write(async (db) => {
     const values = [input.amount, input.isOneTime ? null : input.categoryId, input.title?.trim() || null,
-      input.note?.trim() || null, input.date, input.paymentMethod, input.isOneTime ? 1 : 0];
-    if (id) await db.runAsync('UPDATE expenses SET amount=?, categoryId=?, title=?, note=?, date=?, paymentMethod=?, isOneTime=? WHERE id=?', ...values, id);
-    else await db.runAsync('INSERT INTO expenses(amount,categoryId,title,note,date,paymentMethod,isOneTime,createdAt) VALUES (?,?,?,?,?,?,?,?)', ...values, new Date().toISOString());
+      input.note?.trim() || null, input.date, input.paymentMethod, input.isOneTime ? 1 : 0, input.frequency ?? 'DAILY'];
+    if (id) await db.runAsync('UPDATE expenses SET amount=?, categoryId=?, title=?, note=?, date=?, paymentMethod=?, isOneTime=?,frequency=? WHERE id=?', ...values, id);
+    else await db.runAsync('INSERT INTO expenses(amount,categoryId,title,note,date,paymentMethod,isOneTime,frequency,createdAt) VALUES (?,?,?,?,?,?,?,?,?)', ...values, new Date().toISOString());
     if (!input.isOneTime) await db.runAsync('UPDATE categories SET lastAmount=? WHERE id=?', input.amount, input.categoryId);
   });
 }
 
 export const deleteExpense = (id: number) => write(async (db) => { await db.runAsync('DELETE FROM expenses WHERE id=?', id); });
 export const restoreExpense = (e: Expense) => write(async (db) => {
-  await db.runAsync('INSERT INTO expenses(id,amount,categoryId,title,note,date,createdAt,paymentMethod,isOneTime) VALUES (?,?,?,?,?,?,?,?,?)',
-    e.id, e.amount, e.categoryId, e.title, e.note, e.date, e.createdAt, e.paymentMethod, e.isOneTime);
+  await db.runAsync('INSERT INTO expenses(id,amount,categoryId,title,note,date,createdAt,paymentMethod,isOneTime,frequency) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    e.id, e.amount, e.categoryId, e.title, e.note, e.date, e.createdAt, e.paymentMethod, e.isOneTime, e.frequency ?? 'DAILY');
 });
 export function addCategory(name: string, icon: string, color: string) {
   const clean = requireName(name);

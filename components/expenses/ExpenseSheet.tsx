@@ -16,6 +16,7 @@ import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { SwatchPicker } from '@/components/ui/Pickers';
 import { LoadState } from '@/components/ui/LoadState';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useAction } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { formatLongDate, formatShortDate, todayLocalDate } from '@/lib/date';
@@ -25,10 +26,10 @@ import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
 import { CategoryEditor } from './CategoryEditor';
-import { billCategoryId, MONTHLY_BILL_PRESETS } from './monthlyBills';
+import { monthlyPrimaryCategories } from './monthlyBills';
 
 /** Window height taken by the Add Expense sheet apart from the keypad rows and optional rows. */
-const KEYPAD_FREE_SPACE = 416;
+const KEYPAD_FREE_SPACE = 432;
 /** Keys stay compact even on tall phones so the sheet is as small as it can be. */
 const MAX_KEY_HEIGHT = 54;
 const paymentLabels = { CASH: 'Cash', CARD: 'Card', ONLINE: 'Online' } as const;
@@ -40,12 +41,17 @@ const nextPayment = { CASH: 'CARD', CARD: 'ONLINE', ONLINE: 'CASH' } as const;
  */
 let categoryCache: Category[] | null = null;
 
+type Frequency = NonNullable<Expense['frequency']>;
+/** The first chip row: meals for daily spending, the essential bills for monthly. */
+const primaryCategories = (rows: readonly Category[], frequency: Frequency) =>
+  frequency === 'MONTHLY' ? monthlyPrimaryCategories(rows) : rows.filter((row) => row.type === 'MEAL');
+
 /** Warms the category cache so the first Add Expense also opens without waiting. */
 export function preloadCategories() {
   void listCategories().then((rows) => { categoryCache = rows; }, () => undefined);
 }
 
-export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = false, onClose, ...transition }: {
+export function ExpenseSheet({ initial, mealId, date: initialDate, monthly: defaultMonthly = false, onClose, ...transition }: {
   initial?: Expense; mealId?: number; date?: string; monthly?: boolean; onClose: () => void;
 } & Partial<FormSheetTransition>) {
   const theme = useTheme();
@@ -60,8 +66,10 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
   const categoryOrderSaving = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
+  const [frequency, setFrequency] = useState<Frequency>(initial?.frequency ?? (defaultMonthly ? 'MONTHLY' : 'DAILY'));
+  const monthly = frequency === 'MONTHLY';
   const [categoryId, setCategoryId] = useState<number | null>(
-    initial?.categoryId ?? mealId ?? (monthly ? billCategoryId(categoryCache ?? []) : categoryCache?.find((c) => c.type === 'MEAL')?.id) ?? null);
+    initial?.categoryId ?? mealId ?? primaryCategories(categoryCache ?? [], frequency)[0]?.id ?? null);
   const [oneTime, setOneTime] = useState(!!initial?.isOneTime);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
@@ -78,7 +86,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
   const load = () => {
     void listCategories().then((rows) => {
       categoryCache = rows; setCategories(rows); setError(null);
-      if (!initial && !mealId) setCategoryId((current) => current ?? (monthly ? billCategoryId(rows) : rows.find((r) => r.type === 'MEAL')?.id) ?? null);
+      if (!initial && !mealId) setCategoryId((current) => current ?? primaryCategories(rows, frequency)[0]?.id ?? null);
     }, () => setError('Could not load categories.'));
   };
   // This form owns its draft; external refreshes must not reset an edit in progress.
@@ -86,6 +94,14 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
   useEffect(load, []);
   const datePicker = useDatePicker(date, setDate);
   const selected = categories?.find((category) => category.id === categoryId);
+  const primary = primaryCategories(categories ?? [], frequency);
+  const selectedOther = selected?.type === 'OTHER' && !primary.some((category) => category.id === selected.id);
+  // One-time entries and "Other" categories mean the same in both modes, so switching keeps them.
+  const changeMode = (mode: 'Daily' | 'Monthly') => {
+    const next = mode === 'Monthly' ? 'MONTHLY' : 'DAILY';
+    setFrequency(next); setHint(null);
+    if (!selectedOther) setCategoryId(primaryCategories(categories ?? [], next)[0]?.id ?? null);
+  };
   const refreshCategories = async () => {
     categoryCache = await listCategories();
     setCategories(categoryCache);
@@ -97,7 +113,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
     void action(async () => {
       await deleteCategory(category.id);
       const remaining = await refreshCategories();
-      if (categoryId === category.id) setCategoryId(remaining.find((row) => row.type === 'MEAL')?.id ?? null);
+      if (categoryId === category.id) setCategoryId(primaryCategories(remaining, frequency)[0]?.id ?? null);
       toast({ message: 'Category deleted', actionLabel: 'Undo', onAction: () => {
         void action(async () => { await restoreCategory(category.id); await refreshCategories(); });
       } });
@@ -109,7 +125,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
     setBusy(true);
     const previous = categories;
     const ordered = ids.map((id) => categories.find((category) => category.id === id)!);
-    setCategories([...categories.filter((category) => category.type === 'MEAL'), ...ordered]);
+    setCategories([...categories.filter((category) => !ids.includes(category.id)), ...ordered]);
     void action(async () => {
       await reorderCategories(ids);
       categoryCache = await listCategories();
@@ -121,19 +137,19 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
   };
   const amount = parseAmountInput(input);
   // Keys shrink on short screens so the whole form fits; optional rows take their share first.
-  const optionalRows = [oneTime || monthly, showNote, !!hint].filter(Boolean).length * (theme.sizes.fieldHeight + theme.spacing.sm);
+  const optionalRows = [oneTime, showNote, !!hint].filter(Boolean).length * (theme.sizes.fieldHeight + theme.spacing.sm);
   const keyHeight = Math.min(MAX_KEY_HEIGHT, Math.floor((window.height - KEYPAD_FREE_SPACE - optionalRows) / 4));
   const save = async () => {
     if (saving.current || !amount) return;
     saving.current = true; setBusy(true);
-    const success = await action(() => saveExpense({ amount, categoryId, title, note, date, paymentMethod: payment, isOneTime: oneTime ? 1 : 0 }, initial?.id));
+    const success = await action(() => saveExpense({ amount, categoryId, title, note, date, paymentMethod: payment, isOneTime: oneTime ? 1 : 0, frequency }, initial?.id));
     saving.current = false; setBusy(false);
     if (success) { Keyboard.dismiss(); haptics.success(); onClose(); }
   };
   // Saving from a text field must never leave the user stuck behind the keyboard: when
   // something is missing, the keyboard goes away so the keypad and Save are visible again.
   const attemptSave = () => {
-    const problem = !amount ? 'Enter an amount' : (oneTime || monthly) && !title.trim() ? 'Say what it was' : !oneTime && !categoryId ? 'Choose a category' : null;
+    const problem = !amount ? 'Enter an amount' : oneTime && !title.trim() ? 'Say what it was' : !oneTime && !categoryId ? 'Choose a category' : null;
     if (!problem) { void save(); return; }
     Keyboard.dismiss();
     haptics.warning();
@@ -152,25 +168,25 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
   // Categories load in a few milliseconds; presenting after that opens the sheet in one
   // motion at its final height instead of springing to a loading row and then growing.
   if (!categories && !error) return null;
-  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : monthly ? 'Monthly expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}
+  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : 'New Expense'}
+    headerContent={<SegmentedControl segments={['Daily', 'Monthly'] as const} selected={monthly ? 'Monthly' : 'Daily'} onChange={changeMode} inset={false} />}
+    onClose={() => { if (!busy) onClose(); }}
     trailing={initial && <SheetIconButton icon="trash" accessibilityLabel="Delete expense" onPress={() => remove(initial)} />}>
     {!categories ? <LoadState error={error} retry={load} /> : <>
       <AmountDisplay input={input} compact shakeSignal={shake} />
       {hint && <SheetRow optional><Text variant="footnote" weight="semibold" color="dangerText" align="center">{hint}</Text></SheetRow>}
-      {/* Meals on the first line, Other and One-time on the second, on every screen width. */}
-      {monthly ? <View style={[styles.chipRow, { gap: theme.spacing.sm, flexWrap: 'wrap' }]}>
-        {MONTHLY_BILL_PRESETS.map((name) => <Chip key={name} label={name} selected={title === name}
-          onPress={() => { setTitle(name); setHint(null); }} />)}
-      </View> : <><View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
-        {categories.filter((c) => c.type === 'MEAL').map((c) => <Chip key={c.id} label={c.name} selected={!oneTime && c.id === categoryId} onPress={() => { setCategoryId(c.id); setOneTime(false); }} />)}
+      {/* Meals or bills on the first line, Other and One-time on the second, on every screen width. */}
+      <View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
+        {primary.map((category) => <Chip key={category.id} label={category.name} selected={!oneTime && category.id === categoryId}
+          onPress={() => { setCategoryId(category.id); setOneTime(false); setTitle(''); }} />)}
       </View>
       <View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
-        <Chip label={selected?.type === 'OTHER' && !oneTime ? `${selected.name} ›` : 'Other'} selected={!oneTime && selected?.type === 'OTHER'} onPress={() => setOther(true)} />
+        <Chip label={selectedOther && !oneTime ? `${selected.name} ›` : 'Other'} selected={!oneTime && selectedOther} onPress={() => setOther(true)} />
         <Chip label="One-time" selected={oneTime} onPress={() => setOneTime(true)} />
-      </View></>}
-      {(oneTime || monthly) && <SheetRow optional style={[styles.fieldRow, { gap: theme.spacing.sm }]}>
+      </View>
+      {oneTime && <SheetRow optional style={[styles.fieldRow, { gap: theme.spacing.sm }]}>
         <View style={styles.fill}><TextField value={title} onChangeText={(value) => { setTitle(value); setHint(null); }}
-          placeholder={monthly ? 'Rent, electricity, water…' : 'What was it?'} accessibilityLabel="Expense title" /></View>
+          placeholder="What was it?" accessibilityLabel="Expense title" /></View>
         {inlineSave}
       </SheetRow>}
       <SheetRow><OptionsBar cells={[
@@ -189,11 +205,11 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = fal
       </SheetRow>
     </>}
     {other && <FormSheet {...otherTransition} title="Categories" size="fit" dense scrollEnabled={!draggingCategory} onClose={() => setOther(false)}>
-      <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER').map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
+      <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER' && !primary.includes(category)).map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
         disabled={busy} onReorder={saveCategoryOrder} onDraggingChange={setDraggingCategory}
         onEdit={(id) => { const category = categories?.find((row) => row.id === id); if (category) setEditingCategory(category); }}
         onDelete={(id) => { const category = categories?.find((row) => row.id === id); if (category?.isUserCreated) removeCategory(category); }}
-        selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setOther(false); }} onCreate={() => setNewCategory(true)} />
+        selected={categoryId} onSelect={(id) => { setCategoryId(id); setOneTime(false); setTitle(''); setOther(false); }} onCreate={() => setNewCategory(true)} />
       {newCategory && <>
         <TextField value={categoryName} onChangeText={setCategoryName} placeholder="Category name" accessibilityLabel="Category name" />
         <Text variant="footnote" color="secondaryLabel">Colour</Text>

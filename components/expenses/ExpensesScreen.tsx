@@ -150,8 +150,7 @@ export function ExpensesScreen() {
         </>}
       {budgetEditor && result && <BudgetSheet {...budgetTransition} initial={budgetEditor} budgets={result.settings} onClose={() => setBudgetEditor(null)} />}
       {editor && <ExpenseSheet {...editorTransition} initial={typeof editor === 'string' ? undefined : editor}
-        monthly={editor === 'monthly' || (typeof editor !== 'string' && editor.categoryIcon === 'bills')}
-        date={date} onClose={() => setEditor(null)} />}
+        monthly={editor === 'monthly'} date={date} onClose={() => setEditor(null)} />}
     </PeriodSwipeArea>
   </LargeTitleScreen>;
 }

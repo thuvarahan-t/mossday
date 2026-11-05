@@ -58,7 +58,7 @@ async function main() {
   const today = date.todayLocalDate();
   const yesterday = date.addDays(today, -1);
   const categories = await expenses.listCategories();
-  assert.equal(categories.length, 11);
+  assert.equal(categories.length, 17);
   const lunch = categories.find((category) => category.name === 'Lunch');
   const otherIds = categories.filter((category) => category.type === 'OTHER').map((category) => category.id).reverse();
   await expenses.reorderCategories(otherIds);
@@ -106,10 +106,9 @@ async function main() {
   await assert.rejects(expenses.saveExpense({ ...input, categoryId: 99999 }));
   assert.equal((await expenses.listExpenses(today)).length, 1, 'Failed insert rolls back');
   const bills = load('components/expenses/monthlyBills.ts');
-  const billId = bills.billCategoryId(await expenses.listCategories());
-  assert.ok(billId, 'Monthly entries use the existing Bills category');
-  await expenses.saveExpense({ ...input, categoryId: billId, title: 'Rent', date: '2026-09-05', amount: 2500000 });
-  await expenses.saveExpense({ ...input, categoryId: billId, title: 'Electricity', date: '2026-09-18', amount: 800000 });
+  const billId = (await expenses.listCategories()).find((category) => category.icon === 'bills').id;
+  await expenses.saveExpense({ ...input, categoryId: billId, title: 'Rent', date: '2026-09-05', amount: 2500000, frequency: 'MONTHLY' });
+  await expenses.saveExpense({ ...input, categoryId: billId, title: 'Electricity', date: '2026-09-18', amount: 800000, frequency: 'MONTHLY' });
   const septemberBills = bills.monthlyBills(await expenses.listExpenses('2026-09-01', '2026-09-30'));
   assert.deepEqual(Array.from(septemberBills, (bill) => bill.title).sort(), ['Electricity', 'Rent']);
   assert.equal(septemberBills.reduce((total, bill) => total + bill.amount, 0), 3300000, 'Monthly total counts each bill exactly once');
@@ -275,6 +274,17 @@ async function main() {
   assert.equal((await orderedIds())[1], newId, 'New notes lead the unpinned group');
   await notes.setNoteArchived(orderIds[1], true);
   await assert.rejects(notes.reorderNotes([orderIds[0], orderIds[1]]));
+  const monthlyCategories = await expenses.listCategories();
+  assert.deepEqual(Array.from(bills.monthlyPrimaryCategories(monthlyCategories), (category) => category.name), ['Electricity', 'Water', 'Rent']);
+  assert.ok(monthlyCategories.some((category) => category.name === 'Groceries'));
+  const water = monthlyCategories.find((category) => category.name === 'Water');
+  await expenses.saveExpense({ ...input, categoryId: water.id, frequency: 'MONTHLY', date: '2026-09-25' });
+  const waterPayment = (await expenses.listExpenses('2026-09-25'))[0];
+  assert.equal(waterPayment.frequency, 'MONTHLY');
+  await expenses.deleteExpense(waterPayment.id); await expenses.restoreExpense(waterPayment);
+  assert.equal((await expenses.listExpenses('2026-09-25'))[0].frequency, 'MONTHLY', 'Undo keeps the expense mode');
+  await expenses.saveExpense({ ...input, categoryId: null, title: 'Annual service', isOneTime: 1, frequency: 'MONTHLY', date: '2026-09-26' });
+  assert.equal(bills.monthlyBills(await expenses.listExpenses('2026-09-26')).length, 1, 'Monthly one-time expenses stay in the monthly list');
   sqlite.close();
   console.log('Repositories verified: CRUD, undo, rollback, concurrent ticks, streaks, carry-over, reorder, journal, settings.');
 }
