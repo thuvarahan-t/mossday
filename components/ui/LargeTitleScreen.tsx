@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
 import { Icon } from './Icon';
 import { Text } from './Text';
+import { DragScrollContext } from './DragScrollContext';
 import { BlurTargetBoundary, BlurTargetContent, BlurTargetProvider } from './glass/BlurTarget';
 import { GlassButton } from './glass/GlassButton';
 import { GlassSurface, OnGlassBar } from './glass/GlassSurface';
@@ -41,6 +42,11 @@ export function LargeTitleScreen({
   const tabBarInset = useTabBarInset();
   const scrollY = useSharedValue(0);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const viewportHeight = useSharedValue(0);
+  const scrollContentHeight = useSharedValue(0);
+  const dragTop = useSharedValue(0);
+  const dragBottom = useSharedValue(0);
+  const dragMax = useSharedValue(0);
   const keyboard = useAnimatedKeyboard();
   const windowTop = useWindowTopOffset();
   const keyboardSpace = useAnimatedStyle(() => ({ height: keyboard.height.get() }));
@@ -64,9 +70,21 @@ export function LargeTitleScreen({
     <View style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
       <BlurTargetContent style={styles.fill}>
         <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEnabled={scrollEnabled} scrollEventThrottle={16} refreshControl={refreshControl}
+          onLayout={(event) => {
+            viewportHeight.set(event.nativeEvent.layout.height);
+            dragMax.set(Math.max(0, scrollContentHeight.get() - viewportHeight.get()));
+            scrollRef.current?.measureInWindow((_x, y, _width, height) => {
+              dragTop.set(y + windowTop + headerHeight);
+              dragBottom.set(y + windowTop + height - (bottomInset === 'tabBar' ? tabBarInset : insets.bottom));
+            });
+          }}
+          onContentSizeChange={(_width, height) => {
+            scrollContentHeight.set(height);
+            dragMax.set(Math.max(0, height - viewportHeight.get()));
+          }}
           keyboardShouldPersistTaps={keyboardShouldPersistTaps} keyboardDismissMode="on-drag" scrollIndicatorInsets={{ top: headerHeight }}
           contentContainerStyle={[{ paddingTop: headerHeight + theme.spacing.md, paddingBottom: bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl }, contentContainerStyle]}>
-          {children}
+          <DragScrollContext.Provider value={{ ref: scrollRef, offset: scrollY, top: dragTop, bottom: dragBottom, max: dragMax }}>{children}</DragScrollContext.Provider>
           <Animated.View style={keyboardSpace} />
         </Animated.ScrollView>
       </BlurTargetContent>

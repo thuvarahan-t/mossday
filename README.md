@@ -67,8 +67,13 @@ selected day's one animates); swipe it left for the next month and right for the
 use its ‹ › arrows.
 
 Notes show as a two-column masonry grid (Pinned, then Others): each card is as tall as
-its photo, title and first lines, and joins the shorter column. Long press a card for
-Pin, Folder, Colour and Delete.
+its photo, title and first lines, and joins the shorter column. Hold a card and drag
+up, down or sideways to reorder it within Pinned or Others; neighbours glide aside
+and a dashed placeholder marks the drop. Holding near the screen edges scrolls the
+list. Release to save; cancel to restore. Ordering survives restarts and edits, and
+folder/search reorders preserve hidden notes' slots (`settings.noteOrder`). New notes
+appear first. Hold and release without moving for Pin, Folder, Colour and Delete.
+Accessibility actions also move notes earlier or later.
 
 Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe left for the
 tab on the right and right for the one on the left, on Habits, Today, Diary (below the

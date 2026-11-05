@@ -235,6 +235,25 @@ async function main() {
   await notes.setNoteReminder(noteId, null);
   assert.equal((await notes.listNoteReminders()).length, 0);
   await notes.deleteNote(copyId);
+  const orderIds = [noteId, await notes.createNote(), await notes.createNote(), await notes.createNote()];
+  const orderedIds = async () => Array.from((await notes.listNotes()).notes, (note) => note.id);
+  await notes.reorderNotes(orderIds);
+  assert.deepEqual(await orderedIds(), orderIds, 'Manual note order persists after a reload');
+  await notes.setNoteProperty(noteId, 'color', 'blue');
+  assert.deepEqual(await orderedIds(), orderIds, 'Editing does not move a manually placed note');
+  await notes.reorderNotes([orderIds[3], orderIds[1]]);
+  const filteredOrder = [orderIds[0], orderIds[3], orderIds[2], orderIds[1]];
+  assert.deepEqual(await orderedIds(), filteredOrder, 'Filtered reorder preserves hidden slots');
+  await assert.rejects(notes.reorderNotes([orderIds[0], orderIds[0]]));
+  await assert.rejects(notes.reorderNotes([orderIds[0], 99999]));
+  assert.deepEqual(await orderedIds(), filteredOrder, 'Invalid reorder preserves the entire order');
+  await notes.setNoteProperty(orderIds[2], 'isPinned', 1);
+  await assert.rejects(notes.reorderNotes([orderIds[0], orderIds[2]]), /separately/);
+  assert.equal((await orderedIds())[0], orderIds[2], 'Pinned notes stay above others');
+  const newId = await notes.createNote();
+  assert.equal((await orderedIds())[1], newId, 'New notes lead the unpinned group');
+  await notes.setNoteArchived(orderIds[1], true);
+  await assert.rejects(notes.reorderNotes([orderIds[0], orderIds[1]]));
   sqlite.close();
   console.log('Repositories verified: CRUD, undo, rollback, concurrent ticks, streaks, carry-over, reorder, journal, settings.');
 }

@@ -18,6 +18,29 @@ export function checklistItems(content: string | null): ChecklistItem[] {
 }
 /** Folders made with "+" are kept in settings, so a new folder shows before any note is in it. */
 const FOLDERS_KEY = 'noteFolders';
+const ORDER_KEY = 'noteOrder';
+async function orderedNotes(db: SQLiteDatabase, archived: boolean): Promise<Note[]> {
+  const notes = await db.getAllAsync<Note>('SELECT * FROM notes WHERE isArchived=? ORDER BY isPinned DESC,updatedAt DESC,id DESC', archived ? 1 : 0);
+  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key=?', ORDER_KEY);
+  let ids: unknown;
+  try { ids = JSON.parse(row?.value ?? '[]'); } catch { ids = []; }
+  const ranks = new Map<number, number>();
+  if (Array.isArray(ids)) ids.forEach((id: unknown, index) => { if (typeof id === 'number') ranks.set(id, index); });
+  // New notes stay at the front; editing a manually placed note keeps its position.
+  return notes.sort((a, b) => b.isPinned - a.isPinned || (ranks.get(a.id) ?? -1) - (ranks.get(b.id) ?? -1));
+}
+/** Replace only visible slots, preserving hidden notes when searching or filtering folders. */
+export const reorderNotes = (ids: number[]) => write(async (db) => {
+  if (new Set(ids).size !== ids.length) throw new Error('A note cannot appear twice.');
+  const notes = await orderedNotes(db, false);
+  const selected = new Set(ids);
+  if (ids.some((id) => !notes.some((note) => note.id === id))) throw new Error('A note is no longer available.');
+  const groups = new Set(notes.filter((note) => selected.has(note.id)).map((note) => note.isPinned));
+  if (groups.size > 1) throw new Error('Reorder pinned and other notes separately.');
+  let index = 0;
+  const order = notes.map((note) => selected.has(note.id) ? ids[index++] : note.id);
+  await db.runAsync('INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', ORDER_KEY, JSON.stringify(order));
+});
 async function savedFolders(db: SQLiteDatabase): Promise<string[]> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key=?', FOLDERS_KEY);
   try {
@@ -33,7 +56,7 @@ async function folderNames(db: SQLiteDatabase) {
 export const listNoteFolders = () => read(folderNames);
 /** Notes on the main grid, or with `archived` the archive, with their blocks and the folder list. */
 export const listNotes = (archived = false) => read(async (db) => ({
-  notes: await db.getAllAsync<Note>('SELECT * FROM notes WHERE isArchived=? ORDER BY isPinned DESC,updatedAt DESC,id DESC', archived ? 1 : 0),
+  notes: await orderedNotes(db, archived),
   blocks: await db.getAllAsync<NoteBlock>('SELECT b.* FROM note_blocks b JOIN notes n ON n.id=b.noteId WHERE n.isArchived=? ORDER BY b.position,b.id', archived ? 1 : 0),
   folders: await folderNames(db),
   /** For the "Archived notes" row, shown only when there is something in it. */

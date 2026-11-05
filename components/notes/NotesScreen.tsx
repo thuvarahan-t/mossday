@@ -8,12 +8,11 @@ import { estimateNoteHeight, NoteCard, noteSummary } from './NoteCard';
 import { notesShareContent } from './notesShare';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
-import { ContextMenu } from '@/components/ui/ContextMenu';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormSheet } from '@/components/ui/FormSheet';
 import { SectionHeader } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
-import { MasonryGrid } from '@/components/ui/MasonryGrid';
+import { ReorderableMasonryGrid } from '@/components/ui/ReorderableMasonryGrid';
 import { Icon } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
 import { PressableScale } from '@/components/ui/PressableScale';
@@ -23,7 +22,7 @@ import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
 import { reclaimMediaLater } from '@/lib/media';
-import { addFolder, createNote, deleteNote, listNotes, notePreview, restoreNote, setNoteProperty, type Note } from '@/lib/repos/notes';
+import { addFolder, createNote, deleteNote, listNotes, notePreview, reorderNotes, restoreNote, setNoteProperty, type Note } from '@/lib/repos/notes';
 
 export function useNewNote() {
   const action = useAction();
@@ -36,6 +35,7 @@ export function NotesScreen() {
   const newNote = useNewNote();
   const { data, error, refresh } = useResource(listNotes);
   const [search, setSearch] = useState('');
+  const [dragging, setDragging] = useState(false);
   const [folder, setFolder] = useState('All');
   const [folderNote, setFolderNote, folderTransition] = useSheetState<Note>();
   const [folderName, setFolderName] = useState('');
@@ -56,28 +56,25 @@ export function NotesScreen() {
   }); };
   const pinned = filtered.filter((note) => note.isPinned);
   const others = filtered.filter((note) => !note.isPinned);
-  // Long press a card for Pin, Folder, Colour and Delete; tap to open it.
-  const renderNote = (note: Note, width: number) => {
-    const blocks = blocksFor(note.id);
-    return <ContextMenu accessibilityLabel={noteSummary(note, blocks).title}
-      onPress={() => router.push({ pathname: '/note/[id]', params: { id: note.id } })} actions={[
+  const grid = (notes: Note[]) => <ReorderableMasonryGrid items={notes}
+    label={(note) => noteSummary(note, blocksFor(note.id)).title}
+    onPress={(note) => router.push({ pathname: '/note/[id]', params: { id: note.id } })}
+    onReorder={(ids) => action(() => reorderNotes(ids))} onDraggingChange={setDragging}
+    actions={(note) => [
         { label: note.isPinned ? 'Unpin' : 'Pin', icon: 'pin', onPress: () => { void action(() => setNoteProperty(note.id, 'isPinned', note.isPinned ? 0 : 1)); } },
         { label: 'Folder', icon: 'folder', onPress: () => { setFolderName(note.folder ?? ''); setFolderNote(note); } },
         { label: 'Change colour', icon: 'palette', onPress: () => { void action(() => setNoteProperty(note.id, 'color', note.color ? null : 'yellow')); } },
         { label: 'Delete', icon: 'trash', destructive: true, onPress: () => remove(note) },
-      ]}>
-      <NoteCard note={note} blocks={blocks} width={width} />
-    </ContextMenu>;
-  };
-  const grid = (notes: Note[]) => <MasonryGrid items={notes} keyOf={(note) => note.id} renderItem={renderNote}
+      ]}
+    renderItem={(note, width) => <NoteCard note={note} blocks={blocksFor(note.id)} width={width} />}
     estimateHeight={(note, width) => estimateNoteHeight(note, blocksFor(note.id), width)} />;
   const shareImage = useShareImage();
   const shareNotes = () => {
     void shareImage(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })) }));
   };
-  return <LargeTitleScreen title="Notes" titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} addLabel="New note" onAdd={newNote} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
+  return <LargeTitleScreen title="Notes" scrollEnabled={!dragging} titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} addLabel="New note" onAdd={newNote} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
     {/* Swipe right to go back to the Diary tab. */}
-    <TabSwipeArea tab="notes" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
+    <TabSwipeArea tab="notes" enabled={!dragging} style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       <SearchField value={search} onChangeText={setSearch} />
       {/* A horizontal ScrollView grows by default; in this flex-grown column it would push the grid down. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>

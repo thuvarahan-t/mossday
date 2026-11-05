@@ -19,7 +19,7 @@ const BLOCKED_FOLLOW = 0.12;
  * back. Controls with their own horizontal drag (swipe-to-delete rows, the Diary date strip
  * and month) activate sooner and keep it; vertical scrolling is untouched.
  */
-export function TabSwipeArea({ tab, children, style }: { tab: TabName; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function TabSwipeArea({ tab, children, style, enabled = true }: { tab: TabName; children: ReactNode; style?: StyleProp<ViewStyle>; enabled?: boolean }) {
   const reduced = useReducedMotion();
   const offset = useSharedValue(0);
   const previous = tabNeighbour(tab, -1);
@@ -31,6 +31,7 @@ export function TabSwipeArea({ tab, children, style }: { tab: TabName; children:
     router.navigate(href);
   };
   const pan = usePanGesture({
+    enabled,
     activeOffsetX: [-24, 24],
     failOffsetY: [-14, 14],
     onUpdate: (event) => {
