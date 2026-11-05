@@ -14,7 +14,7 @@ import { useToday } from '@/hooks/useToday';
 import { addDays, dayOfMonth, endOfMonth, monthName, startOfMonth, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import { getJournal, listMoods, listTodos, moveIncomplete } from '@/lib/repos/diary';
-import { listExpenses } from '@/lib/repos/expenses';
+import { listDailyExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits } from '@/lib/repos/habits';
 import { isActiveDay } from '@/lib/heatmap';
 import { DiaryDateBar } from './DiaryDateBar';
@@ -37,7 +37,7 @@ export function DiaryScreen() {
   const addInline = () => setAddRequest((request) => request + 1);
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyMoods, nearbyTodos] = await Promise.all([
-      listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listExpenses(date), listHabits(), listHabitLogs(date, date),
+      listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listDailyExpenses(date), listHabits(), listHabitLogs(date, date),
       listTodos(startOfMonth(month), endOfMonth(month)), listMoods(startOfMonth(month), endOfMonth(month)),
       listTodos(addDays(date, -MARKED_RANGE), addDays(date, MARKED_RANGE)),
     ]);

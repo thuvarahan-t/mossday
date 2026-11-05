@@ -112,7 +112,8 @@ async function main() {
   const septemberBills = bills.monthlyBills(await expenses.listExpenses('2026-09-01', '2026-09-30'));
   assert.deepEqual(Array.from(septemberBills, (bill) => bill.title).sort(), ['Electricity', 'Rent']);
   assert.equal(septemberBills.reduce((total, bill) => total + bill.amount, 0), 3300000, 'Monthly total counts each bill exactly once');
-  assert.equal((await expenses.listExpenses('2026-09-05'))[0].title, 'Rent', 'Monthly bill is also the actual payment for its day');
+  assert.equal((await expenses.listDailyExpenses('2026-09-05')).length, 0, 'A monthly bill is not daily spending on its date');
+  assert.equal((await expenses.listDailyExpenses('2026-09-01', '2026-09-30')).length, 0, 'Nor in a longer daily range');
   assert.equal(bills.monthlyBills(await expenses.listExpenses('2026-10-01', '2026-10-31')).length, 0, 'Bills do not automatically repeat into another month');
   await expenses.deleteExpense(septemberBills[0].id);
   await expenses.restoreExpense(septemberBills[0]);

@@ -31,7 +31,7 @@ import {
   startOfMonth, startOfWeek, weekdayShort, weekOfMonthLabel,
 } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
-import { deleteExpense, listExpenses, restoreExpense, type Expense } from '@/lib/repos/expenses';
+import { deleteExpense, isDailyExpense, listDailyExpenses, listExpenses, restoreExpense, type Expense } from '@/lib/repos/expenses';
 import { getSettings } from '@/lib/repos/settings';
 import { BudgetMeter } from './BudgetMeter';
 import { expensesShareContent } from './expensesShare';
@@ -77,8 +77,10 @@ export function ExpensesScreen() {
   const data = result?.current;
   const total = sum(data ?? []);
   const days = dateRange(view.from, view.to);
-  const amounts = days.map((day) => sum(data?.filter((e) => e.date === day) ?? []));
-  const average = recordedDayAverage(data ?? []);
+  // The month's total includes its bills, but they never make a day look expensive.
+  const daily = data?.filter(isDailyExpense) ?? [];
+  const amounts = days.map((day) => sum(daily.filter((e) => e.date === day)));
+  const average = recordedDayAverage(daily);
   const monthlyBudget = result?.settings.monthlyBudget ?? 0;
 
   const remove = (expense: Expense) => {
@@ -162,12 +164,16 @@ function periodRange(period: Period, date: string): PeriodRange {
   return { period, date, from, to };
 }
 
-/** The period's expenses, plus the equally long period before it for the comparison line. */
+/**
+ * The period's expenses, plus the equally long period before it for the comparison line. Days
+ * and weeks show daily spending only; a month also has its bills, and its budget counts both.
+ */
 async function loadPeriod(period: Period, date: string) {
   const range = periodRange(period, date);
   const previousFrom = period === 'Month' ? addMonths(range.from, -1) : addDays(range.from, -(daysBetween(range.from, range.to) + 1));
+  const list = period === 'Month' ? listExpenses : listDailyExpenses;
   const [current, previous, settings, monthExpenses] = await Promise.all([
-    listExpenses(range.from, range.to), listExpenses(previousFrom, addDays(range.from, -1)), getSettings(),
+    list(range.from, range.to), list(previousFrom, addDays(range.from, -1)), getSettings(),
     period === 'Month' ? Promise.resolve(null) : listExpenses(startOfMonth(date), endOfMonth(date)),
   ]);
   return { range, current, previous, settings, monthlySpent: sum(monthExpenses ?? current) };

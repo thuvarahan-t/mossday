@@ -34,7 +34,7 @@ import { haptics } from '@/lib/haptics';
 import { formatMoney } from '@/lib/money';
 import { dataColors } from '@/lib/dataColors';
 import { listTodos } from '@/lib/repos/diary';
-import { listCategories, listExpenses, type Expense } from '@/lib/repos/expenses';
+import { listCategories, listDailyExpenses, type Expense } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits, tickHabit } from '@/lib/repos/habits';
 import { getSettings } from '@/lib/repos/settings';
 
@@ -54,7 +54,7 @@ export function TodayScreen() {
   useEffect(preloadCategories, []);
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [expenses, categories, habits, logs, todos, settings] = await Promise.all([
-      listExpenses(today), listCategories(), listHabits(), listHabitLogs(today, today), listTodos(today), getSettings(),
+      listDailyExpenses(today), listCategories(), listHabits(), listHabitLogs(today, today), listTodos(today), getSettings(),
     ]);
     return { expenses, categories, habits, logs, todos, settings };
   }, [today]));

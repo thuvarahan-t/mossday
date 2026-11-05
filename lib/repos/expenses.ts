@@ -38,6 +38,10 @@ export const listExpenses = (from: string, to = from) => read((db) => db.getAllA
   `SELECT e.*, c.name AS categoryName, c.icon AS categoryIcon, c.color AS categoryColor
    FROM expenses e LEFT JOIN categories c ON c.id = e.categoryId WHERE date BETWEEN ? AND ? ORDER BY createdAt DESC, e.id DESC`, from, to));
 
+/** Day-to-day spending: rent and other monthly bills only ever count towards their month. */
+export const isDailyExpense = (expense: Pick<Expense, 'frequency'>) => expense.frequency !== 'MONTHLY';
+export const listDailyExpenses = async (from: string, to = from) => (await listExpenses(from, to)).filter(isDailyExpense);
+
 export function saveExpense(input: ExpenseInput, id?: number) {
   requireDate(input.date);
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new Error('Enter a valid amount.');

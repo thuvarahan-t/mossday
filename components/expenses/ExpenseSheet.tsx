@@ -144,7 +144,11 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly: defa
     saving.current = true; setBusy(true);
     const success = await action(() => saveExpense({ amount, categoryId, title, note, date, paymentMethod: payment, isOneTime: oneTime ? 1 : 0, frequency }, initial?.id));
     saving.current = false; setBusy(false);
-    if (success) { Keyboard.dismiss(); haptics.success(); onClose(); }
+    if (success) {
+      Keyboard.dismiss(); haptics.success(); onClose();
+      // Monthly bills do not appear on a day or week, so say where this one went.
+      if (monthly && !defaultMonthly && initial?.frequency !== 'MONTHLY') toast({ message: 'Saved in Monthly bills' });
+    }
   };
   // Saving from a text field must never leave the user stuck behind the keyboard: when
   // something is missing, the keyboard goes away so the keypad and Save are visible again.

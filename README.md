@@ -36,9 +36,10 @@ Expenses shows the month's budget as a progress line on every period; tapping it
 The add expense sheet has a Daily / Monthly switch in its header and opens on Monthly
 from the Month tab. Monthly has the same layout as Daily, with Electricity, Water and
 Rent in place of the meals, and Groceries, Internet, Phone and others under Other.
-The mode is saved with each expense. The Monthly bills list supports edit, swipe-delete
-and Undo. These are payments for that month, with no automatic recurrence; day
-totals, month totals, budgets and charts all count the same saved payment once.
+The mode is saved with each expense. Monthly bills appear only in Month, in their own
+list that supports edit, swipe-delete and Undo. They are payments for that month, with
+no automatic recurrence, and count towards the month's total and budget but never a
+day's: Day, Week, Today, the Diary summary, the daily budget and the daily chart leave them out.
 Swipe left on Expenses to move Day → Week → Month and right to move back (past either
 end, on to the next tab); the view slides out and the next slides in once its data is ready. The ‹ › arrows and
 the tappable date label change the date.
