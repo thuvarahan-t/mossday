@@ -86,8 +86,12 @@ Changing tabs slides the old content out and brings the destination in from its
 side of the tab bar. Swipes must cover about 38% of a phone's width (bounded to
 120–180 pt); quick short flicks and canceled gestures never switch pages.
 
-To-dos (Diary and Today share one list): hold a to-do and release for Edit / Delete,
-or hold and drag to reorder it live; tap its text to edit, swipe left to delete. The
+To-dos (Diary and Today share one list): tap a task to open its edit sheet directly,
+or hold and drag to reorder it live; swipe left to delete. The edit sheet has a red
+delete icon beside Save, with Undo after deletion. In Diary, Add to-do (or the header
+plus) inserts a focused typing row at the bottom. Keyboard Next saves it and keeps
+the cursor ready for another; leaving the field or screen also saves nonempty text.
+Empty drafts are discarded and failed saves keep the draft for retry. The
 order is saved per day, so Today shows the Diary's order. Done to-dos always sit below
 open ones, and a ticked one strikes through before gliding down.
 

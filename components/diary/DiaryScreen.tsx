@@ -10,7 +10,6 @@ import { Text } from '@/components/ui/Text';
 import { useAction, useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
 import { addDays, dayOfMonth, endOfMonth, monthName, startOfMonth, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
@@ -22,7 +21,6 @@ import { DiaryDateBar } from './DiaryDateBar';
 import { diaryShareContent } from './diaryShare';
 import { JournalEditor } from './JournalEditor';
 import { TodoList } from './TodoList';
-import { TodoSheet } from './TodoSheet';
 
 /** Days either side of the selected one whose to-dos mark the free-scrolling date strip. */
 const MARKED_RANGE = 42;
@@ -35,8 +33,8 @@ export function DiaryScreen() {
   const [date, setDate] = useState(today);
   const [dragging, setDragging] = useState(false);
   const [month, setMonth] = useState(startOfMonth(today));
-  const [adding, selectAdding, addingTransition] = useSheetState<true>();
-  const setAdding = useCallback((open: boolean) => selectAdding(open ? true : null), [selectAdding]);
+  const [addRequest, setAddRequest] = useState(0);
+  const addInline = () => setAddRequest((request) => request + 1);
   const { data, error, refresh } = useResource(useCallback(async () => {
     const [todos, previous, journal, expenses, habits, logs, monthlyTodos, monthlyMoods, nearbyTodos] = await Promise.all([
       listTodos(date), listTodos(addDays(date, -1)), getJournal(date), listExpenses(date), listHabits(), listHabitLogs(date, date),
@@ -54,14 +52,14 @@ export function DiaryScreen() {
     if (data) void shareImage(diaryShareContent({ theme, date, todos: data.todos, journal: data.journal, summary }));
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
-    titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={() => setAdding(true)} />}
+    titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} addLabel="Add to-do" onAdd={addInline} />}
     fixedContent={<DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data?.nearbyTodos.map((t) => t.date) ?? [])}
       moods={data?.moods ?? {}} monthlyTodos={data?.monthlyTodos ?? []} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       {/* Swipe below the dates to reach Today (right) or Notes (left); the strip and month keep their own swipes. */}
       <TabSwipeArea tab="diary" enabled={!dragging} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
-        <TodoList todos={data.todos} onDraggingChange={setDragging} onAdd={() => setAdding(true)} header={data.previous.length > 0 &&
+        <TodoList todos={data.todos} inlineDate={date} addRequest={addRequest} onDraggingChange={setDragging} header={data.previous.length > 0 &&
           <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
             <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
             <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
@@ -70,6 +68,5 @@ export function DiaryScreen() {
         <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
       </TabSwipeArea>
     </>}
-    {adding && <TodoSheet {...addingTransition} date={date} onClose={() => setAdding(false)} />}
   </LargeTitleScreen>;
 }

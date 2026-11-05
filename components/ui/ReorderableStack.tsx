@@ -112,7 +112,6 @@ export function ReorderHandle({ children, onHold, style }: { children: ReactNode
   const gesture = usePanGesture({
     enabled: !!item && !item.disabled,
     activateAfterLongPress: LONG_PRESS_MS,
-    minDistance: 0,
     onActivate: () => {
       if (!drag || drag.activeId.get() !== null) return;
       originalOrder.set(drag.order.get().slice());
