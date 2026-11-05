@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type FlatList, type LayoutChangeEvent } from 'react-native';
+import { GestureDetector, useTapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useReducedMotion, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { addDays, dayOfMonth, daysBetween, formatLongDate, WEEKDAY_LETTERS, weekdayIndex, type LocalDate } from '@/lib/date';
@@ -12,6 +14,8 @@ import { Text } from './Text';
 const VISIBLE_DAYS = 7;
 const DAYS_BACK = 730;
 const DAYS_AHEAD = 365;
+/** Further than this (pt) the touch is a swipe of the strip, not a tap on a day. */
+const TAP_SLOP = 10;
 
 export type DayStripProps = {
   today: LocalDate;
@@ -31,6 +35,10 @@ export type DayStripProps = {
  * spring, following the scroll on the UI thread; each number fades from dark to white as the
  * circle passes under it. Jumps of more than a week (a far day picked in the month) land at
  * once rather than sweeping across the strip.
+ *
+ * While the list is still settling after a swipe, the native scroll view swallows touches
+ * before a day's Pressable sees them, so the strip also recognises taps itself. Each day stays
+ * pressable for screen readers; `pick` makes the two paths select only once.
  */
 export function DayStrip({ today, selected, markedDates, onSelect }: DayStripProps) {
   const theme = useTheme();
@@ -48,6 +56,21 @@ export function DayStrip({ today, selected, markedDates, onSelect }: DayStripPro
   const scrollX = useSharedValue(0);
   const circleX = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({ onScroll: (event) => { scrollX.set(event.contentOffset.x); } });
+
+  const latestSelected = useRef(selected);
+  useEffect(() => { latestSelected.current = selected; }, [selected]);
+  const pick = useCallback((date: LocalDate) => {
+    if (date === latestSelected.current) return;
+    latestSelected.current = date;
+    haptics.selection();
+    onSelect(date);
+  }, [onSelect]);
+  const pickIndex = (index: number) => { const date = days[index]; if (date) pick(date); };
+  const tap = useTapGesture({
+    enabled: cell > 0,
+    maxDistance: TAP_SLOP,
+    onActivate: (event) => { scheduleOnRN(pickIndex, Math.floor((event.x + scrollX.get()) / cell)); },
+  });
 
   // Recentre only for a new selection (or width), never because the strip re-rendered after
   // the user scrolled away on purpose.
@@ -73,7 +96,7 @@ export function DayStrip({ today, selected, markedDates, onSelect }: DayStripPro
   const circleStyle = useAnimatedStyle(() => ({ transform: [{ translateX: circleX.get() - scrollX.get() + (cell - circle) / 2 }] }));
   const onCircleLayout = useCallback((top: number) => setCircleTop((current) => current === top ? current : top), []);
 
-  return <View onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}>
+  return <GestureDetector gesture={tap}><View onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}>
     {cell > 0 && <>
       <Animated.View pointerEvents="none" style={[styles.circle, {
         top: circleTop, width: circle, height: circle, borderRadius: circle / 2, backgroundColor: theme.colors.accent,
@@ -82,9 +105,9 @@ export function DayStrip({ today, selected, markedDates, onSelect }: DayStripPro
         snapToInterval={cell} decelerationRate="fast" initialScrollIndex={centred(selected)} onScroll={onScroll} scrollEventThrottle={16}
         getItemLayout={(_data, index) => ({ length: cell, offset: cell * index, index })} initialNumToRender={VISIBLE_DAYS * 3} windowSize={5}
         renderItem={({ item, index }) => <DayCell date={item} index={index} width={cell} today={today} selected={item === selected}
-          marked={!!markedDates?.has(item)} circleX={circleX} onSelect={onSelect} onCircleLayout={onCircleLayout} />} />
+          marked={!!markedDates?.has(item)} circleX={circleX} onSelect={pick} onCircleLayout={onCircleLayout} />} />
     </>}
-  </View>;
+  </View></GestureDetector>;
 }
 
 const DayCell = memo(function DayCell({ date, index, width, today, selected, marked, circleX, onSelect, onCircleLayout }: {
@@ -103,7 +126,7 @@ const DayCell = memo(function DayCell({ date, index, width, today, selected, mar
   const lightStyle = useAnimatedStyle(() => ({ opacity: onCircle(circleX.get()) }));
   const number = String(dayOfMonth(date));
   return <PressableScale style={{ width, alignItems: 'center', gap: theme.spacing.sm }} accessibilityLabel={formatLongDate(date)} accessibilityState={{ selected }}
-    onPress={() => { if (!selected) { haptics.selection(); onSelect(date); } }}>
+    onPress={() => onSelect(date)}>
     <Text variant="footnote" color={isToday ? 'accent' : 'secondaryLabel'} weight={isToday ? 'semibold' : 'regular'}>{WEEKDAY_LETTERS[weekdayIndex(date)]}</Text>
     <View onLayout={(event: LayoutChangeEvent) => onCircleLayout(event.nativeEvent.layout.y)} style={[styles.center, { width: circle, height: circle }]}>
       <Animated.View style={darkStyle}><Text variant="title3" tabular color={isToday ? 'accent' : 'label'}>{number}</Text></Animated.View>

@@ -122,4 +122,49 @@ const add = FloatingAddButton({ label: 'New note', onPress: () => { adds++; } })
 assert.ok(add.props.style.bottom > 24 + theme.sizes.tabBarHeight, 'Add button clears the tab bar');
 assert.equal(add.props.style.backgroundColor, 'green');
 add.props.onPress(); assert.equal(adds, 1);
-console.log('Navigation verified: deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding and floating add placement.');
+const dateLib = load('lib/date.ts');
+let stripTap;
+let stripState = 0;
+const picked = [];
+const { DayStrip } = load('components/ui/DayStrip.tsx', {
+  ...common, react: { ...common.react, memo: (component) => component, useMemo: (fn) => fn(), useState: () => [stripState++ === 0 ? 490 : 0, () => {}] },
+  'react-native-reanimated': { ...animated, useAnimatedScrollHandler: () => () => {} },
+  'react-native-gesture-handler': { GestureDetector: 'GestureDetector', useTapGesture: (config) => { stripTap = config; return config; } },
+  '@/lib/date': dateLib, './PressableScale': { PressableScale: 'PressableScale' }, './Text': { Text: 'Text' },
+});
+values.length = 0;
+const stripToday = '2026-11-06';
+DayStrip({ today: stripToday, selected: stripToday, onSelect: (date) => picked.push(date) });
+values[0].set(70 * 700);
+stripTap.onActivate({ x: 75 });
+assert.deepEqual(picked, [dateLib.addDays(stripToday, -730 + 701)], 'A tap selects the day under the finger at the current scroll position');
+stripTap.onActivate({ x: 75 });
+assert.equal(picked.length, 1, 'A tap and a press on the same day select it once');
+
+const stubbedModules = (overrides) => new Proxy(overrides, {
+  has: () => true,
+  get: (target, name) => name in target ? target[name] : new Proxy({}, { get: (_module, exportName) => exportName }),
+});
+const keyedJsx = (type, props, key) => ({ type, props, key });
+const { DiaryScreen } = load('components/diary/DiaryScreen.tsx', stubbedModules({
+  react: { useCallback: (fn) => fn, useState: (value) => [value, () => {}] },
+  'react/jsx-runtime': { jsx: keyedJsx, jsxs: keyedJsx },
+  '@/hooks/useTheme': common['@/hooks/useTheme'], '@/hooks/useCurrency': { useCurrency: () => {} },
+  '@/hooks/useToday': { useToday: () => '2026-11-07' }, '@/lib/date': dateLib, '@/lib/money': { formatMoney: () => '0' },
+  '@/components/share/ShareImage': { useShareImage: () => () => {} },
+  '@/hooks/useResource': { useAction: () => () => {}, useResource: () => ({ error: null, refresh: () => {}, data: {
+    date: '2026-11-06', todos: [], previous: [], journal: { text: 'Yesterday' }, expenses: [], habits: [], logs: [], monthlyTodos: [], moods: {}, nearbyTodos: [],
+  } }) },
+}));
+const findByType = (node, type) => {
+  if (Array.isArray(node)) return node.map((child) => findByType(child, type)).find(Boolean);
+  if (!node || typeof node !== 'object') return undefined;
+  return node.type === type ? node : findByType(node.props?.children, type);
+};
+const diary = DiaryScreen();
+assert.equal(diary.props.title.startsWith('7 '), true, 'The title follows the tapped day at once');
+const journal = findByType(diary, 'JournalEditor');
+assert.equal(journal.key, '2026-11-06', 'The journal only remounts once the tapped day has loaded');
+assert.equal(journal.props.date, '2026-11-06', 'A journal is saved to the day its text was loaded from');
+assert.equal(findByType(diary, 'TodoList').props.inlineDate, '2026-11-06');
+console.log('Navigation verified: deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, day taps and per-day diary content.');

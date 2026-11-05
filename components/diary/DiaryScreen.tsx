@@ -41,15 +41,18 @@ export function DiaryScreen() {
       listTodos(startOfMonth(month), endOfMonth(month)), listMoods(startOfMonth(month), endOfMonth(month)),
       listTodos(addDays(date, -MARKED_RANGE), addDays(date, MARKED_RANGE)),
     ]);
-    return { todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, moods: Object.fromEntries(monthlyMoods.map((row) => [row.date, row.mood])), nearbyTodos };
+    return { date, todos, previous: previous.filter((t) => !t.isDone), journal, expenses, habits, logs, monthlyTodos, moods: Object.fromEntries(monthlyMoods.map((row) => [row.date, row.mood])), nearbyTodos };
   }, [date, month]));
+  // The title follows a tap at once; everything below belongs to the day it was loaded for,
+  // so a slower load can never show (or save into) another day's to-dos and journal.
+  const loadedDate = data?.date ?? date;
   const spend = data?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
-  const active = data?.habits.filter((h) => isActiveDay(h.activeDays, date)) ?? [];
+  const active = data?.habits.filter((h) => isActiveDay(h.activeDays, loadedDate)) ?? [];
   const done = active.filter((h) => (data?.logs.find((l) => l.habitId === h.id)?.count ?? 0) >= h.dailyGoal).length;
   const summary = `Spent ${formatMoney(spend)} · ${done} of ${active.length} habits done`;
   const shareImage = useShareImage();
   const shareDay = () => {
-    if (data) void shareImage(diaryShareContent({ theme, date, todos: data.todos, journal: data.journal, summary }));
+    if (data) void shareImage(diaryShareContent({ theme, date: loadedDate, todos: data.todos, journal: data.journal, summary }));
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
     floatingAdd={{ label: 'Add to-do', onPress: addInline }}
@@ -60,12 +63,12 @@ export function DiaryScreen() {
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
       {/* Swipe below the dates to reach Today (right) or Notes (left); the strip and month keep their own swipes. */}
       <TabSwipeArea tab="diary" enabled={!dragging} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
-        <TodoList todos={data.todos} inlineDate={date} addRequest={addRequest} onDraggingChange={setDragging} header={data.previous.length > 0 &&
+        <TodoList todos={data.todos} inlineDate={loadedDate} addRequest={addRequest} onDraggingChange={setDragging} header={data.previous.length > 0 &&
           <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
-            <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {date === today ? 'yesterday' : 'the day before'}</Text>
-            <Button title={date === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(date, -1), date)); }} />
+            <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {loadedDate === today ? 'yesterday' : 'the day before'}</Text>
+            <Button title={loadedDate === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(loadedDate, -1), loadedDate)); }} />
           </View>} />
-        <JournalEditor key={date} date={date} initial={data.journal} />
+        <JournalEditor key={loadedDate} date={loadedDate} initial={data.journal} />
         <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
       </TabSwipeArea>
     </>}
