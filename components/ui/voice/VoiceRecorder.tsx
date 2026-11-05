@@ -5,16 +5,17 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
-  interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming,
+  interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import { durations, easing } from '@/constants/motion';
+import { easing } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { formatDuration } from '@/lib/date';
 import { haptics } from '@/lib/haptics';
 import { Icon } from '../Icon';
+import { PressableScale } from '../PressableScale';
 import { Text } from '../Text';
 import { levelFromMetering, Waveform } from './Waveform';
 
@@ -31,10 +32,16 @@ const LIVE_BARS = 24;
 const CANCEL_DISTANCE = 100;
 const MIN_DURATION_MS = 500;
 const SAMPLE_INTERVAL_MS = 100;
+/** One breath of the ring that invites a touch. */
+const RING_MS = 1600;
+const READOUT_HEIGHT = 92;
 
 /**
- * Hold-to-record panel (design "K · Recording"): press and hold the mic, watch the live
- * waveform and timer, release to save, slide left to cancel.
+ * Hold-to-record panel. At rest it says what to do and a green mic breathes a ring outwards,
+ * inviting a touch. The moment a finger lands the mic grows and turns red and the panel takes on
+ * its tint, before recording has even started, so the press is felt at once; then the timer and
+ * live waveform appear. Release saves, slide left cancels. A tap too short to record explains
+ * itself rather than closing.
  */
 export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: VoiceRecorderProps) {
   const theme = useTheme();
@@ -44,13 +51,14 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [levels, setLevels] = useState<number[]>([]);
+  const [tooShort, setTooShort] = useState(false);
   const recording = useRef(false);
   const held = useRef(false);
   const busy = useRef(false);
   const mounted = useRef(true);
   const slide = useSharedValue(0);
   const pressed = useSharedValue(0);
-  const halo = useSharedValue(0);
+  const ring = useSharedValue(0);
 
   useEffect(() => {
     mounted.current = true;
@@ -78,14 +86,15 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
 
   useEffect(() => {
     if (reduceMotion) return;
-    halo.set(withRepeat(withTiming(1, { duration: durations.slow * 3, easing: easing.standard }), -1, true));
-  }, [halo, reduceMotion]);
+    ring.set(withRepeat(withTiming(1, { duration: RING_MS, easing: easing.standard }), -1, false));
+  }, [ring, reduceMotion]);
 
   const start = async () => {
     // A release can arrive while permission or native preparation is still pending.
     if (busy.current || recording.current) return;
     held.current = true;
     busy.current = true;
+    setTooShort(false);
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!mounted.current || !held.current) return;
@@ -116,7 +125,10 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
 
   const finish = async (cancelled: boolean) => {
     held.current = false;
-    if (!recording.current) return;
+    if (!recording.current) {
+      if (!cancelled && mounted.current) setTooShort(true);
+      return;
+    }
     busy.current = true;
     recording.current = false;
     setIsRecording(false);
@@ -134,9 +146,14 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
     if (!mounted.current) return;
     onRecordingChange?.(false);
     if (!stopped) return;
-    if (cancelled || !recorder.uri || durationMs < MIN_DURATION_MS) {
+    if (cancelled) {
       haptics.warning();
       onCancel();
+      return;
+    }
+    if (!recorder.uri || durationMs < MIN_DURATION_MS) {
+      haptics.warning();
+      setTooShort(true);
       return;
     }
     haptics.success();
@@ -160,31 +177,45 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
     },
   });
 
+  const { accent, danger, dangerFill, card } = theme.colors;
+  const panelStyle = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(pressed.get(), [0, 1], [card, dangerFill]) }));
   const micStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: slide.get() }, { scale: reduceMotion ? 1 : 1 + pressed.get() * 0.15 }],
+    transform: [{ translateX: slide.get() }, { scale: reduceMotion ? 1 : 1 + pressed.get() * 0.14 }],
   }));
-  const haloOuter = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(halo.get(), [0, 1], [1.35, 1.6]) }] }));
-  const haloInner = useAnimatedStyle(() => ({ transform: [{ scale: interpolate(halo.get(), [0, 1], [1.12, 1.25]) }] }));
+  const buttonStyle = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(pressed.get(), [0, 1], [accent, danger]) }));
+  const ringStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(pressed.get(), [0, 1], [accent, danger]),
+    opacity: reduceMotion ? 0 : (1 - ring.get()) * 0.3,
+    transform: [{ scale: 1 + ring.get() * 0.7 }],
+  }));
   const cancelHintStyle = useAnimatedStyle(() => ({ opacity: 1 + slide.get() / CANCEL_DISTANCE }));
 
-  const haloBase = { width: MIC_BUTTON, height: MIC_BUTTON, borderRadius: theme.radii.pill, backgroundColor: theme.colors.dangerFill };
-
   return (
-    <View style={[styles.panel, {
-      backgroundColor: theme.colors.dangerFill, paddingTop: theme.spacing.xxl,
-      paddingBottom: insets.bottom + theme.spacing.lg, gap: theme.spacing.lg,
+    <Animated.View style={[styles.panel, panelStyle, {
+      borderTopLeftRadius: theme.radii.card, borderTopRightRadius: theme.radii.card, boxShadow: theme.shadows.sheet,
+      paddingTop: theme.spacing.lg, paddingBottom: insets.bottom + theme.spacing.lg, gap: theme.spacing.sm,
     }]}>
-      <View style={[styles.row, { gap: theme.spacing.sm }]} accessibilityLiveRegion="polite">
-        <View style={{ width: theme.spacing.md, height: theme.spacing.md, borderRadius: theme.radii.pill, backgroundColor: theme.colors.danger }} />
-        <Text variant="title1" color="dangerText" tabular>{formatDuration(elapsedMs)}</Text>
+      {!isRecording && <PressableScale haptic="tap" accessibilityLabel="Close recorder" hitSlop={theme.spacing.sm} onPress={onCancel}
+        style={[styles.close, { top: theme.spacing.md, right: theme.spacing.md, width: theme.sizes.touchTarget, height: theme.sizes.touchTarget }]}>
+        <Icon name="close" color="secondaryLabel" />
+      </PressableScale>}
+      <View style={[styles.center, { height: READOUT_HEIGHT, alignSelf: 'stretch', gap: theme.spacing.sm }]}>
+        {isRecording ? <>
+          <View style={[styles.row, { gap: theme.spacing.sm }]} accessibilityLiveRegion="polite">
+            <View style={{ width: theme.spacing.md, height: theme.spacing.md, borderRadius: theme.radii.pill, backgroundColor: danger }} />
+            <Text variant="title1" color="dangerText" tabular>{formatDuration(elapsedMs)}</Text>
+          </View>
+          <Waveform bars={levels} activeColor={danger} inactiveColor={dangerFill} pendingSlots={Math.max(0, LIVE_BARS - levels.length)} height={36} />
+        </> : <>
+          <View style={[styles.row, { gap: theme.spacing.sm }]}>
+            <Icon name="hand" color="accent" />
+            <Text variant="headline">Touch and hold to record</Text>
+          </View>
+          <Text variant="footnote" color={tooShort ? 'dangerText' : 'secondaryLabel'} weight={tooShort ? 'semibold' : undefined}>
+            {tooShort ? 'Keep holding while you speak' : 'Let go to save, slide left to cancel'}
+          </Text>
+        </>}
       </View>
-      <Waveform
-        bars={levels}
-        activeColor={theme.colors.danger}
-        inactiveColor={theme.colors.dangerFill}
-        pendingSlots={Math.max(0, LIVE_BARS - levels.length)}
-        height={36}
-      />
       <GestureDetector gesture={gesture}>
         <Animated.View
           accessible
@@ -194,23 +225,21 @@ export function VoiceRecorder({ onSave, onCancel, onRecordingChange, onError }: 
           onAccessibilityTap={() => { void (recording.current ? finish(false) : start()); }}
           style={[styles.center, { width: MIC_BUTTON * 2, height: MIC_BUTTON * 2 }, micStyle]}
         >
-          <Animated.View style={[styles.absolute, haloBase, haloOuter]} />
-          <Animated.View style={[styles.absolute, haloBase, haloInner]} />
-          <View style={[styles.center, { width: MIC_BUTTON, height: MIC_BUTTON, borderRadius: theme.radii.pill, backgroundColor: theme.colors.danger }]}>
+          <Animated.View style={[styles.absolute, { width: MIC_BUTTON, height: MIC_BUTTON, borderRadius: theme.radii.pill }, ringStyle]} />
+          <Animated.View style={[styles.center, { width: MIC_BUTTON, height: MIC_BUTTON, borderRadius: theme.radii.pill }, buttonStyle]}>
             <Icon name="mic" size={theme.sizes.iconLarge + 8} color="onDanger" />
-          </View>
+          </Animated.View>
         </Animated.View>
       </GestureDetector>
-      <View style={[styles.hints, { paddingHorizontal: theme.spacing.xxl }]}>
+      {/* Keeps its height at rest, so the mic stays under the finger when recording starts. */}
+      <View style={[styles.hints, { paddingHorizontal: theme.spacing.xxl, opacity: isRecording ? 1 : 0 }]}>
         <Animated.View style={[styles.row, cancelHintStyle]}>
           <Icon name="chevronLeft" size={theme.sizes.iconSmall} color="secondaryLabel" />
           <Text variant="subheadline" color="secondaryLabel">Slide to cancel</Text>
         </Animated.View>
-        <Text variant="subheadline" weight="semibold" color="dangerText">
-          {isRecording ? 'Release to save' : 'Hold to record'}
-        </Text>
+        <Text variant="subheadline" weight="semibold" color="dangerText">Release to save</Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -219,5 +248,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
   absolute: { position: 'absolute' },
+  close: { position: 'absolute', zIndex: 1, alignItems: 'center', justifyContent: 'center' },
   hints: { alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between' },
 });

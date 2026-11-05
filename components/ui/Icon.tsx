@@ -1,6 +1,6 @@
 import {
   Archive, ArchiveRestore, Ban, Bell, Bold, Strikethrough, Underline, Brush, Bus, ChevronDown, Clock, Copy, Eraser, Highlighter, List, ListOrdered, PenLine, Redo2, Type, Undo2, Calendar, Camera, Check, ChevronLeft, ChevronRight, CloudDownload,
-  Coffee, Contrast, Coins, Database, Delete, Ellipsis, FileText, Film, Flame, Folder, GraduationCap, Heart,
+  Coffee, Contrast, Coins, Database, Delete, Ellipsis, FileText, Film, Flame, Folder, GraduationCap, Hand, Heart,
   House, Image, LayoutGrid, ListChecks, Mic, Minus, Moon, Palette, Pause, Pencil, Pin, Play, Plus,
   ReceiptText, ScanFace, Search, Settings, Share, ShoppingBag, ShoppingCart, SquareCheck, Tag, Target,
   Trash2, Utensils, Wallet, X, type LucideIcon,
@@ -54,6 +54,7 @@ const icons = {
   edit: Pencil,
   flame: Flame,
   folder: Folder,
+  hand: Hand,
   fun: Film,
   groceries: ShoppingCart,
   health: Heart,

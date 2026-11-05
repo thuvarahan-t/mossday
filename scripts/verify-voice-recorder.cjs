@@ -10,7 +10,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function mount({ permission, preparation, stopFails = false } = {}) {
+function mount({ permission, preparation, stopFails = false, durationMillis = 1000 } = {}) {
   const tasks = [];
   const cleanups = [];
   const calls = { record: 0, stop: 0, save: 0, cancel: 0, errors: [], modes: [] };
@@ -19,7 +19,7 @@ function mount({ permission, preparation, stopFails = false } = {}) {
     prepareToRecordAsync: () => preparation?.promise ?? Promise.resolve(),
     record: () => { calls.record += 1; },
     stop: async () => { calls.stop += 1; if (stopFails) throw new Error('Native stop failed'); },
-    getStatus: () => ({ durationMillis: 1000, metering: -20 }),
+    getStatus: () => ({ durationMillis, metering: -20 }),
     uri: 'file:///sample.m4a',
   };
   const dependencies = {
@@ -48,11 +48,11 @@ function mount({ permission, preparation, stopFails = false } = {}) {
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ bottom: 0 }) },
     'react-native-worklets': { scheduleOnRN: (callback, ...args) => { tasks.push(Promise.resolve(callback(...args))); } },
     '@/constants/motion': { durations: {}, easing: {} },
-    '@/hooks/useTheme': { useTheme: () => ({ radii: {}, colors: {}, spacing: {}, sizes: {} }) },
+    '@/hooks/useTheme': { useTheme: () => ({ radii: {}, colors: {}, spacing: {}, sizes: {}, shadows: {} }) },
     '@/lib/animation': { animateTo: (value) => value },
     '@/lib/date': { formatDuration: () => '0:00' },
     '@/lib/haptics': { haptics: { tick() {}, success() {}, warning() {} } },
-    '../Icon': {}, '../Text': {}, './Waveform': {},
+    '../Icon': {}, '../PressableScale': {}, '../Text': {}, './Waveform': {},
   };
   const source = ts.transpileModule(fs.readFileSync('components/ui/voice/VoiceRecorder.tsx', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
@@ -114,6 +114,14 @@ async function main() {
     assert.equal(active.calls.cancel, cancel ? 1 : 0);
   }
 
+  const quick = mount({ durationMillis: 100 });
+  quick.begin();
+  await Promise.all(quick.tasks);
+  quick.release();
+  await Promise.all(quick.tasks);
+  assert.equal(quick.calls.save, 0, 'A tap is too short to save');
+  assert.equal(quick.calls.cancel, 0, 'And explains itself rather than closing the recorder');
+
   const failure = mount({ stopFails: true });
   failure.begin();
   await Promise.all(failure.tasks);
@@ -128,7 +136,7 @@ async function main() {
   abandoned.unmount();
   assert.equal(abandoned.calls.stop, 1, 'Leaving the screen stops the microphone');
   assert.equal(abandoned.calls.save, 0);
-  console.log('Voice recorder verified: async release, cancel, save, stop failure, and unmount.');
+  console.log('Voice recorder verified: async release, cancel, save, too-short tap, stop failure, and unmount.');
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });
