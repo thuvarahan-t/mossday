@@ -13,7 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
-import { ShareImageProvider } from '@/components/share/ShareImage';
+import { ShareProvider } from '@/components/share/ShareProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { BlurTargetContent, BlurTargetProvider } from '@/components/ui/glass/BlurTarget';
 import { AppSheetCover } from '@/components/ui/sheet/SheetCover';
@@ -107,7 +107,7 @@ function AppShell({ currencyPrompt, onCurrencyDone }: { currencyPrompt: FormShee
     <AppSheetCover>
       <BlurTargetProvider root>
         <ToastProvider>
-          <ShareImageProvider>
+          <ShareProvider>
           <RemindersBridge />
           <BlurTargetContent style={styles.fill}>
             <Stack
@@ -126,7 +126,7 @@ function AppShell({ currencyPrompt, onCurrencyDone }: { currencyPrompt: FormShee
               <Stack.Screen name="dev/components" />
             </Stack>
           </BlurTargetContent>
-          </ShareImageProvider>
+          </ShareProvider>
           {currencyPrompt && <CurrencySheet firstLaunch {...currencyPrompt} onClose={onCurrencyDone} />}
         </ToastProvider>
       </BlurTargetProvider>

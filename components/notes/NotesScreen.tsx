@@ -3,9 +3,9 @@ import { useCallback, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
-import { useShareImage } from '@/components/share/ShareImage';
+import { useShare } from '@/components/share/ShareProvider';
 import { estimateNoteHeight, NoteCard, noteSummary } from './NoteCard';
-import { notesShareContent } from './notesShare';
+import { audioPaths, notesShareContent } from './notesShare';
 import { NoteColorPicker } from './NoteColorPicker';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
@@ -70,9 +70,10 @@ export function NotesScreen() {
       ]}
     renderItem={(note, width) => <NoteCard note={note} blocks={blocksFor(note.id)} width={width} />}
     estimateHeight={(note, width) => estimateNoteHeight(note, blocksFor(note.id), width)} />;
-  const shareImage = useShareImage();
+  const share = useShare();
   const shareNotes = () => {
-    void shareImage(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })) }));
+    share(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })),
+      audio: filtered.flatMap((note) => audioPaths(blocksFor(note.id))) }));
   };
   return <LargeTitleScreen title="Notes" scrollEnabled={!dragging} floatingAdd={{ label: 'New note', onPress: newNote }}
     titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>

@@ -1,7 +1,8 @@
 import { View } from 'react-native';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ShareCheck } from '@/components/share/ShareCheck';
-import { ShareLine, SharePanel, type ShareCardContent } from '@/components/share/ShareCard';
+import { ShareLine, SharePanel, type ShareContent } from '@/components/share/ShareCard';
+import { checkLine, joinSections } from '@/components/share/shareText';
 import { Emoji } from '@/components/ui/Emoji';
 import { Text } from '@/components/ui/Text';
 import type { Theme } from '@/constants/theme';
@@ -16,12 +17,16 @@ import { dataColors } from '@/lib/dataColors';
 export function todayShareContent({ theme, today, spent, budget, meals, expenses, habits, countFor, todos }: {
   theme: Theme; today: string; spent: number; budget: number; meals: Category[]; expenses: Expense[];
   habits: Habit[]; countFor: (id: number) => number; todos: Todo[];
-}): ShareCardContent {
+}): ShareContent {
   const done = habits.filter((habit) => countFor(habit.id) >= habit.dailyGoal).length;
   return {
     icon: 'home',
     title: 'Today',
     subtitle: formatLongDate(today),
+    text: joinSections(`Today · ${formatLongDate(today)}`,
+      `Spent ${formatMoney(spent)}${budget > 0 ? ` of ${formatMoney(budget)}` : ''}`,
+      habits.length > 0 && [`Habits · ${done} of ${habits.length} done`, ...habits.map((habit) => checkLine(habit.name, countFor(habit.id) >= habit.dailyGoal))].join('\n'),
+      todos.length > 0 && ['To-dos', ...todos.map((todo) => checkLine(todo.text, todo.isDone))].join('\n')),
     body: <View style={{ gap: theme.spacing.md }}>
       <SharePanel>
         <Text color="secondaryLabel">Spent today</Text>

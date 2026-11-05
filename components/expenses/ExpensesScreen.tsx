@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { tabNeighbour } from '@/components/navigation/tabs';
-import { useShareImage } from '@/components/share/ShareImage';
+import { useShare } from '@/components/share/ShareProvider';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
@@ -97,10 +97,10 @@ export function ExpensesScreen() {
   const summary = periodSummary(view.period, total, result ? sum(result.previous) : 0, average, view.date === today);
   const label = periodLabel(view, today);
 
-  const shareImage = useShareImage();
+  const share = useShare();
   const shareExpenses = () => {
     if (!data) return;
-    void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
+    share(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
   return <LargeTitleScreen title="Expenses" floatingAdd={{ label: period === 'Month' ? 'Add monthly expense' : 'Add expense', onPress: () => setEditor(period === 'Month' ? 'monthly' : 'new') }}
     titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} />}

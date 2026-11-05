@@ -15,6 +15,17 @@ export type ShareCardContent = {
   title: string;
   subtitle?: string;
   body: ReactNode;
+  /** Waits this long before capturing, for content that paints late (photos). */
+  captureDelayMs?: number;
+};
+
+/** Everything the Share action can send: the card, and these for its other formats. */
+export type ShareContent = ShareCardContent & {
+  text: string;
+  /** Recordings (media paths); offers the Audio option when there are any. */
+  audio?: readonly string[];
+  /** A proper document for the PDF option; without it, the PDF is the card itself. */
+  pdfHtml?: () => Promise<string>;
 };
 
 /**

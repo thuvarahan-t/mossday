@@ -42,6 +42,12 @@ export function canvasFrames(blocks: readonly NoteBlock[], width: number, measur
   return frames;
 }
 
+/** Blocks top to bottom (then left to right), the order a free-placed note reads in. */
+export function readingOrder(blocks: readonly NoteBlock[]): NoteBlock[] {
+  const frames = canvasFrames(blocks, 340);
+  return [...blocks].sort((a, b) => frames[a.id].y - frames[b.id].y || frames[a.id].x - frames[b.id].x);
+}
+
 export function moveBlockLayout(layout: BlockLayout, dx: number, dy: number, canvasWidth: number): BlockLayout {
   'worklet';
   return { ...layout, x: Math.max(0, Math.min(1 - layout.width, layout.x + dx / Math.max(1, canvasWidth))), y: Math.max(0, Math.min(100000, layout.y + dy)) };

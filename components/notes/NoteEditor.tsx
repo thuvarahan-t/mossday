@@ -2,9 +2,10 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useShare } from '@/components/share/ShareProvider';
 import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { LoadState } from '@/components/ui/LoadState';
@@ -28,7 +29,7 @@ import { importNotePhoto } from '@/lib/images';
 import { importMedia, mediaFile, reclaimMediaLater } from '@/lib/media';
 import { ensureReminderPermission } from '@/lib/reminders';
 import {
-  checklistItems, deleteNote, duplicateNote, getNote, listNoteFolders, notePreview, restoreNote, saveNote, setNoteArchived, setNoteReminder,
+  checklistItems, deleteNote, duplicateNote, getNote, listNoteFolders, restoreNote, saveNote, setNoteArchived, setNoteReminder,
   type Note, type NoteBlock, type NoteDraft,
 } from '@/lib/repos/notes';
 import { ChecklistBlock } from './ChecklistBlock';
@@ -38,6 +39,7 @@ import { DrawingEditor } from './DrawingEditor';
 import { DrawingView } from './DrawingView';
 import { checklistToText, continueList, noteCounts, textToChecklist, toggleList, type ListKind } from './noteText';
 import { NoteOptionsSheet } from './NoteOptionsSheet';
+import { noteShareContent } from './notesShare';
 import { NoteTag } from './NoteTag';
 import { PhotoViewer } from './PhotoViewer';
 import { ReminderSheet } from './ReminderSheet';
@@ -208,9 +210,13 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     setBusy(true);
     void action(() => saveNote(note.id, latest.current), () => router.back()).finally(() => setBusy(false));
   };
+  const openShare = useShare();
+  // The share choices are a sheet of their own, so they wait for this note's menu to close.
+  const shareAfterMenu = useRef(false);
   const share = () => { void action(async () => {
     await saveNote(note.id, latest.current);
-    await Share.share({ message: `${latest.current.title}\n\n${notePreview(latest.current.blocks)}`.trim() });
+    shareAfterMenu.current = true;
+    setSheet(null);
   }); };
   const copy = () => { void action(async () => {
     await saveNote(note.id, latest.current);
@@ -348,7 +354,12 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
         </PressableScale>)}
       </GlassSurface>}
     </Animated.View>
-    {sheet === 'options' && <NoteOptionsSheet {...sheetTransition} onClose={() => setSheet(null)}
+    {sheet === 'options' && <NoteOptionsSheet {...sheetTransition} onClose={() => setSheet(null)} onDismissed={() => {
+      sheetTransition.onDismissed();
+      if (!shareAfterMenu.current) return;
+      shareAfterMenu.current = false;
+      openShare(noteShareContent({ theme, title: latest.current.title, blocks: latest.current.blocks }));
+    }}
       options={{ color: draft.color, folder: draft.folder, folders, archived: !!note.isArchived, counts: noteCounts(draft.title, draft.blocks), createdAt: note.createdAt, updatedAt: editedAt }}
       onColor={(color) => edit({ ...latest.current, color })} onFolder={(folder) => edit({ ...latest.current, folder })}
       onShare={share} onCopy={copy} onArchive={archive} onDelete={remove} />}

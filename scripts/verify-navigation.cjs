@@ -159,7 +159,7 @@ const { DiaryScreen } = load('components/diary/DiaryScreen.tsx', stubbedModules(
   'react/jsx-runtime': { jsx: keyedJsx, jsxs: keyedJsx },
   '@/hooks/useTheme': common['@/hooks/useTheme'], '@/hooks/useCurrency': { useCurrency: () => {} },
   '@/hooks/useToday': { useToday: () => '2026-11-07' }, '@/lib/date': dateLib, '@/lib/money': { formatMoney: () => '0' },
-  '@/components/share/ShareImage': { useShareImage: () => () => {} },
+  '@/components/share/ShareProvider': { useShare: () => () => {} },
   '@/hooks/useResource': { useAction: () => () => {}, useResource: () => ({ error: null, refresh: () => {}, data: {
     date: '2026-11-06', todos: [], previous: [], journal: { text: 'Yesterday' }, expenses: [], habits: [], logs: [], monthlyTodos: [], moods: {}, nearbyTodos: [],
   } }) },

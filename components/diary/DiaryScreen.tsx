@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
-import { useShareImage } from '@/components/share/ShareImage';
+import { useShare } from '@/components/share/ShareProvider';
 import { Button } from '@/components/ui/Button';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
@@ -50,9 +50,9 @@ export function DiaryScreen() {
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, loadedDate)) ?? [];
   const done = active.filter((h) => (data?.logs.find((l) => l.habitId === h.id)?.count ?? 0) >= h.dailyGoal).length;
   const summary = `Spent ${formatMoney(spend)} · ${done} of ${active.length} habits done`;
-  const shareImage = useShareImage();
+  const share = useShare();
   const shareDay = () => {
-    if (data) void shareImage(diaryShareContent({ theme, date: loadedDate, todos: data.todos, journal: data.journal, summary }));
+    if (data) share(diaryShareContent({ theme, date: loadedDate, todos: data.todos, journal: data.journal, summary }));
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
     floatingAdd={{ label: 'Add to-do', onPress: addInline }}

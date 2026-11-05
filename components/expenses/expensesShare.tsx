@@ -1,5 +1,6 @@
 import { View } from 'react-native';
-import { ShareLine, SharePanel, type ShareCardContent } from '@/components/share/ShareCard';
+import { ShareLine, SharePanel, type ShareContent } from '@/components/share/ShareCard';
+import { joinSections } from '@/components/share/shareText';
 import { IconTile } from '@/components/ui/IconTile';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Text } from '@/components/ui/Text';
@@ -16,7 +17,7 @@ const MAX_ROWS = 8;
 /** Expenses tab as an image: the period total, the day's budget and entries, or category bars. */
 export function expensesShareContent({ theme, label, total, expenses, byDay, dailyBudget }: {
   theme: Theme; label: string; total: number; expenses: Expense[]; byDay: boolean; dailyBudget: number;
-}): ShareCardContent {
+}): ShareContent {
   const rows = byDay ? [...expenses].sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : [];
   const totals = byDay ? [] : categoryTotals(expenses);
   const hidden = (byDay ? rows.length : totals.length) - MAX_ROWS;
@@ -24,6 +25,9 @@ export function expensesShareContent({ theme, label, total, expenses, byDay, dai
     icon: 'wallet',
     title: formatMoney(total),
     subtitle: `${label} · ${expenses.length === 1 ? '1 expense' : `${expenses.length} expenses`}`,
+    text: joinSections(`Expenses · ${label}`, `Total ${formatMoney(total)}`, (byDay
+      ? rows.map((expense) => `${expense.title || expense.categoryName || 'One-time'}: ${formatMoney(expense.amount)}`)
+      : totals.map((group) => `${group.name}: ${formatMoney(group.amount)}`)).join('\n')),
     body: <View style={{ gap: theme.spacing.md }}>
       {dailyBudget > 0 && <SharePanel><BudgetMeter spent={total} budget={dailyBudget} animated={false} /></SharePanel>}
       {expenses.length > 0 && <SharePanel>

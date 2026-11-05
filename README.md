@@ -108,6 +108,11 @@ floating add button, which stay fixed. It takes the old content out and brings t
 side of the tab bar. Swipes must cover about 38% of a phone's width (bounded to
 120–180 pt); quick short flicks and canceled gestures never switch pages.
 
+Share (on every tab, and in a note's menu) asks for PDF, Text or Image, plus Audio when
+there are recordings. Audio sends only the recordings: one as itself, several as a ZIP,
+because the system share sheet takes one file at a time. A note's PDF is a real document
+with its text, photos and drawings; other PDFs are the page's share card.
+
 To-dos (Diary and Today share one list): tap a task to open its edit sheet directly,
 or hold and drag to reorder it live; swipe left to delete. The edit sheet has a red
 delete icon beside Save, with Undo after deletion. In Diary, Add to-do (or the header
