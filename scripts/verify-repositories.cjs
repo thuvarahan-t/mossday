@@ -105,6 +105,19 @@ async function main() {
   assert.throws(() => expenses.saveExpense({ ...input, date: '2026-02-30' }));
   await assert.rejects(expenses.saveExpense({ ...input, categoryId: 99999 }));
   assert.equal((await expenses.listExpenses(today)).length, 1, 'Failed insert rolls back');
+  const bills = load('components/expenses/monthlyBills.ts');
+  const billId = bills.billCategoryId(await expenses.listCategories());
+  assert.ok(billId, 'Monthly entries use the existing Bills category');
+  await expenses.saveExpense({ ...input, categoryId: billId, title: 'Rent', date: '2026-09-05', amount: 2500000 });
+  await expenses.saveExpense({ ...input, categoryId: billId, title: 'Electricity', date: '2026-09-18', amount: 800000 });
+  const septemberBills = bills.monthlyBills(await expenses.listExpenses('2026-09-01', '2026-09-30'));
+  assert.deepEqual(Array.from(septemberBills, (bill) => bill.title).sort(), ['Electricity', 'Rent']);
+  assert.equal(septemberBills.reduce((total, bill) => total + bill.amount, 0), 3300000, 'Monthly total counts each bill exactly once');
+  assert.equal((await expenses.listExpenses('2026-09-05'))[0].title, 'Rent', 'Monthly bill is also the actual payment for its day');
+  assert.equal(bills.monthlyBills(await expenses.listExpenses('2026-10-01', '2026-10-31')).length, 0, 'Bills do not automatically repeat into another month');
+  await expenses.deleteExpense(septemberBills[0].id);
+  await expenses.restoreExpense(septemberBills[0]);
+  assert.equal(bills.monthlyBills(await expenses.listExpenses('2026-09-01', '2026-09-30')).length, 2, 'Monthly bill undo preserves payment data');
 
   await habits.saveHabit({ name: 'Water', icon: '💧', color: 'green', dailyGoal: 2, activeDays: 127, reminderTime: null });
   const habit = (await habits.listHabits())[0];

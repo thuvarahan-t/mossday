@@ -43,6 +43,7 @@ import { categoryStyle } from './categoryStyle';
 import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
 import { recordedDayAverage } from './expenseMetrics';
 import { BudgetSheet, type BudgetKey } from '@/components/settings/BudgetSheet';
+import { monthlyBills } from './monthlyBills';
 
 const periods = ['Day', 'Week', 'Month'] as const;
 type Period = typeof periods[number];
@@ -65,7 +66,7 @@ export function ExpensesScreen() {
     if (typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= today) { setPeriod('Day'); setDate(day); }
   }
   useEffect(preloadCategories, []);
-  const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new'>();
+  const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new' | 'monthly'>();
   const [budgetEditor, setBudgetEditor, budgetTransition] = useSheetState<BudgetKey>();
   const selected = periodRange(period, date);
   const { data: result, error, refresh } = useResource(useCallback(() => loadPeriod(period, date), [period, date]));
@@ -99,7 +100,7 @@ export function ExpensesScreen() {
     if (!data) return;
     void shareImage(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
-  return <LargeTitleScreen title="Expenses" floatingAdd={{ label: 'Add expense', onPress: () => setEditor('new') }}
+  return <LargeTitleScreen title="Expenses" floatingAdd={{ label: period === 'Month' ? 'Add monthly expense' : 'Add expense', onPress: () => setEditor(period === 'Month' ? 'monthly' : 'new') }}
     titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} />}
     contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {/* The Day / Week / Month switch stays put; only the period's content slides. */}
@@ -124,13 +125,21 @@ export function ExpensesScreen() {
       </PressableScale> : view.period === 'Month' ? <Card><Button title="Set a budget" variant="plain" onPress={() => setBudgetEditor('monthlyBudget')} /></Card> : null}
       {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
         <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
-          message="Add one in a few taps." action={{ label: 'Add Expense', onPress: () => setEditor('new') }} /> : view.period === 'Day' ?
+          message="Add one in a few taps." action={{ label: view.period === 'Month' ? 'Add monthly expense' : 'Add Expense',
+            onPress: () => setEditor(view.period === 'Month' ? 'monthly' : 'new') }} /> : view.period === 'Day' ?
         <GroupedList>{[...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((expense) => <AnimatedListItem key={expense.id}>
           <ExpenseRow expense={expense} onEdit={() => setEditor(expense)} onDelete={() => remove(expense)} />
         </AnimatedListItem>)}
           {/* The next expense is one tap away at the end of the day's list. */}
           <ListRow key="add" title="Add expense" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />
         </GroupedList> : <>
+          {view.period === 'Month' && <>
+            <SectionHeader title="Monthly bills" />
+            <GroupedList>
+              {monthlyBills(data).map((expense) => <ExpenseRow key={expense.id} expense={expense} onEdit={() => setEditor(expense)} onDelete={() => remove(expense)} />)}
+              <ListRow title="Add monthly expense" subtitle="Rent, electricity, water and other bills" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('monthly')} />
+            </GroupedList>
+          </>}
           <Card>
             <BarChart values={amounts.map((amount, index) => days[index] > today ? null : amount)} highlightIndex={days.indexOf(today)}
               labels={chartLabels(view.period, days, days.indexOf(today))}
@@ -140,7 +149,9 @@ export function ExpensesScreen() {
             footnote={`Highest day: ${formatMoney(Math.max(...amounts))}`} period={view.period} />
         </>}
       {budgetEditor && result && <BudgetSheet {...budgetTransition} initial={budgetEditor} budgets={result.settings} onClose={() => setBudgetEditor(null)} />}
-      {editor && <ExpenseSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} date={date} onClose={() => setEditor(null)} />}
+      {editor && <ExpenseSheet {...editorTransition} initial={typeof editor === 'string' ? undefined : editor}
+        monthly={editor === 'monthly' || (typeof editor !== 'string' && editor.categoryIcon === 'bills')}
+        date={date} onClose={() => setEditor(null)} />}
     </PeriodSwipeArea>
   </LargeTitleScreen>;
 }

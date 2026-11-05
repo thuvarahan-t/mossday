@@ -33,6 +33,11 @@ later. Only the label changes; saved amounts are never converted.
 Expenses shows the month's budget as a progress line on every period; tapping it
 (or the daily budget bar) opens one Budget sheet with a Daily / Monthly switch. The
 "a day" average divides by days that have at least one expense, not by calendar days.
+In Month, the green add button opens Monthly expense with Rent, Electricity and
+Water shortcuts plus a custom title. Payments use the selected month's date and
+the existing Bills category. The Monthly bills list supports edit, swipe-delete
+and Undo. These are payments for that month, with no automatic recurrence; day
+totals, month totals, budgets and charts all count the same saved payment once.
 Swipe left on Expenses to move Day → Week → Month and right to move back (past either
 end, on to the next tab); the view slides out and the next slides in once its data is ready. The ‹ › arrows and
 the tappable date label change the date.

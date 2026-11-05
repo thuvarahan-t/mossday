@@ -25,6 +25,7 @@ import { haptics } from '@/lib/haptics';
 import type { AccentName } from '@/constants/colors';
 import { categoryStyle } from './categoryStyle';
 import { CategoryEditor } from './CategoryEditor';
+import { billCategoryId, MONTHLY_BILL_PRESETS } from './monthlyBills';
 
 /** Window height taken by the Add Expense sheet apart from the keypad rows and optional rows. */
 const KEYPAD_FREE_SPACE = 416;
@@ -44,8 +45,8 @@ export function preloadCategories() {
   void listCategories().then((rows) => { categoryCache = rows; }, () => undefined);
 }
 
-export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...transition }: {
-  initial?: Expense; mealId?: number; date?: string; onClose: () => void;
+export function ExpenseSheet({ initial, mealId, date: initialDate, monthly = false, onClose, ...transition }: {
+  initial?: Expense; mealId?: number; date?: string; monthly?: boolean; onClose: () => void;
 } & Partial<FormSheetTransition>) {
   const theme = useTheme();
   const window = useWindowDimensions();
@@ -60,7 +61,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState(initial ? amountToInput(initial.amount) : '');
   const [categoryId, setCategoryId] = useState<number | null>(
-    initial?.categoryId ?? mealId ?? categoryCache?.find((c) => c.type === 'MEAL')?.id ?? null);
+    initial?.categoryId ?? mealId ?? (monthly ? billCategoryId(categoryCache ?? []) : categoryCache?.find((c) => c.type === 'MEAL')?.id) ?? null);
   const [oneTime, setOneTime] = useState(!!initial?.isOneTime);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
@@ -77,7 +78,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   const load = () => {
     void listCategories().then((rows) => {
       categoryCache = rows; setCategories(rows); setError(null);
-      if (!initial && !mealId) setCategoryId((current) => current ?? rows.find((r) => r.type === 'MEAL')?.id ?? null);
+      if (!initial && !mealId) setCategoryId((current) => current ?? (monthly ? billCategoryId(rows) : rows.find((r) => r.type === 'MEAL')?.id) ?? null);
     }, () => setError('Could not load categories.'));
   };
   // This form owns its draft; external refreshes must not reset an edit in progress.
@@ -120,7 +121,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   };
   const amount = parseAmountInput(input);
   // Keys shrink on short screens so the whole form fits; optional rows take their share first.
-  const optionalRows = [oneTime, showNote, !!hint].filter(Boolean).length * (theme.sizes.fieldHeight + theme.spacing.sm);
+  const optionalRows = [oneTime || monthly, showNote, !!hint].filter(Boolean).length * (theme.sizes.fieldHeight + theme.spacing.sm);
   const keyHeight = Math.min(MAX_KEY_HEIGHT, Math.floor((window.height - KEYPAD_FREE_SPACE - optionalRows) / 4));
   const save = async () => {
     if (saving.current || !amount) return;
@@ -132,7 +133,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   // Saving from a text field must never leave the user stuck behind the keyboard: when
   // something is missing, the keyboard goes away so the keypad and Save are visible again.
   const attemptSave = () => {
-    const problem = !amount ? 'Enter an amount' : oneTime && !title.trim() ? 'Say what it was' : !oneTime && !categoryId ? 'Choose a category' : null;
+    const problem = !amount ? 'Enter an amount' : (oneTime || monthly) && !title.trim() ? 'Say what it was' : !oneTime && !categoryId ? 'Choose a category' : null;
     if (!problem) { void save(); return; }
     Keyboard.dismiss();
     haptics.warning();
@@ -151,21 +152,25 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, onClose, ...t
   // Categories load in a few milliseconds; presenting after that opens the sheet in one
   // motion at its final height instead of springing to a loading row and then growing.
   if (!categories && !error) return null;
-  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}
+  return <FormSheet {...transition} background="plain" size="fit" dense title={initial ? 'Edit Expense' : monthly ? 'Monthly expense' : oneTime ? 'One-time Expense' : 'New Expense'} onClose={() => { if (!busy) onClose(); }}
     trailing={initial && <SheetIconButton icon="trash" accessibilityLabel="Delete expense" onPress={() => remove(initial)} />}>
     {!categories ? <LoadState error={error} retry={load} /> : <>
       <AmountDisplay input={input} compact shakeSignal={shake} />
       {hint && <SheetRow optional><Text variant="footnote" weight="semibold" color="dangerText" align="center">{hint}</Text></SheetRow>}
       {/* Meals on the first line, Other and One-time on the second, on every screen width. */}
-      <View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
+      {monthly ? <View style={[styles.chipRow, { gap: theme.spacing.sm, flexWrap: 'wrap' }]}>
+        {MONTHLY_BILL_PRESETS.map((name) => <Chip key={name} label={name} selected={title === name}
+          onPress={() => { setTitle(name); setHint(null); }} />)}
+      </View> : <><View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
         {categories.filter((c) => c.type === 'MEAL').map((c) => <Chip key={c.id} label={c.name} selected={!oneTime && c.id === categoryId} onPress={() => { setCategoryId(c.id); setOneTime(false); }} />)}
       </View>
       <View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
         <Chip label={selected?.type === 'OTHER' && !oneTime ? `${selected.name} ›` : 'Other'} selected={!oneTime && selected?.type === 'OTHER'} onPress={() => setOther(true)} />
         <Chip label="One-time" selected={oneTime} onPress={() => setOneTime(true)} />
-      </View>
-      {oneTime && <SheetRow optional style={[styles.fieldRow, { gap: theme.spacing.sm }]}>
-        <View style={styles.fill}><TextField value={title} onChangeText={(value) => { setTitle(value); setHint(null); }} placeholder="What was it?" accessibilityLabel="Expense title" /></View>
+      </View></>}
+      {(oneTime || monthly) && <SheetRow optional style={[styles.fieldRow, { gap: theme.spacing.sm }]}>
+        <View style={styles.fill}><TextField value={title} onChangeText={(value) => { setTitle(value); setHint(null); }}
+          placeholder={monthly ? 'Rent, electricity, water…' : 'What was it?'} accessibilityLabel="Expense title" /></View>
         {inlineSave}
       </SheetRow>}
       <SheetRow><OptionsBar cells={[
