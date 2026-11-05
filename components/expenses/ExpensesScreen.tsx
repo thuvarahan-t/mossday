@@ -9,7 +9,6 @@ import { useShareImage } from '@/components/share/ShareProvider';
 import { AnimatedListItem } from '@/components/ui/AnimatedListItem';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
@@ -126,7 +125,7 @@ export function ExpensesScreen() {
           <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
           <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
         </Card>
-      </PressableScale> : view.period === 'Month' ? <Card><Button title="Set a budget" variant="plain" onPress={() => setBudgetEditor('monthlyBudget')} /></Card> : null}
+      </PressableScale> : view.period === 'Month' ? <GroupedList><ListRow title="Set a monthly budget" icon={{ icon: 'target', color: 'blue' }} accessory="chevron" onPress={() => setBudgetEditor('monthlyBudget')} /></GroupedList> : null}
       {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
         <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
           message="Add one in a few taps." action={{ label: view.period === 'Month' ? 'Add monthly expense' : 'Add Expense',

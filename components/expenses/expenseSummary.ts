@@ -1,4 +1,4 @@
-import { formatClock } from '@/lib/date';
+import { formatClock, formatShortDate } from '@/lib/date';
 import type { Expense } from '@/lib/repos/expenses';
 import { categoryStyle, type CategoryStyle } from './categoryStyle';
 
@@ -17,9 +17,12 @@ export function categoryTotals(expenses: Expense[]): CategoryTotal[] {
   return [...totals.values()].sort((a, b) => b.amount - a.amount);
 }
 
-/** "7:40", "18:10 · One-time", "12:50 · Card" — cash is the default and stays implicit. */
+/**
+ * "7:40", "18:10 · One-time", "12:50 · Card": cash is the default and stays implicit. Monthly
+ * bills show their date instead, since the time they were typed in means nothing.
+ */
 export function expenseDetail(expense: Expense) {
-  const parts = [formatClock(new Date(expense.createdAt))];
+  const parts = [expense.frequency === 'MONTHLY' ? formatShortDate(expense.date) : formatClock(new Date(expense.createdAt))];
   if (expense.isOneTime) parts.push('One-time');
   if (expense.paymentMethod !== 'CASH') parts.push(expense.paymentMethod[0] + expense.paymentMethod.slice(1).toLowerCase());
   return parts.join(' · ');

@@ -113,7 +113,8 @@ export function scaleBlockLayout(layout: BlockLayout, scale: number, canvasWidth
 
 /** A touch on blank space writes at the left edge of that line, below any block that reaches it. */
 export function textPlacement(blocks: readonly NoteBlock[], frames: Readonly<Record<number, BlockFrame>>, touchY: number): BlockLayout {
-  let y = Math.max(0, touchY - HALF_LINE);
+  // An unknown touch point (some pointer events lack one) must not poison the saved position.
+  let y = Number.isFinite(touchY) ? Math.max(0, touchY - HALF_LINE) : Math.max(0, ...blocks.map((block) => frames[block.id].y + frames[block.id].height));
   for (const block of blocks) {
     const frame = frames[block.id];
     // Empty text is removed by this insertion, and a drawing floats over the page.

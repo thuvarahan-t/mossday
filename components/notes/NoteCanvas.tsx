@@ -53,7 +53,7 @@ export function NoteCanvas({ blocks, width, selectedId, ink, onSelect, onPlaceTe
     <Pressable accessibilityRole="button" accessibilityLabel="Write on this line" style={StyleSheet.absoluteFill}
       onPress={(event) => {
         if (selected && isMovable(selected)) onSelect(null);
-        else onPlaceText(textPlacement(blocks, frames, event.nativeEvent.locationY));
+        else onPlaceText(textPlacement(blocks, frames, event.nativeEvent.locationY ?? (event.nativeEvent as { offsetY?: number }).offsetY ?? NaN));
       }} />
     {blocks.map((block) => <CanvasItem key={block.id} block={block} frame={frames[block.id]} canvasWidth={width} settled={settled} live={live}
       selected={selectedId === block.id} onSelect={() => onSelect(block.id)} onLayoutChange={(layout) => change(block.id, layout)}

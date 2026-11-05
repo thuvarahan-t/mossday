@@ -20,7 +20,7 @@ export function SheetHeader({ title, leading, trailing, center }: SheetHeaderPro
   return (
     <View style={[styles.row, { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }]}>
       <View style={[side, styles.leading]}>{leading}</View>
-      {center ? <View style={styles.title}>{center}</View> : <Text variant="headline" align="center" numberOfLines={1} style={styles.title} accessibilityRole="header">
+      {center ? <View style={[styles.title, { marginHorizontal: theme.spacing.sm }]}>{center}</View> : <Text variant="headline" align="center" numberOfLines={1} style={styles.title} accessibilityRole="header">
         {title}
       </Text>}
       <View style={[side, styles.trailing]}>{trailing}</View>

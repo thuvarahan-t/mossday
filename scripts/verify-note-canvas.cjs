@@ -110,6 +110,7 @@ const placedFrames = { 1: { x: 0, y: 0, width: 1, height: 100 }, 2: { x: 0, y: 3
 const placedBlocks = [{ id: 1, type: 'TEXT', content: 'Written' }, { id: 2, type: 'IMAGE' }];
 assert.deepEqual({ ...geometry.textPlacement(placedBlocks, placedFrames, 200) }, { x: 0, y: 188, width: 1 }, 'A touch writes at the left edge, centred on that line');
 assert.equal(geometry.textPlacement(placedBlocks, placedFrames, 105).y, 100, 'A new line never covers the text above it');
+assert.equal(geometry.textPlacement(placedBlocks, placedFrames, NaN).y, 350, 'A touch without a position writes below everything, never at an invalid place');
 assert.equal(geometry.textPlacement([{ id: 1, type: 'TEXT', content: ' ' }], { 1: placedFrames[1] }, 50).y, 38, 'An empty line being replaced does not push the new one down');
 
 const jsx = (type, props, key) => ({ type, props, key });

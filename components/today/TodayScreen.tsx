@@ -101,7 +101,7 @@ export function TodayScreen() {
             })}
           </View>
         </Card></AnimatedListItem>
-        <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={<Text color="secondaryLabel">{done} of {active.length} done</Text>} />
+        <SectionTitle title="Habits" onPress={() => router.navigate('/habits')} trailing={active.length > 0 ? <Text color="secondaryLabel">{done} of {active.length} done</Text> : undefined} />
         {/* The scroll view clips its content, so padding gives a completed ring room to pop. */}
         <AnimatedListItem><Card><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: -theme.spacing.sm }}
           contentContainerStyle={{ gap: theme.spacing.xl, flexGrow: 1, justifyContent: 'space-around', paddingVertical: theme.spacing.sm }}>
