@@ -8,7 +8,7 @@ type ShadowSet = Record<'floating' | 'raised' | 'thumb' | 'knob' | 'sheet' | 'li
 
 export const shadows: { light: ShadowSet; dark: ShadowSet } = {
   light: {
-    floating: '0px 8px 30px rgba(0, 0, 0, 0.10)',
+    floating: '0px 4px 16px rgba(0, 0, 0, 0.07)',
     raised: '0px 4px 16px rgba(0, 0, 0, 0.06)',
     thumb: '0px 3px 8px rgba(0, 0, 0, 0.12), 0px 3px 1px rgba(0, 0, 0, 0.04)',
     knob: '0px 3px 8px rgba(0, 0, 0, 0.15), 0px 1px 1px rgba(0, 0, 0, 0.16)',
@@ -16,7 +16,7 @@ export const shadows: { light: ShadowSet; dark: ShadowSet } = {
     lifted: '0px 20px 50px rgba(0, 0, 0, 0.18)',
   },
   dark: {
-    floating: '0px 8px 30px rgba(0, 0, 0, 0.45)',
+    floating: '0px 4px 16px rgba(0, 0, 0, 0.35)',
     raised: '0px 4px 16px rgba(0, 0, 0, 0.35)',
     thumb: '0px 3px 8px rgba(0, 0, 0, 0.35)',
     knob: '0px 3px 8px rgba(0, 0, 0, 0.3), 0px 1px 1px rgba(0, 0, 0, 0.3)',

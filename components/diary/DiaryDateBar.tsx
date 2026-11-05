@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolation, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, ZoomIn,
+  Extrapolation, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { AnimatedEmoji } from '@/components/ui/AnimatedEmoji';
@@ -11,10 +11,10 @@ import { Icon } from '@/components/ui/Icon';
 import { MonthGrid } from '@/components/ui/MonthGrid';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Text } from '@/components/ui/Text';
-import { durations, easing, spring } from '@/constants/motion';
+import { durations, easing } from '@/constants/motion';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
-import { addMonths, dayOfMonth, monthName, startOfMonth } from '@/lib/date';
+import { addMonths, monthName, startOfMonth } from '@/lib/date';
 import { haptics } from '@/lib/haptics';
 import type { Todo } from '@/lib/repos/diary';
 import { MOODS } from './JournalEditor';
@@ -26,8 +26,6 @@ const TURN_DISTANCE = 56;
 const FOLLOW = 0.45;
 const TRAVEL = 0.25;
 const BADGE_SIZE = 20;
-/** Delay between neighbouring days' mood badges as they pop in, so they ripple through the month. */
-const BADGE_STAGGER_MS = 18;
 
 /**
  * The Diary's date control. Collapsed, it is a free-scrolling row of days. Drag it down and
@@ -47,8 +45,6 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
   const reduced = useReducedMotion();
   const [monthHeight, setMonthHeight] = useState(0);
   const [expanded, setExpanded] = useState(false);
-  // Counts openings: the mood badges are keyed by it, so they pop in again every time.
-  const [openings, setOpenings] = useState(0);
   const [width, setWidth] = useState(0);
   const progress = useSharedValue(0);
   const start = useSharedValue(0);
@@ -57,7 +53,6 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
   const selectedMonth = startOfMonth(selected);
 
   const settle = (open: boolean) => {
-    if (open && !expanded) setOpenings((count) => count + 1);
     setExpanded(open);
     if (open) onMonthChange(selectedMonth);
   };
@@ -136,9 +131,7 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
 
   // Each day's mood sits at the corner of its circle; the selected day's one animates.
   const moodBadge = (date: string) => moods[date] === undefined ? null
-    : <Animated.View key={`${date}-${month}-${openings}`} entering={reduced ? undefined : badgeIn.delay(dayOfMonth(date) * BADGE_STAGGER_MS)}>
-      <AnimatedEmoji emoji={MOODS[moods[date]]} size={BADGE_SIZE} playing={date === selected} />
-    </Animated.View>;
+    : <AnimatedEmoji emoji={MOODS[moods[date]]} size={BADGE_SIZE} playing={date === selected} />;
   const arrow = { minWidth: theme.sizes.touchTarget, minHeight: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center' } as const;
 
   return <GestureDetector gesture={pan}>
@@ -173,8 +166,6 @@ export function DiaryDateBar({ today, selected, month, markedDates, moods, month
     </View>
   </GestureDetector>;
 }
-
-const badgeIn = ZoomIn.springify().damping(spring.bouncy.damping).stiffness(spring.bouncy.stiffness);
 
 const styles = StyleSheet.create({
   clip: { overflow: 'hidden' },

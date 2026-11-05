@@ -4,6 +4,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Icon } from '../Icon';
 import { Text } from '../Text';
 import { GlassButton } from '../glass/GlassButton';
+import { OnGlassBar } from '../glass/GlassSurface';
 
 export type SheetHeaderProps = {
   title: string;
@@ -32,9 +33,12 @@ export function SheetIconButton({ icon, onPress, accessibilityLabel }: {
   icon: 'close' | 'chevronLeft' | 'trash'; onPress: () => void; accessibilityLabel: string;
 }) {
   return (
-    <GlassButton accessibilityLabel={accessibilityLabel} onPress={onPress} haptic="tap">
-      <Icon name={icon} color={icon === 'trash' ? 'dangerText' : 'label'} />
-    </GlassButton>
+    // Resting on the sheet, a floating shadow would only draw a grey smudge around it.
+    <OnGlassBar>
+      <GlassButton accessibilityLabel={accessibilityLabel} onPress={onPress} haptic="tap">
+        <Icon name={icon} color={icon === 'trash' ? 'dangerText' : 'label'} />
+      </GlassButton>
+    </OnGlassBar>
   );
 }
 

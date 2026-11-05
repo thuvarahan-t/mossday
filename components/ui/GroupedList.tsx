@@ -122,7 +122,7 @@ export function SectionTitle({ title, trailing, onPress }: { title: string; trai
   const theme = useTheme();
   return (
     <View style={[styles.sectionTitle, {
-      paddingHorizontal: theme.sizes.titleInset, marginTop: theme.spacing.xl,
+      paddingHorizontal: theme.sizes.titleInset, marginTop: theme.spacing.sm,
     }]}>
       {onPress ? <PressableScale onPress={onPress} accessibilityLabel={`View ${title.toLowerCase()}`} haptic="tap"
         style={{ minHeight: theme.sizes.touchTarget, justifyContent: 'center' }}>

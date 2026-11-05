@@ -7,13 +7,13 @@ import { Easing, type WithSpringConfig } from 'react-native-reanimated';
  */
 export const spring = {
   /** General UI: layout shifts, indicators, page slides. */
-  default: { damping: 20, stiffness: 220, mass: 1 },
+  default: { damping: 25, stiffness: 247, mass: 1 },
   /** Buttons, chips, toggles, press feedback. */
-  snappy: { damping: 18, stiffness: 320, mass: 1 },
+  snappy: { damping: 34, stiffness: 400, mass: 1 },
   /** Sheets and large transitions: critically damped (no bounce), settles in ~0.35 s. */
   gentle: { damping: 34, stiffness: 300, mass: 1 },
-  /** Success moments: habit tick. */
-  bouncy: { damping: 12, stiffness: 260, mass: 1 },
+  /** Success moments only: habit tick. */
+  bouncy: { damping: 15, stiffness: 260, mass: 1 },
 } as const satisfies Record<string, WithSpringConfig>;
 
 export const durations = { fast: 150, normal: 250, slow: 400 } as const;
