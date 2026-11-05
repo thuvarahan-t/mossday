@@ -34,9 +34,10 @@ import {
 } from '@/lib/repos/notes';
 import { ChecklistBlock } from './ChecklistBlock';
 import { emptyHistory, recordEdit, redo, undo } from './draftHistory';
-import { parseDrawing, serializeDrawing, type Drawing } from './drawing';
-import { DrawingEditor } from './DrawingEditor';
+import { drawingViewBox, eraseFromDrawing, parseDrawing, serializeDrawing, strokesBox, type InkColor, type Stroke } from './drawing';
+import { DrawingTools } from './DrawingTools';
 import { DrawingView } from './DrawingView';
+import type { InkTool } from './InkLayer';
 import { checklistToText, continueList, noteCounts, textToChecklist, toggleList, type ListKind } from './noteText';
 import { NoteOptionsSheet } from './NoteOptionsSheet';
 import { noteShareContent } from './notesShare';
@@ -65,6 +66,8 @@ type Focus = { blockId: number; selection: { start: number; end: number } };
 const emptyTextBlock = (noteId: number): NoteBlock =>
   ({ id: -1, noteId, type: 'TEXT', content: '', filePath: null, durationMs: null, position: 0 });
 const EMPTY_CHECKLIST = JSON.stringify([{ text: '', done: false }]);
+/** Eraser reach, in page widths. */
+const ERASER_RADIUS = 0.03;
 
 function isEmptyDraft(draft: NoteDraft) {
   return !draft.title.trim() && draft.blocks.every((block) => block.type === 'TEXT' && !block.content?.trim());
@@ -101,7 +104,11 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const [editedAt, setEditedAt] = useState(note.updatedAt);
   const [openedAt] = useState(() => Date.now());
   const [sheet, setSheet, sheetTransition] = useSheetState<'options' | 'reminder'>(true);
-  const [drawing, setDrawing] = useState<{ blockId: number | null; initial: Drawing | null } | null>(null);
+  const [drawingOn, setDrawingOn] = useState(false);
+  const [inkTool, setInkTool] = useState<InkTool>('pen');
+  const [inkColor, setInkColor] = useState<InkColor>('ink');
+  /** The block this round of drawing adds to; each time the pen comes out starts a new one. */
+  const inkBlock = useRef<number | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const folders = useResource(listNoteFolders).data ?? [];
   // Set once the note is deleted here, so edits still waiting to save are dropped.
@@ -180,23 +187,45 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     replaceBlock(current.block.id, { content: text.slice(0, at) + stamp + text.slice(at) });
     setCursor({ blockId: current.block.id, at: at + stamp.length });
   };
-  const saveDrawing = (result: Drawing) => {
-    const target = drawing;
-    setDrawing(null);
-    if (!target) return;
-    if (target.blockId === null) { if (result.strokes.length) addBlock(newBlock('DRAWING', serializeDrawing(result))); return; }
-    if (result.strokes.length) replaceBlock(target.blockId, { content: serializeDrawing(result) });
-    else edit({ ...latest.current, blocks: latest.current.blocks.filter((b) => b.id !== target.blockId) });
+  const startDrawing = () => { Keyboard.dismiss(); inkBlock.current = null; setSelectedBlockId(null); setFormatting(false); setDrawingOn(true); };
+  const addStroke = (stroke: Stroke) => {
+    const current = latest.current;
+    const existing = current.blocks.find((block) => block.id === inkBlock.current);
+    const strokes = [...existing ? parseDrawing(existing.content).strokes : [], stroke];
+    const box = strokesBox(strokes);
+    // A new round always starts from where the strokes really are, so the block is the box.
+    const change = { content: serializeDrawing({ aspect: box.height / box.width, strokes, box }),
+      layout: serializeBlockLayout({ x: box.x, y: box.y * contentWidth, width: box.width, ratio: box.width / box.height }) };
+    if (existing) { replaceBlock(existing.id, change); return; }
+    const block = { ...newBlock('DRAWING'), ...change };
+    inkBlock.current = block.id;
+    edit({ ...current, blocks: [...current.blocks, block] });
+  };
+  const eraseAtPoint = (x: number, y: number) => {
+    const current = latest.current;
+    let changed = false;
+    const blocks = current.blocks.flatMap((block) => {
+      const frame = frames.current[block.id];
+      if (block.type !== 'DRAWING' || !frame) return [block];
+      const drawing = parseDrawing(block.content);
+      const strokes = eraseFromDrawing(drawing, { x: frame.x, y: frame.y / contentWidth, width: frame.width }, x, y, ERASER_RADIUS);
+      if (strokes.length === drawing.strokes.length) return [block];
+      changed = true;
+      return strokes.length ? [{ ...block, content: serializeDrawing({ ...drawing, box: drawingViewBox(drawing), strokes }) }] : [];
+    });
+    if (changed) edit({ ...current, blocks }, 'erase');
   };
 
   const runTool = (id: ToolId) => {
+    // The pen's options stay out only while drawing: any other tool puts them away.
+    if (id !== 'drawing') setDrawingOn(false);
     switch (id) {
       case 'format': setFormatting(true); break;
       case 'tools': setFormatting(false); break;
       case 'gallery': case 'camera': void addImage(id === 'camera'); break;
       case 'voice': setRecording(true); break;
       case 'checklist': addBlock(newBlock('CHECKLIST', EMPTY_CHECKLIST), true); break;
-      case 'drawing': Keyboard.dismiss(); setDrawing({ blockId: null, initial: null }); break;
+      case 'drawing': if (drawingOn) setDrawingOn(false); else startDrawing(); break;
       case 'text': addBlock(newBlock('TEXT'), true); break;
       case 'bullets': formatList('bullet'); break;
       case 'numbers': formatList('number'); break;
@@ -291,16 +320,17 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           <Icon name="check" color="onAccent" strokeWidth={2.8} />
         </PressableScale>
       </View>
-      <DragScrollView revealCaret={revealCaret} keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating} contentContainerStyle={{ flexGrow: 1, padding: theme.spacing.xl, gap: theme.spacing.lg }}>
+      <DragScrollView revealCaret={revealCaret} keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating && !drawingOn} contentContainerStyle={{ flexGrow: 1, padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <Text align="center" variant="footnote" color="secondaryLabel">{formatTimestamp(note.createdAt)}</Text>
-        <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; setSelectedBlockId(null); }}
+        <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; setSelectedBlockId(null); setDrawingOn(false); }}
           appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />
         <NoteCanvas blocks={draft.blocks} width={contentWidth} selectedId={selectedBlockId} onSelect={setSelectedBlockId}
+          ink={drawingOn ? { tool: inkTool, color: inkColor, onStroke: addStroke, onErase: eraseAtPoint } : null}
           onFrames={(next) => { frames.current = next; }} onManipulating={setManipulating} onDelete={removeBlock}
           onPlaceText={(layout) => addBlock(newBlock('TEXT'), true, layout)}
           onChangeLayout={(layouts) => edit({ ...latest.current, blocks: latest.current.blocks.map((block) =>
             layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
-          renderBlock={(block, blockWidth, imageStyle, wasHeld) => <View style={{ backgroundColor: background }}>
+          renderBlock={(block, imageStyle, wasHeld) => <View style={block.type === 'DRAWING' ? undefined : { backgroundColor: background }}>
             {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} value={block.content ?? ''} accessibilityLabel="Note text"
               autoFocus={block.id === autoFocusId}
               onFocus={() => { setSelectedBlockId(block.id); const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; revealCaret.current?.(); }}
@@ -332,10 +362,9 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
             {block.type === 'CHECKLIST' && <ChecklistBlock blockId={block.id} content={block.content} autoFocus={block.id === autoFocusId}
               onFocus={() => { setSelectedBlockId(block.id); focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; revealCaret.current?.(); }}
               onChange={(content, group) => { if (content === '[]') removeBlock(block); else replaceBlock(block.id, { content }, group); }} />}
-            {block.type === 'DRAWING' && <PressableScale accessibilityLabel="Edit drawing" accessibilityHint="Hold to move"
-              onPress={() => { if (wasHeld()) return; haptics.tap(); Keyboard.dismiss(); setDrawing({ blockId: block.id, initial: parseDrawing(block.content) }); }}
-              style={{ borderRadius: theme.radii.card, overflow: 'hidden', backgroundColor: theme.colors.card }}>
-              <DrawingView drawing={parseDrawing(block.content)} width={Math.max(1, blockWidth - 2)} />
+            {block.type === 'DRAWING' && <PressableScale accessibilityLabel="Draw on the page" accessibilityHint="Hold to move, or pinch to resize"
+              onPress={() => { if (wasHeld()) return; haptics.tap(); startDrawing(); }}>
+              <DrawingView drawing={parseDrawing(block.content)} />
             </PressableScale>}
           </View>} />
         {(reminderAt || draft.folder) && <View style={[styles.row, { flexWrap: 'wrap', gap: theme.spacing.sm }]}>
@@ -346,13 +375,17 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
       </DragScrollView>
       {recording ? <VoiceRecorder onCancel={() => setRecording(false)} onError={(message) => toast({ message })} onSave={(uri, durationMs) => {
         void action(async () => { addBlock(newBlock('VOICE', '', importMedia(uri, 'm4a'), durationMs)); setRecording(false); });
-      }} /> : <GlassSurface style={{ marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm }}
+      }} /> : <View>
+        {drawingOn && <DrawingTools tool={inkTool} color={inkColor} onTool={setInkTool} onColor={(color) => { setInkColor(color); if (inkTool === 'eraser') setInkTool('pen'); }} />}
+        <GlassSurface style={{ marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm }}
         contentStyle={[styles.row, { justifyContent: 'space-around', height: theme.sizes.toolbarHeight }]}>
         {(formatting ? FORMAT_TOOLS : INSERT_TOOLS).map((tool) => <PressableScale key={tool.id} haptic="selection" accessibilityLabel={tool.label} disabled={busy} hitSlop={theme.spacing.sm}
-          style={[styles.center, { minWidth: theme.sizes.circleButton, height: theme.sizes.circleButton }]} onPress={() => runTool(tool.id)}>
-          <Icon name={tool.icon} />
+          accessibilityState={{ selected: tool.id === 'drawing' && drawingOn }}
+          style={[styles.center, { minWidth: theme.sizes.circleButton, height: theme.sizes.circleButton, borderRadius: theme.radii.pill,
+            backgroundColor: tool.id === 'drawing' && drawingOn ? theme.colors.accentFill : 'transparent' }]} onPress={() => runTool(tool.id)}>
+          <Icon name={tool.icon} color={tool.id === 'drawing' && drawingOn ? 'accent' : 'label'} />
         </PressableScale>)}
-      </GlassSurface>}
+      </GlassSurface></View>}
     </Animated.View>
     {sheet === 'options' && <NoteOptionsSheet {...sheetTransition} onClose={() => setSheet(null)} onDismissed={() => {
       sheetTransition.onDismissed();
@@ -364,7 +397,6 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
       onColor={(color) => edit({ ...latest.current, color })} onFolder={(folder) => edit({ ...latest.current, folder })}
       onShare={share} onCopy={copy} onArchive={archive} onDelete={remove} />}
     {sheet === 'reminder' && <ReminderSheet {...sheetTransition} reminderAt={reminderAt} onSet={remind} onClose={() => setSheet(null)} />}
-    {drawing && <DrawingEditor initial={drawing.initial} onDone={saveDrawing} />}
     {photo && <PhotoViewer uri={photo} onClose={() => setPhoto(null)} />}
   </SafeAreaView>;
 }

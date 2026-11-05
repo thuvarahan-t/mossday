@@ -44,6 +44,44 @@ const tallerPhoto = [{ ...blocks[1], layout: JSON.stringify({ ...layout, ratio: 
 assert.equal(geometry.canvasFrames(tallerPhoto, 340, { 2: { width: 170, height: 100 } })[2].height, 340,
   'A photo height follows its saved ratio, not a stale native measurement');
 
+const pageFrames = {
+  1: { x: 0, y: 0, width: 1, height: 100 }, 2: { x: 0, y: 200, width: 1, height: 100 }, 3: { x: 0, y: 310, width: 1, height: 50 }, 4: { x: 0.6, y: 0, width: 0.4, height: 100 },
+};
+const room = geometry.makeRoom(pageFrames, 4, { x: 0.6, y: 180, width: 0.4 });
+assert.equal(room[2].y, 180 + 100 + geometry.CANVAS_GAP, 'What a held block lands on moves below it');
+assert.equal(room[3].y, room[2].y + 100 + geometry.CANVAS_GAP, 'And pushes what it lands on in turn');
+assert.equal(room[1].y, 0, 'Blocks it does not touch stay put');
+const beside = geometry.makeRoom({ 1: { x: 0, y: 0, width: 0.4, height: 100 }, 2: { x: 0.5, y: 500, width: 0.5, height: 100 } }, 2, { x: 0.5, y: 0, width: 0.5 });
+assert.equal(beside[1].y, 0, 'Side by side is not an overlap');
+const pinched = geometry.makeRoom({ 1: { x: 0, y: 0, width: 0.5, height: 100 }, 2: { x: 0, y: 120, width: 0.5, height: 50 } }, 1, { x: 0, y: 0, width: 1 });
+assert.equal(pinched[1].height, 200, 'A resized block takes room for its new height');
+assert.equal(pinched[2].y, 200 + geometry.CANVAS_GAP);
+const grownText = geometry.canvasFrames([
+  { id: 1, type: 'TEXT', content: 'Long', layout: JSON.stringify({ x: 0, y: 0, width: 1 }) },
+  { id: 2, type: 'IMAGE', filePath: 'a.jpg', layout: JSON.stringify({ x: 0, y: 100, width: 0.5 }) },
+  { id: 3, type: 'DRAWING', content: '{}', layout: JSON.stringify({ x: 0, y: 50, width: 0.5, ratio: 2 }) },
+], 340, { 1: { width: 340, height: 300 } });
+assert.equal(grownText[2].y, 300 + geometry.CANVAS_GAP, 'Text that grows pushes what is below it');
+assert.equal(grownText[3].y, 50, 'A drawing floats over the page, so it can mark up text');
+
+const ink = load('components/notes/drawing.ts');
+const stroke = (points, tool = 'pen') => ({ tool, color: 'ink', points });
+const asLayout = (box) => JSON.stringify({ x: box.x, y: box.y * 340, width: box.width, ratio: box.width / box.height });
+for (const points of [[0.5, 0.5], [0.1, 0.1, 0.9, 0.1], [0.99, 0.2, 0.99, 3], [0, 0, 1, 12], [0.5, 40, 0.5, 42]]) {
+  const box = ink.strokesBox([stroke(points)]);
+  assert.ok(box.x >= 0 && box.x + box.width <= 1.0001 && box.y >= 0, 'A drawing stays on the page');
+  assert.ok(geometry.parseBlockLayout(asLayout(box)), `A drawing of any shape is a valid block: ${points}`);
+}
+const sketch = ink.strokesBox([stroke([0.4, 0.5, 0.8, 0.9])]);
+assert.ok(sketch.x > 0.3 && sketch.y > 0.4, 'A drawing is cropped to its strokes, not the whole page');
+const boxed = ink.parseDrawing(ink.serializeDrawing({ aspect: 1, strokes: [stroke([0.4, 0.5])], box: sketch }));
+assert.ok(boxed.box && Math.abs(boxed.box.x - sketch.x) < 0.001, 'The crop is saved with the drawing');
+assert.equal(ink.parseDrawing(JSON.stringify({ aspect: 1, strokes: [], box: { x: 'bad' } })).box, undefined);
+assert.equal(ink.drawingViewBox({ aspect: 1, strokes: [] }).width, 1, 'Drawings from the old pad keep showing the whole width');
+const moved = { aspect: 1, strokes: [stroke([0.5, 0.5, 0.6, 0.6])], box: { x: 0.4, y: 0.4, width: 0.4, height: 0.4 } };
+assert.equal(ink.eraseFromDrawing(moved, { x: 0, y: 0, width: 0.8 }, 0.2, 0.2, 0.03).length, 0, 'The eraser finds strokes where a moved and resized drawing now shows them');
+assert.equal(ink.eraseFromDrawing(moved, { x: 0, y: 0, width: 0.8 }, 0.5, 0.5, 0.03).length, 1);
+
 const placedFrames = { 1: { x: 0, y: 0, width: 1, height: 100 }, 2: { x: 0, y: 300, width: 0.5, height: 50 } };
 const placedBlocks = [{ id: 1, type: 'TEXT', content: 'Written' }, { id: 2, type: 'IMAGE' }];
 assert.deepEqual({ ...geometry.textPlacement(placedBlocks, placedFrames, 200) }, { x: 0, y: 188, width: 1 }, 'A touch writes at the left edge, centred on that line');
@@ -67,8 +105,9 @@ const { NoteCanvas } = load('components/notes/NoteCanvas.tsx', {
   'react-native': { View: 'View', Pressable: 'Pressable', Keyboard: { dismiss: () => {} }, StyleSheet: { absoluteFill: {}, create: (styles) => styles } },
   'react-native-gesture-handler': { GestureDetector: 'GestureDetector', usePanGesture: (config) => { panGestures.push(config); return config; },
     usePinchGesture: (config) => { pinchGestures.push(config); return config; }, useSimultaneousGestures: (...gestures) => gestures },
-  'react-native-reanimated': { __esModule: true, default: { View: 'AnimatedView' }, useSharedValue: shared, useAnimatedStyle: (fn) => ({ evaluate: fn }),
+  'react-native-reanimated': { __esModule: true, default: { View: 'AnimatedView' }, useSharedValue: shared, useAnimatedStyle: (fn) => ({ evaluate: fn }), useReducedMotion: () => false,
     useFrameCallback: (fn) => { frameCallback = fn; }, scrollTo: () => {} },
+  '@/lib/animation': { animateTo: (value) => value }, './InkLayer': { InkLayer: 'InkLayer' },
   'react-native-worklets': { scheduleOnRN: (fn, ...args) => fn(...args) },
   '@/components/ui/DragScrollContext': { DragScrollContext: {} },
   '@/components/ui/Icon': { Icon: 'Icon' }, '@/components/ui/PressableScale': { PressableScale: 'PressableScale' },
@@ -76,10 +115,10 @@ const { NoteCanvas } = load('components/notes/NoteCanvas.tsx', {
   '@/lib/haptics': { haptics: { selection: () => {} } }, '@/lib/noteCanvas': geometry,
 });
 const flatten = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(flatten) : [node, ...flatten(node.props?.children)];
-const canvasProps = { blocks, width: 340, onSelect: (id) => selections.push(id), onPlaceText: (point) => { inserted = point; }, onFrames: () => {},
+const canvasProps = { blocks, width: 340, ink: null, onSelect: (id) => selections.push(id), onPlaceText: (point) => { inserted = point; }, onFrames: () => {},
   onChangeLayout: (next) => { saved = next; }, onDelete: (block) => { deleted = block.id; }, onManipulating: (active) => dragging.push(active) };
 let wasHeld;
-const renderCanvas = (selectedId) => NoteCanvas({ ...canvasProps, selectedId, renderBlock: (block, _width, style, held) => { if (block.type === 'IMAGE') { wasHeld = held; imageStyle = style; } return block.type; } });
+const renderCanvas = (selectedId) => NoteCanvas({ ...canvasProps, selectedId, renderBlock: (block, style, held) => { if (block.type === 'IMAGE') { wasHeld = held; imageStyle = style; } return block.type; } });
 let imageStyle;
 
 const page = renderCanvas(null);
@@ -133,6 +172,22 @@ frameCallback({ timeSincePreviousFrame: 16 });
 assert.ok(scroll.offset.get() > 0, 'Edge dragging scrolls to off-screen placement space');
 move.onDeactivate({ canceled: true }); move.onFinalize({ canceled: true });
 
+// Whatever a held block lands on makes room while it is held, and comes back when it moves off.
+const audioBeforeDrag = (() => { panGestures.length = 0; const rendered = audioItem.type(audioItem.props); return rendered.props.children.props.style.at(-1); })();
+panGestures.length = 0;
+photoItem.type(photoItem.props);
+const heldMove = panGestures[0];
+assert.equal(audioBeforeDrag.evaluate().transform[1].translateY, 500);
+heldMove.onActivate({ absoluteY: 300 });
+heldMove.onUpdate({ translationX: -170, translationY: 200, absoluteY: 500 });
+assert.ok(audioBeforeDrag.evaluate().transform[1].translateY > 500, 'The block below moves away live as the photo lands on it');
+heldMove.onUpdate({ translationX: -170, translationY: 0, absoluteY: 300 });
+assert.equal(audioBeforeDrag.evaluate().transform[1].translateY, 500, 'And returns as soon as the photo moves off it');
+heldMove.onUpdate({ translationX: -170, translationY: 200, absoluteY: 500 });
+heldMove.onDeactivate({ canceled: true }); heldMove.onFinalize({ canceled: true });
+assert.equal(audioBeforeDrag.evaluate().transform[1].translateY, 500, 'A canceled drag puts everything back');
+
+
 const selectedPage = renderCanvas(2);
 selections.length = 0; inserted = undefined;
 selectedPage.props.children[0].props.onPress({ nativeEvent: { locationX: 170, locationY: 900 } });
@@ -185,6 +240,46 @@ scrollCalls = [];
 focused = null;
 keyboardShown({ endCoordinates: { screenY: 450 } });
 assert.deepEqual(scrollCalls, [], 'Nothing scrolls without a focused field');
+// Drawing on the page.
+const inkGestures = [];
+const inkScroll = { ref: {}, offset: shared(100), max: shared(300) };
+const inkEvents = { strokes: [], erased: [] };
+let inkScrollTo;
+const inkState = [];
+let inkSlot = 0;
+const { InkLayer } = load('components/notes/InkLayer.tsx', {
+  react: { useContext: () => inkScroll, useRef: (value) => ({ current: value }), useState: (initial) => { const slot = inkSlot++; return [initial, (next) => { inkState[slot] = next; }]; } },
+  'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { StyleSheet: { absoluteFill: {}, create: (styles) => styles }, View: 'View' },
+  'react-native-gesture-handler': { GestureDetector: 'GestureDetector', usePanGesture: (config) => { inkGestures.push(config); return config; }, useSimultaneousGestures: (...gestures) => gestures },
+  'react-native-reanimated': { scrollTo: (_ref, _x, y) => { inkScrollTo = y; }, useSharedValue: shared },
+  'react-native-worklets': { scheduleOnRN: (fn, ...args) => fn(...args) }, 'react-native-svg': { __esModule: true, default: 'Svg', Path: 'Path' },
+  '@/components/ui/DragScrollContext': { DragScrollContext: {} }, './drawing': ink, './DrawingView': { useInk: () => () => 'black' },
+});
+const inkProps = { width: 200, color: 'red', onStroke: (value) => inkEvents.strokes.push(value), onErase: (x, y) => inkEvents.erased.push([x, y]) };
+InkLayer({ ...inkProps, tool: 'pen' });
+const [pen, twoFingers] = inkGestures;
+assert.equal(pen.minDistance, 0, 'Ink starts where the finger lands');
+assert.equal(pen.maxPointers, 1);
+assert.equal(twoFingers.minPointers, 2);
+pen.onActivate({ x: 100, y: 200 }); pen.onUpdate({ x: 120, y: 240 }); pen.onFinalize({ canceled: false });
+assert.equal(inkEvents.strokes[0].tool, 'pen'); assert.equal(inkEvents.strokes[0].color, 'red');
+assert.deepEqual(Array.from(inkEvents.strokes[0].points), [0.5, 1, 0.6, 1.2], 'Strokes are stored in page widths');
+pen.onActivate({ x: 10, y: 10 }); pen.onFinalize({ canceled: true });
+assert.equal(inkEvents.strokes.length, 1, 'A second finger landing drops the stroke it interrupted');
+pen.onActivate({ x: 10, y: 10 }); pen.onFinalize({ canceled: false });
+assert.equal(inkEvents.strokes[1].points.length, 2, 'A tap draws a dot');
+twoFingers.onActivate(); twoFingers.onUpdate({ translationY: -50 });
+assert.equal(inkScrollTo, 150, 'Two fingers scroll the page');
+twoFingers.onUpdate({ translationY: -9999 });
+assert.equal(inkScrollTo, 300, 'But no further than it goes');
+inkGestures.length = 0; inkEvents.strokes.length = 0;
+InkLayer({ ...inkProps, tool: 'eraser' });
+inkGestures[0].onActivate({ x: 100, y: 100 }); inkGestures[0].onUpdate({ x: 110, y: 100 }); inkGestures[0].onFinalize({ canceled: false });
+assert.equal(inkEvents.erased.length, 2, 'The eraser works as the finger moves');
+assert.equal(inkEvents.strokes.length, 0, 'And never adds ink');
+const pageWithPen = NoteCanvas({ ...canvasProps, selectedId: null, ink: { tool: 'pen', color: 'ink', onStroke: () => {}, onErase: () => {} }, renderBlock: () => null });
+assert.equal(pageWithPen.props.children.at(-1).type, 'InkLayer', 'The pen draws over the whole page, on the page itself');
+
 const viewerGestures = {};
 const { PhotoViewer } = load('components/notes/PhotoViewer.tsx', {
   'expo-image': { Image: 'Image' }, 'react/jsx-runtime': { jsx, jsxs: jsx },
@@ -212,4 +307,4 @@ assert.equal(photoTransform()[0].translateX, 300, 'A zoomed photo pans only as f
 viewerGestures.tap.onActivate();
 assert.equal(photoTransform()[2].scale, 1, 'Double tap zooms back out');
 assert.equal(photoTransform()[0].translateX, 0, 'Zooming out recentres the photo');
-console.log('Note canvas verified: photo zoom, legacy flow, line placement, no text chrome, hold to move, pinch resize and cancel, tap after hold, bounds, edge scrolling, deletion and cursor above the keyboard.');
+console.log('Note canvas verified: making room, drawing on the page, drawing crops and erasing, photo zoom, legacy flow, line placement, no text chrome, hold to move, pinch resize and cancel, tap after hold, bounds, edge scrolling, deletion and cursor above the keyboard.');

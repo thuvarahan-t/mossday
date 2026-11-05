@@ -4,16 +4,16 @@ import { mediaFile } from '@/lib/media';
 import { readingOrder } from '@/lib/noteCanvas';
 import { checklistItems, type NoteBlock } from '@/lib/repos/notes';
 import { escapeHtml } from '@/lib/shareFiles';
-import { drawingFrame, parseDrawing, strokePath, TOOL_STYLE, type Drawing, type InkColor } from './drawing';
+import { drawingViewBox, parseDrawing, strokePath, TOOL_STYLE, type Drawing, type InkColor } from './drawing';
 
 /** The page is white, so ink that follows the theme's text colour is always dark here. */
 const inkColor = (color: InkColor) => color === 'ink' ? '#000000' : accents.light[color];
 
 function drawingSvg(drawing: Drawing) {
-  const frame = drawingFrame(drawing);
+  const box = drawingViewBox(drawing);
   const paths = drawing.strokes.map((stroke) => `<path d="${strokePath(stroke.points)}" stroke="${inkColor(stroke.color)}" stroke-opacity="${TOOL_STYLE[stroke.tool].opacity}" ` +
     `stroke-width="${TOOL_STYLE[stroke.tool].width}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`).join('');
-  return `<svg width="100%" viewBox="0 ${frame.y} 1 ${frame.height}" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+  return `<svg width="100%" viewBox="${box.x} ${box.y} ${box.width} ${box.height}" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
 }
 
 async function blockHtml(block: NoteBlock) {

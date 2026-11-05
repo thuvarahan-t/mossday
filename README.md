@@ -88,12 +88,19 @@ Diary adds an inline task, Habits opens New habit, and Today opens Quick add.
 
 Inside a note, content lives on a free-position canvas with no boxes or handles.
 Touch blank space and the cursor appears at the left edge of that line, or add a
-photo, audio recording, checklist or drawing from the toolbar. An empty line that
-has the cursor becomes the insertion point for media. Hold a photo, audio clip or
-drawing to pick it up and drag it anywhere (it then shows a delete button until the
-next touch on blank space); pinch a photo to resize it and tap it to open it, where
-pinch or double tap zooms. Text keeps its long press for selection. Dragging near
-the viewport edge scrolls the page, and the cursor always scrolls above the keyboard.
+photo, audio recording or checklist from the toolbar. An empty line that has the
+cursor becomes the insertion point for media. Hold a photo, audio clip or drawing to
+pick it up and drag it anywhere (it then shows a delete button until the next touch
+on blank space); whatever it lands on moves down out of its way, live, and text that
+grows does the same. Pinch a photo or drawing to resize it; tap a photo to open it,
+where pinch or double tap zooms. Text keeps its long press for selection. Dragging
+near the viewport edge scrolls the page, and the cursor always scrolls above the keyboard.
+
+The pen draws directly on the page. Its tools (pen, marker, highlighter, eraser and
+inks) expand above the toolbar's pen button and go away when any other tool is
+chosen. One finger draws and two scroll. Each round of drawing becomes one block
+cropped to its strokes, floating over the page so it can mark up text, which moves
+and pinches like a photo. Undo in the header covers strokes too.
 Positions and image proportions persist in `note_blocks.layout` (schema v7),
 including after Undo, copying and delete/restore. Old notes retain their vertical
 order until arranged. Horizontal fractions adapt the composition to phone width;
