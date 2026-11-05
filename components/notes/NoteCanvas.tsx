@@ -13,9 +13,8 @@ import type { NoteBlock } from '@/lib/repos/notes';
 
 const LABELS = { TEXT: 'Text', IMAGE: 'Photo', VOICE: 'Audio', CHECKLIST: 'Checklist', DRAWING: 'Drawing' } as const;
 const LONG_PRESS_MS = 300;
-/** Always-available blank page: a screen's worth to start with, and more below the last block. */
-const MIN_HEIGHT = 640;
-const SPACE_BELOW = 400;
+/** Blank page to touch below the last block; a short note simply fills the screen and doesn't scroll. */
+const SPACE_BELOW = 160;
 const DELETE_SIZE = 36;
 /** Text blocks keep long press for native text selection, so only these can be picked up. */
 const isMovable = (block: NoteBlock) => block.type === 'IMAGE' || block.type === 'VOICE' || block.type === 'DRAWING';
@@ -43,7 +42,7 @@ export function NoteCanvas({ blocks, width, selectedId, onSelect, onPlaceText, o
   const bottom = Math.max(0, ...Object.values(frames).map((frame) => frame.y + frame.height));
   const change = (id: number, layout: BlockLayout) => onChangeLayout({ ...frames, [id]: layout });
   const selected = blocks.find((block) => block.id === selectedId);
-  return <View style={{ height: Math.max(MIN_HEIGHT, bottom + SPACE_BELOW) }}>
+  return <View style={{ flexGrow: 1, minHeight: bottom + SPACE_BELOW }}>
     <Pressable accessibilityRole="button" accessibilityLabel="Write on this line" style={StyleSheet.absoluteFill}
       onPress={(event) => {
         if (selected && isMovable(selected)) onSelect(null);

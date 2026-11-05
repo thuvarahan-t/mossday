@@ -11,5 +11,5 @@ export function useTabBarBottom() {
 /** Bottom padding for tab-screen scroll content so the last card clears the floating bar. */
 export function useTabBarInset() {
   const theme = useTheme();
-  return useTabBarBottom() + theme.sizes.tabBarHeight + theme.spacing.xxl;
+  return useTabBarBottom() + theme.sizes.tabBarHeight + theme.spacing.md;
 }

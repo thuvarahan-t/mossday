@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -18,6 +18,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { VoicePlayer } from '@/components/ui/voice/VoicePlayer';
 import { VoiceRecorder } from '@/components/ui/voice/VoiceRecorder';
 import { useAction, useAutosave, useResource } from '@/hooks/useResource';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useTheme } from '@/hooks/useTheme';
 import { dataColors } from '@/lib/dataColors';
@@ -73,8 +74,8 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
-  const keyboard = useAnimatedKeyboard();
-  const keyboardPadding = useAnimatedStyle(() => ({ paddingBottom: Math.max(0, keyboard.height.get() - insets.bottom) }));
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardPadding = useAnimatedStyle(() => ({ paddingBottom: Math.max(0, keyboardHeight.get() - insets.bottom) }));
   // A new note opens on an empty text block so typing can start right away; it is only
   // stored once something is written.
   const [draft, setDraft] = useState<NoteDraft>(() => ({ ...note, blocks: blocks.length ? blocks : [emptyTextBlock(note.id)] }));
@@ -284,7 +285,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           <Icon name="check" color="onAccent" strokeWidth={2.8} />
         </PressableScale>
       </View>
-      <DragScrollView revealCaret={revealCaret} keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating} contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
+      <DragScrollView revealCaret={revealCaret} keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating} contentContainerStyle={{ flexGrow: 1, padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <Text align="center" variant="footnote" color="secondaryLabel">{formatTimestamp(note.createdAt)}</Text>
         <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; setSelectedBlockId(null); }}
           appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />

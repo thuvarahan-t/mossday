@@ -84,6 +84,8 @@ let imageStyle;
 
 const page = renderCanvas(null);
 assert.equal(page.type, 'View', 'The page has no hint text or extra controls around it');
+assert.equal(page.props.style.height, undefined, 'A short note fills the screen without a fixed scrollable height');
+assert.equal(page.props.style.flexGrow, 1);
 page.props.children[0].props.onPress({ nativeEvent: { locationX: 170, locationY: 900 } });
 assert.equal(inserted.x, 0); assert.equal(inserted.width, 1); assert.equal(inserted.y, 888, 'A touch anywhere writes from the left edge of that line');
 

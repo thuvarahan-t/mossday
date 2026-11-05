@@ -120,11 +120,15 @@ let adds = 0;
 const { FloatingAddButton } = load('components/navigation/FloatingAddButton.tsx', {
   'react/jsx-runtime': { jsx }, '@/hooks/useTheme': common['@/hooks/useTheme'],
   '@/hooks/useTabBarInset': { useTabBarBottom: () => 24 }, '@/components/ui/Icon': { Icon: 'Icon' },
+  'react-native-reanimated': { useSharedValue: shared }, '@/components/ui/glass/GlassSurface': { GlassSurface: 'GlassSurface' },
   '@/components/ui/PressableScale': { PressableScale: 'PressableScale' },
 });
 const add = FloatingAddButton({ label: 'New note', onPress: () => { adds++; } });
 assert.ok(add.props.style.bottom > 24 + theme.sizes.tabBarHeight, 'Add button clears the tab bar');
-assert.equal(add.props.style.backgroundColor, 'green');
+assert.equal(add.props.style.backgroundColor, undefined, 'The add button is glass, not a solid fill');
+assert.equal(add.props.children.type, 'GlassSurface');
+assert.equal(add.props.children.props.sheen, true);
+assert.equal(add.props.pressProgress, add.props.children.props.pressProgress, 'Pressing brightens the glass');
 add.props.onPress(); assert.equal(adds, 1);
 const dateLib = load('lib/date.ts');
 let stripTap;
@@ -173,12 +177,14 @@ assert.equal(journal.props.date, '2026-11-06', 'A journal is saved to the day it
 assert.equal(findByType(diary, 'TodoList').props.inlineDate, '2026-11-06');
 const { LargeTitleScreen } = load('components/ui/LargeTitleScreen.tsx', stubbedModules({
   react: { useEffect: () => {}, useState: (value) => [value, () => {}] }, 'react/jsx-runtime': { jsx: keyedJsx, jsxs: keyedJsx }, 'react-native': native,
-  'react-native-reanimated': { ...animated, default: { View: 'AnimatedView', ScrollView: 'AnimatedScrollView' }, useAnimatedRef: () => ({}), useAnimatedScrollHandler: () => () => {}, useAnimatedKeyboard: () => ({ height: shared(0) }) },
+  'react-native-reanimated': { ...animated, __esModule: true, default: { View: 'AnimatedView', ScrollView: 'AnimatedScrollView' }, useAnimatedRef: () => ({}), useAnimatedScrollHandler: () => () => {}, useAnimatedKeyboard: () => ({ height: shared(0) }) },
   'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }, '@/hooks/useTheme': common['@/hooks/useTheme'],
-  '@/hooks/useTabBarInset': { useTabBarInset: () => 0 }, '@/hooks/useWindowTopOffset': { useWindowTopOffset: () => 0 },
+  '@/hooks/useTabBarInset': { useTabBarInset: () => 90 }, '@/hooks/useWindowTopOffset': { useWindowTopOffset: () => 0 },
+  '@/hooks/useKeyboardHeight': { useKeyboardHeight: () => shared(0) }, '@/components/navigation/FloatingAddButton': { FloatingAddButton: 'FloatingAddButton', FLOATING_ADD_SIZE: 56 },
   '@/components/navigation/SceneMotion': { useSceneMotionStyles: () => ({ content: 'scene-content', fade: 'scene-fade' }) },
   'expo-router': { router: { back: () => {} } },
 }));
+const flattenTree = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(flattenTree) : [node, ...flattenTree(node.props?.children)];
 const movedBy = (node, type, moving = []) => {
   if (Array.isArray(node)) return node.map((child) => movedBy(child, type, moving)).find(Boolean);
   if (!node || typeof node !== 'object') return undefined;
@@ -188,9 +194,28 @@ const movedBy = (node, type, moving = []) => {
 };
 const page = LargeTitleScreen({ title: 'Diary', floatingAdd: { label: 'Add', onPress: () => {} }, titleAccessory: { type: 'TabHeaderActions', props: {} },
   fixedContent: { type: 'DateBar', props: {} }, children: { type: 'PageContent', props: {} } });
+const scrollerProps = flattenTree(page).find((node) => node.type === 'AnimatedScrollView').props;
+assert.equal(scrollerProps.contentContainerStyle[0].paddingBottom, 118, 'A page scrolls no further than the tab bar and add button need');
 assert.deepEqual(movedBy(page, 'TabHeaderActions').moving, [], 'Share and settings stay still across tab switches');
 assert.deepEqual(movedBy(page, 'FloatingAddButton').moving, [], 'The floating add button stays still across tab switches');
 assert.deepEqual(movedBy(page, 'PageContent').moving, ['scene-content'], 'The page content carries the tab switch');
 assert.deepEqual(movedBy(page, 'DateBar').moving, ['scene-content'], 'Fixed page controls travel with their page');
 assert.deepEqual(movedBy(page, 'Text').moving, ['scene-fade'], 'The title fades in place');
-console.log('Navigation verified: deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');
+// The note toolbar must come back down however the keyboard was closed.
+const keyboardListeners = {};
+const keyboardInfo = { height: shared(300), state: shared(2) };
+const { useKeyboardHeight: readKeyboardHeight } = load('hooks/useKeyboardHeight.ts', {
+  react: { useEffect: (fn) => fn() },
+  'react-native': { Keyboard: { addListener: (name, listener) => { keyboardListeners[name] = listener; return { remove: () => {} }; } } },
+  'react-native-reanimated': { KeyboardState: { OPENING: 1 }, useAnimatedKeyboard: () => keyboardInfo, useSharedValue: shared, useDerivedValue: (fn) => ({ get: fn }) },
+});
+const keyboardHeight = readKeyboardHeight();
+assert.equal(keyboardHeight.get(), 300, 'Follows the open keyboard');
+keyboardListeners.keyboardDidHide();
+assert.equal(keyboardHeight.get(), 0, 'A stuck animated height is ignored once the keyboard has hidden');
+keyboardInfo.state.set(1);
+assert.equal(keyboardHeight.get(), 300, 'Reopening follows the animation straight away');
+keyboardInfo.state.set(2);
+keyboardListeners.keyboardDidShow();
+assert.equal(keyboardHeight.get(), 300);
+console.log('Navigation verified: keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');

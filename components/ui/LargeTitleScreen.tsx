@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Keyboard, StyleSheet, TextInput, View, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
-  Extrapolation, interpolate, useAnimatedKeyboard, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
+  Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { useTabBarInset } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
 import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
@@ -54,9 +55,9 @@ export function LargeTitleScreen({
   const dragTop = useSharedValue(0);
   const dragBottom = useSharedValue(0);
   const dragMax = useSharedValue(0);
-  const keyboard = useAnimatedKeyboard();
+  const keyboardHeight = useKeyboardHeight();
   const windowTop = useWindowTopOffset();
-  const keyboardSpace = useAnimatedStyle(() => ({ height: keyboard.height.get() }));
+  const keyboardSpace = useAnimatedStyle(() => ({ height: keyboardHeight.get() }));
   useEffect(() => {
     const subscription = Keyboard.addListener('keyboardDidShow', (event) => {
       TextInput.State.currentlyFocusedInput()?.measureInWindow((_x, y, _width, height) => {
@@ -72,6 +73,8 @@ export function LargeTitleScreen({
   const onScroll = useAnimatedScrollHandler((event) => { scrollY.set(event.contentOffset.y); });
   // Estimated until the header measures itself, so the first frame is already close.
   const [headerHeight, setHeaderHeight] = useState(insets.top + theme.spacing.sm * 2 + theme.sizes.circleButton);
+  // A page only scrolls as far as it needs: its last row clears the tab bar and sits level with
+  // the middle of the add button, which covers nothing but the row's far edge.
   const glassStyle = useAnimatedStyle(() => ({ opacity: interpolate(scrollY.get(), [0, theme.spacing.lg], [0, 1], Extrapolation.CLAMP) }));
   return <BlurTargetProvider>
     <View style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
@@ -91,7 +94,7 @@ export function LargeTitleScreen({
           }}
           keyboardShouldPersistTaps={keyboardShouldPersistTaps} keyboardDismissMode="on-drag" scrollIndicatorInsets={{ top: headerHeight }}
           contentContainerStyle={[{ paddingTop: headerHeight + theme.spacing.md,
-            paddingBottom: (bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl) + (floatingAdd ? FLOATING_ADD_SIZE + theme.spacing.md : 0) }, contentContainerStyle]}>
+            paddingBottom: (bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl) + (floatingAdd ? FLOATING_ADD_SIZE / 2 : 0) }, contentContainerStyle]}>
           <DragScrollContext.Provider value={{ ref: scrollRef, offset: scrollY, top: dragTop, bottom: dragBottom, max: dragMax }}>{children}</DragScrollContext.Provider>
           <Animated.View style={keyboardSpace} />
         </Animated.ScrollView></Animated.View>
