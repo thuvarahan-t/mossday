@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { tabNeighbour } from '@/components/navigation/tabs';
 import { useShare } from '@/components/share/ShareProvider';
@@ -38,7 +40,7 @@ import { expensesShareContent } from './expensesShare';
 import { ExpenseSheet, preloadCategories } from './ExpenseSheet';
 import { useDatePicker } from '@/components/ui/DateSelector';
 import { PeriodHeader } from './PeriodHeader';
-import { PeriodSwipeArea } from './PeriodSwipeArea';
+import { usePeriodSwipe } from './PeriodSwipeArea';
 import { categoryStyle } from './categoryStyle';
 import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
 import { recordedDayAverage } from './expenseMetrics';
@@ -90,7 +92,7 @@ export function ExpensesScreen() {
   };
   // Past Day (right) the swipe moves on to Habits, past Month (left) to Today.
   const goToTab = (delta: -1 | 1) => { const href = tabNeighbour('expenses', delta); if (href) router.navigate(href); };
-  const swipePast = { previous: () => goToTab(-1), next: () => goToTab(1) };
+  const swipe = usePeriodSwipe({ contentKey: view, periods, onSwipe: setPeriod, onSwipePast: { previous: () => goToTab(-1), next: () => goToTab(1) } });
   // A picked date opens that day, whichever period was showing.
   const datePicker = useDatePicker(date, (day) => { setPeriod('Day'); setDate(day); }, today);
   const shift = (delta: -1 | 1) => setDate(period === 'Month' ? addMonths(date, delta) : addDays(date, delta * (period === 'Week' ? 7 : 1)));
@@ -104,11 +106,11 @@ export function ExpensesScreen() {
   };
   return <LargeTitleScreen title="Expenses" floatingAdd={{ label: period === 'Month' ? 'Add monthly expense' : 'Add expense', onPress: () => setEditor(period === 'Month' ? 'monthly' : 'new') }}
     titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} />}
+    swipeArea={(page) => <GestureDetector gesture={swipe.pan}><View style={{ flex: 1 }}>{page}</View></GestureDetector>}
     contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {/* The Day / Week / Month switch stays put; only the period's content slides. */}
     <SegmentedControl segments={periods} selected={period} onChange={setPeriod} />
-    {/* Grows into the empty space under short lists, so a swipe anywhere below the switch works. */}
-    <PeriodSwipeArea contentKey={view} periods={periods} onSwipe={setPeriod} onSwipePast={swipePast} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
+    <Animated.View style={[{ gap: theme.spacing.lg }, swipe.slideStyle]}>
       <PeriodHeader label={label} total={total} summary={summary.text} summaryColor={summary.color}
         canGoForward={selected.to < today} onShift={shift} onPickDate={datePicker.open} />
       {/* iOS draws the calendar inline, right under the date it changes; Android opens a dialog. */}
@@ -153,7 +155,7 @@ export function ExpensesScreen() {
       {budgetEditor && result && <BudgetSheet {...budgetTransition} initial={budgetEditor} budgets={result.settings} onClose={() => setBudgetEditor(null)} />}
       {editor && <ExpenseSheet {...editorTransition} initial={typeof editor === 'string' ? undefined : editor}
         monthly={editor === 'monthly'} date={date} onClose={() => setEditor(null)} />}
-    </PeriodSwipeArea>
+    </Animated.View>
   </LargeTitleScreen>;
 }
 

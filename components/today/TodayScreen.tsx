@@ -74,10 +74,10 @@ export function TodayScreen() {
   };
   return <LargeTitleScreen title="Today" subtitle={formatLongDate(today)}
     floatingAdd={{ label: 'Quick add', onPress: () => setSheet('quick') }}
+    swipeArea={(page) => <TabSwipeArea tab="index" style={{ flex: 1 }}>{page}</TabSwipeArea>}
     titleAccessory={<TabHeaderActions shareLabel="Share today" onShare={shareToday} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
-    <TabSwipeArea tab="index" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
-      {error || !data ? <LoadState error={error} retry={refresh} /> : <>
+    {error || !data ? <LoadState error={error} retry={refresh} /> : <>
         <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
             <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={openTodaysExpenses} style={{ flex: 1, gap: theme.spacing.sm }}>
@@ -128,7 +128,6 @@ export function TodayScreen() {
         </View>} />
         <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} onAdd={() => setSheet('todo')} />
       </>}
-    </TabSwipeArea>
     <BottomSheet {...sheetTransition} onDismissed={() => {
       sheetTransition.onDismissed();
       if (noteAfterDismissal.current) { noteAfterDismissal.current = false; newNote(); }

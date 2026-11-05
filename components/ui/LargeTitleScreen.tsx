@@ -27,6 +27,8 @@ export type LargeTitleScreenProps = {
   /** Controls that stay visible below the title while the page scrolls. */
   fixedContent?: ReactNode;
   floatingAdd?: FloatingAddAction;
+  /** Wraps the page's scroll view, so a swipe works anywhere on it, including its blank space. */
+  swipeArea?: (page: ReactNode) => ReactNode;
   showBack?: boolean; onBack?: () => void; headerRight?: ReactNode;
   children: ReactNode; bottomInset?: 'tabBar' | 'safeArea';
   contentContainerStyle?: StyleProp<ViewStyle>; refreshControl?: React.ReactElement<RefreshControlProps>;
@@ -41,7 +43,7 @@ export type LargeTitleScreenProps = {
  * switch moves the page's content only; the actions and floating add button stay still.
  */
 export function LargeTitleScreen({
-  title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
+  title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, swipeArea = (page) => page, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
   contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true,
 }: LargeTitleScreenProps) {
   const theme = useTheme();
@@ -79,7 +81,7 @@ export function LargeTitleScreen({
   return <BlurTargetProvider>
     <View style={[styles.fill, { backgroundColor: theme.colors.groupedBackground }]}>
       <BlurTargetContent style={styles.fill}>
-        <Animated.View style={[styles.fill, scene.content]}><Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEnabled={scrollEnabled} scrollEventThrottle={16} refreshControl={refreshControl}
+        <Animated.View style={[styles.fill, scene.content]}>{swipeArea(<Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEnabled={scrollEnabled} scrollEventThrottle={16} refreshControl={refreshControl}
           onLayout={(event) => {
             viewportHeight.set(event.nativeEvent.layout.height);
             dragMax.set(Math.max(0, scrollContentHeight.get() - viewportHeight.get()));
@@ -97,7 +99,7 @@ export function LargeTitleScreen({
             paddingBottom: (bottomInset === 'tabBar' ? tabBarInset : insets.bottom + theme.spacing.xxl) + (floatingAdd ? FLOATING_ADD_SIZE / 2 : 0) }, contentContainerStyle]}>
           <DragScrollContext.Provider value={{ ref: scrollRef, offset: scrollY, top: dragTop, bottom: dragBottom, max: dragMax }}>{children}</DragScrollContext.Provider>
           <Animated.View style={keyboardSpace} />
-        </Animated.ScrollView></Animated.View>
+        </Animated.ScrollView>)}</Animated.View>
       </BlurTargetContent>
       {floatingAdd && <FloatingAddButton {...floatingAdd} />}
       <View style={styles.header} onLayout={(event) => setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))}>

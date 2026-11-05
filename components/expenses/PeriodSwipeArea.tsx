@@ -1,7 +1,7 @@
-import { useEffect, useRef, type ReactNode } from 'react';
-import { useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
-import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import { useWindowDimensions } from 'react-native';
+import { usePanGesture } from 'react-native-gesture-handler';
+import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { durations, easing } from '@/constants/motion';
 import { animateTo } from '@/lib/animation';
@@ -23,15 +23,17 @@ const RESTORE_AFTER_MS = 800;
  * and date steps (arrows, date picker) get the same slide-in, in the direction they move.
  * Swiping past the first or last section calls `onSwipePast` (Expenses moves on to the
  * neighbouring tab). Controls with their own horizontal drag activate sooner and keep it.
+ *
+ * Returns the gesture, for the whole page so its blank space swipes too, and the slide, for
+ * the content only so the section switch above it stays still.
  */
-export function PeriodSwipeArea<T extends string>({ children, contentKey, periods, onSwipe, onSwipePast, style }: {
-  children: ReactNode; contentKey: { period: T; from: string };
+export function usePeriodSwipe<T extends string>({ contentKey, periods, onSwipe, onSwipePast }: {
+  contentKey: { period: T; from: string };
   /** Section order: both the swipe order and the direction new views slide in from. */
   periods: readonly T[];
   onSwipe: (period: T) => void;
   /** Where a swipe beyond the sections goes, per direction; without one it springs back. */
   onSwipePast?: { previous?: () => void; next?: () => void };
-  style?: StyleProp<ViewStyle>;
 }) {
   const reduced = useReducedMotion();
   const { width } = useWindowDimensions();
@@ -102,5 +104,5 @@ export function PeriodSwipeArea<T extends string>({ children, contentKey, period
     },
   });
   const slideStyle = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: offset.get() }] }));
-  return <GestureDetector gesture={pan}><Animated.View style={[style, slideStyle]}>{children}</Animated.View></GestureDetector>;
+  return { pan, slideStyle };
 }

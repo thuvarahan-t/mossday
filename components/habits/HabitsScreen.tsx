@@ -45,9 +45,9 @@ export function HabitsScreen() {
     if (data) share(habitsShareContent({ theme, habits: data.habits, logs: data.logs, today, subtitle: habitYear(anchor).label, anchor }));
   };
   return <LargeTitleScreen title="Habits" floatingAdd={{ label: 'New habit', onPress: () => setEditor('new') }}
+    swipeArea={(page) => <TabSwipeArea tab="habits" style={{ flex: 1 }}>{page}</TabSwipeArea>}
     titleAccessory={<TabHeaderActions shareLabel="Share habits" onShare={shareHabits} />}
     subtitle={subtitle} scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
-    <TabSwipeArea tab="habits" style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       <HabitPeriodControls anchor={anchor} today={today} onAnchorChange={setPeriodDate} />
       {error || !data ? <LoadState error={error} retry={refresh} /> : !data.habits.length ?
         <EmptyState icon="habits" title="No habits yet" message="Start with one small thing, like 8 glasses of water." action={{ label: 'New Habit', onPress: () => setEditor('new') }} /> :
@@ -59,7 +59,6 @@ export function HabitsScreen() {
         {data.habits.length > 0 && <ListRow title="New habit" icon={{ icon: 'plus', color: 'green' }} onPress={() => setEditor('new')} />}
         {data.archived.length > 0 && <ListRow title="Archived habits" icon={{ icon: 'archive', color: 'gray' }} value={String(data.archived.length)} accessory="chevron" onPress={() => setArchive(true)} />}
       </GroupedList>}
-    </TabSwipeArea>
     {archive && data && <ArchivedHabitsSheet {...archiveTransition} habits={data.archived} onClose={() => setArchive(null)} />}
     {editor && <HabitSheet {...editorTransition} initial={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
   </LargeTitleScreen>;

@@ -192,6 +192,11 @@ const movedBy = (node, type, moving = []) => {
   const style = [node.props?.style].flat();
   return movedBy(node.props?.children, type, [...moving, ...style.filter((item) => item === 'scene-content' || item === 'scene-fade')]);
 };
+const pageWithSwipe = LargeTitleScreen({ title: 'Diary', swipeArea: (scroller) => ({ type: 'SwipeArea', props: { children: scroller } }), children: { type: 'PageContent', props: {} } });
+const swipeArea = flattenTree(pageWithSwipe).find((node) => node.type === 'SwipeArea');
+assert.equal(swipeArea.props.children.type, 'AnimatedScrollView', 'A swipe covers the whole scroll view, including padding and blank space below the content');
+assert.ok(flattenTree(swipeArea).some((node) => node.type === 'PageContent'));
+assert.ok(!flattenTree(swipeArea).some((node) => node.type === 'OnGlassBar'), 'The header and its date strip stay outside, keeping their own swipes');
 const page = LargeTitleScreen({ title: 'Diary', floatingAdd: { label: 'Add', onPress: () => {} }, titleAccessory: { type: 'TabHeaderActions', props: {} },
   fixedContent: { type: 'DateBar', props: {} }, children: { type: 'PageContent', props: {} } });
 const scrollerProps = flattenTree(page).find((node) => node.type === 'AnimatedScrollView').props;
@@ -218,4 +223,4 @@ assert.equal(keyboardHeight.get(), 300, 'Reopening follows the animation straigh
 keyboardInfo.state.set(2);
 keyboardListeners.keyboardDidShow();
 assert.equal(keyboardHeight.get(), 300);
-console.log('Navigation verified: keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');
+console.log('Navigation verified: swiping on blank space, keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');

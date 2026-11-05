@@ -76,9 +76,8 @@ export function NotesScreen() {
       audio: filtered.flatMap((note) => audioPaths(blocksFor(note.id))) }));
   };
   return <LargeTitleScreen title="Notes" scrollEnabled={!dragging} floatingAdd={{ label: 'New note', onPress: newNote }}
+    swipeArea={(page) => <TabSwipeArea tab="notes" enabled={!dragging} style={{ flex: 1 }}>{page}</TabSwipeArea>}
     titleAccessory={<TabHeaderActions shareLabel="Share notes" onShare={shareNotes} />} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
-    {/* Swipe right to go back to the Diary tab. */}
-    <TabSwipeArea tab="notes" enabled={!dragging} style={{ gap: theme.spacing.md, flexGrow: 1 }}>
       <SearchField value={search} onChangeText={setSearch} />
       {/* A horizontal ScrollView grows by default; in this flex-grown column it would push the grid down. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, gap: theme.spacing.sm }}>
@@ -96,7 +95,6 @@ export function NotesScreen() {
           <SectionHeader title="Others" />{grid(others)}
         </> : grid(filtered)}
       </>}
-    </TabSwipeArea>
     {colorNote && <FormSheet {...colorTransition} size="fit" title="Note colour" onClose={() => setColorNote(null)}>
       <NoteColorPicker color={colorNote.color} onChange={(color) => {
         void action(() => setNoteProperty(colorNote.id, 'color', color), () => setColorNote(null));

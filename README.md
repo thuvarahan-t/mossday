@@ -107,8 +107,8 @@ order until arranged. Horizontal fractions adapt the composition to phone width;
 photos fit inside their frames without cropping.
 
 Tab swipes follow the tab bar's order (components/navigation/tabs.ts): swipe left for the
-tab on the right and right for the one on the left, on Habits, Today, Diary (below the
-dates) and Notes. Expenses swipes through Day → Week → Month first, then on to Today past
+tab on the right and right for the one on the left, anywhere on the page including its
+blank space, on Habits, Today, Diary (below the dates) and Notes. Expenses swipes through Day → Week → Month first, then on to Today past
 Month, or back to Habits past Day.
 Changing tabs slides the page content, never the share and settings actions or the
 floating add button, which stay fixed. It takes the old content out and brings the destination in from its

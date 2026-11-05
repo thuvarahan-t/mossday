@@ -56,13 +56,14 @@ export function DiaryScreen() {
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
     floatingAdd={{ label: 'Add to-do', onPress: addInline }}
+    // Below the dates a swipe reaches Today (right) or Notes (left); the strip and month sit in the
+    // header, outside this area, and keep their own swipes.
+    swipeArea={(page) => <TabSwipeArea tab="diary" enabled={!dragging} style={{ flex: 1 }}>{page}</TabSwipeArea>}
     titleAccessory={<TabHeaderActions shareLabel="Share this day" onShare={shareDay} />}
     fixedContent={<DiaryDateBar today={today} selected={date} month={month} markedDates={new Set(data?.nearbyTodos.map((t) => t.date) ?? [])}
       moods={data?.moods ?? {}} monthlyTodos={data?.monthlyTodos ?? []} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
-      {/* Swipe below the dates to reach Today (right) or Notes (left); the strip and month keep their own swipes. */}
-      <TabSwipeArea tab="diary" enabled={!dragging} style={{ gap: theme.spacing.lg, flexGrow: 1 }}>
         <TodoList todos={data.todos} inlineDate={loadedDate} addRequest={addRequest} onDraggingChange={setDragging} header={data.previous.length > 0 &&
           <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
             <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {loadedDate === today ? 'yesterday' : 'the day before'}</Text>
@@ -70,7 +71,6 @@ export function DiaryScreen() {
           </View>} />
         <JournalEditor key={loadedDate} date={loadedDate} initial={data.journal} />
         <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
-      </TabSwipeArea>
     </>}
   </LargeTitleScreen>;
 }
