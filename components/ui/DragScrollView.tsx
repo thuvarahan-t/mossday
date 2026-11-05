@@ -27,7 +27,7 @@ export function DragScrollView({ children, revealCaret, onTouchStart, ...props }
   // In content coordinates, so it stays correct while a reveal is already scrolling.
   const touchInContent = useRef<number | null>(null);
   const reveal = useCallback((viewportLimit: number, atEnd: boolean) => {
-    TextInput.State.currentlyFocusedInput()?.measureInWindow((_x, inputY, _inputWidth, inputHeight) => {
+    TextInput.State.currentlyFocusedInput?.()?.measureInWindow((_x, inputY, _inputWidth, inputHeight) => {
       ref.current?.measureInWindow((_viewX, viewY, _viewWidth, viewHeight) => {
         const touch = touchInContent.current === null ? null : touchInContent.current - offset.get();
         const caret = !atEnd && touch !== null && touch >= inputY && touch <= inputY + inputHeight ? touch : inputY + inputHeight;

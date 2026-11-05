@@ -90,7 +90,7 @@ export function BottomSheet({
         ? dockedKeyboardLift({ screenHeight, keyboardTop, bottomInset, topLimit: topInset + LARGE_TOP_GAP, sheetHeight: openHeight })
         : 0;
       const lift = (overlap: number) => keyboardLift.set(withTiming(Math.max(docked, overlap), { duration: durations.normal, easing: easing.sheet }));
-      const input = TextInput.State.currentlyFocusedInput();
+      const input = TextInput.State.currentlyFocusedInput?.();
       if (!input) { lift(0); return; }
       input.measureInWindow((_x, y, _width, height) => lift(y + height + theme.spacing.md - keyboardTop));
     });

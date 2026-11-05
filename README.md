@@ -125,7 +125,7 @@ the pin in a note, ask for PDF, Text or Image, plus Audio when there are recordi
 sends only the recordings: one as itself, several as a ZIP, because the system share sheet
 takes one file at a time. A note's PDF is a real document with its text, photos and drawings.
 
-To-dos (Diary and Today share one list): tap a task to open its edit sheet directly,
+To-dos are the same list on Today and in the Diary: tap a task to open its edit sheet directly,
 or hold and drag to reorder it live; swipe left to delete. The edit sheet has a red
 delete icon beside Save, with Undo after deletion. In Diary, Add to-do (or the header
 plus) inserts a focused typing row at the bottom. Keyboard Next saves it and keeps

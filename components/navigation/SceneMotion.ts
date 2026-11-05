@@ -1,10 +1,16 @@
 import { createContext, useContext } from 'react';
 import { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
-export type SceneMotion = { offset: SharedValue<number>; opacity: SharedValue<number> };
+export type SceneMotion = {
+  offset: SharedValue<number>; opacity: SharedValue<number>;
+  /** Counts each time this tab is entered. Coming back from a pushed note does not count. */
+  entries: SharedValue<number>;
+};
 
 /** Set by the tab slot; null on screens pushed outside the tabs, which then stay still. */
 export const SceneMotionContext = createContext<SceneMotion | null>(null);
+
+export const useSceneEntries = () => useContext(SceneMotionContext)?.entries ?? null;
 
 /**
  * Styles that carry a tab switch. Only a page's own content uses them: the header actions and

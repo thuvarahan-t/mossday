@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Keyboard, StyleSheet, TextInput, View, type RefreshControlProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
-  Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
+  Extrapolation, interpolate, scrollTo, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
@@ -10,7 +10,7 @@ import { useTabBarInset } from '@/hooks/useTabBarInset';
 import { useTheme } from '@/hooks/useTheme';
 import { useWindowTopOffset } from '@/hooks/useWindowTopOffset';
 import { FloatingAddButton, FLOATING_ADD_SIZE, type FloatingAddAction } from '@/components/navigation/FloatingAddButton';
-import { useSceneMotionStyles } from '@/components/navigation/SceneMotion';
+import { useSceneEntries, useSceneMotionStyles } from '@/components/navigation/SceneMotion';
 import { Icon } from './Icon';
 import { Text } from './Text';
 import { DragScrollContext } from './DragScrollContext';
@@ -33,6 +33,8 @@ export type LargeTitleScreenProps = {
   children: ReactNode; bottomInset?: 'tabBar' | 'safeArea';
   contentContainerStyle?: StyleProp<ViewStyle>; refreshControl?: React.ReactElement<RefreshControlProps>;
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
+  /** The page returns to its top when this changes, e.g. when it starts showing another day. */
+  resetScrollKey?: string;
   /** Pause scrolling while a child owns a drag gesture. */
   scrollEnabled?: boolean;
 };
@@ -44,7 +46,7 @@ export type LargeTitleScreenProps = {
  */
 export function LargeTitleScreen({
   title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, swipeArea = (page) => page, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
-  contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true,
+  contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true, resetScrollKey,
 }: LargeTitleScreenProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -58,18 +60,26 @@ export function LargeTitleScreen({
   const dragBottom = useSharedValue(0);
   const dragMax = useSharedValue(0);
   const keyboardHeight = useKeyboardHeight();
+  // A tab is always entered at its beginning, never where it was last left.
+  const entries = useSceneEntries();
+  useAnimatedReaction(() => entries?.get() ?? 0, (now, previous) => {
+    if (previous === null || now === previous) return;
+    scrollTo(scrollRef, 0, 0, false);
+    scrollY.set(0);
+  });
+  useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [resetScrollKey, scrollRef]);
   const windowTop = useWindowTopOffset();
   const keyboardSpace = useAnimatedStyle(() => ({ height: keyboardHeight.get() }));
   useEffect(() => {
     const subscription = Keyboard.addListener('keyboardDidShow', (event) => {
-      TextInput.State.currentlyFocusedInput()?.measureInWindow((_x, y, _width, height) => {
+      TextInput.State.currentlyFocusedInput?.()?.measureInWindow((_x, y, _width, height) => {
         const overlap = y + windowTop + height + theme.spacing.xl - event.endCoordinates.screenY;
         if (overlap > 0) scrollRef.current?.scrollTo({ y: scrollY.get() + overlap, animated: true });
       });
     });
     // A field whose keyboard was dismissed (tap outside, Android back) stays focused with a
     // blinking cursor; blur it so editing visibly ends. Autosaving fields keep their text.
-    const hidden = Keyboard.addListener('keyboardDidHide', () => TextInput.State.currentlyFocusedInput()?.blur());
+    const hidden = Keyboard.addListener('keyboardDidHide', () => TextInput.State.currentlyFocusedInput?.()?.blur());
     return () => { subscription.remove(); hidden.remove(); };
   }, [scrollRef, scrollY, theme.spacing.xl, windowTop]);
   const onScroll = useAnimatedScrollHandler((event) => { scrollY.set(event.contentOffset.y); });

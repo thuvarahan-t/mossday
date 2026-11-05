@@ -104,7 +104,7 @@ export function ExpensesScreen() {
     if (!data) return;
     share(expensesShareContent({ theme, label, total, expenses: data, byDay: view.period === 'Day', dailyBudget }));
   };
-  return <LargeTitleScreen title="Expenses" floatingAdd={{ label: period === 'Month' ? 'Add monthly expense' : 'Add expense', onPress: () => setEditor(period === 'Month' ? 'monthly' : 'new') }}
+  return <LargeTitleScreen title="Expenses" resetScrollKey={view.period} floatingAdd={{ label: period === 'Month' ? 'Add monthly expense' : 'Add expense', onPress: () => setEditor(period === 'Month' ? 'monthly' : 'new') }}
     titleAccessory={<TabHeaderActions shareLabel="Share expenses" onShare={shareExpenses} />}
     swipeArea={(page) => <GestureDetector gesture={swipe.pan}><View style={{ flex: 1 }}>{page}</View></GestureDetector>}
     contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>

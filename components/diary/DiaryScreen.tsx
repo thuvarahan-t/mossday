@@ -1,22 +1,21 @@
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareProvider';
-import { Button } from '@/components/ui/Button';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
 import { Text } from '@/components/ui/Text';
-import { useAction, useResource } from '@/hooks/useResource';
+import { useResource } from '@/hooks/useResource';
 import { useTheme } from '@/hooks/useTheme';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useToday } from '@/hooks/useToday';
 import { addDays, dayOfMonth, endOfMonth, monthName, startOfMonth, weekdayName } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
-import { getJournal, listMoods, listTodos, moveIncomplete } from '@/lib/repos/diary';
+import { getJournal, listMoods, listTodos } from '@/lib/repos/diary';
 import { listDailyExpenses } from '@/lib/repos/expenses';
 import { listHabitLogs, listHabits } from '@/lib/repos/habits';
 import { isActiveDay } from '@/lib/heatmap';
+import { CarryOverRow } from './CarryOverRow';
 import { DiaryDateBar } from './DiaryDateBar';
 import { diaryShareContent } from './diaryShare';
 import { JournalEditor } from './JournalEditor';
@@ -28,7 +27,6 @@ const MARKED_RANGE = 42;
 export function DiaryScreen() {
   const theme = useTheme();
   useCurrency();
-  const action = useAction();
   const today = useToday();
   const [date, setDate] = useState(today);
   const [dragging, setDragging] = useState(false);
@@ -55,7 +53,7 @@ export function DiaryScreen() {
     if (data) share(diaryShareContent({ theme, date: loadedDate, todos: data.todos, journal: data.journal, summary }));
   };
   return <LargeTitleScreen title={`${dayOfMonth(date)} ${monthName(date)}`} subtitle={`${weekdayName(date)}, ${date.slice(0, 4)}`}
-    floatingAdd={{ label: 'Add to-do', onPress: addInline }}
+    floatingAdd={{ label: 'Add to-do', onPress: addInline }} resetScrollKey={date}
     // Below the dates a swipe reaches Today (right) or Notes (left); the strip and month sit in the
     // header, outside this area, and keep their own swipes.
     swipeArea={(page) => <TabSwipeArea tab="diary" enabled={!dragging} style={{ flex: 1 }}>{page}</TabSwipeArea>}
@@ -64,11 +62,7 @@ export function DiaryScreen() {
       moods={data?.moods ?? {}} monthlyTodos={data?.monthlyTodos ?? []} onSelect={setDate} onMonthChange={setMonth} onDraggingChange={setDragging} />}
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.lg, flexGrow: 1 }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
-        <TodoList todos={data.todos} inlineDate={loadedDate} addRequest={addRequest} onDraggingChange={setDragging} header={data.previous.length > 0 &&
-          <View key="carry-over" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: theme.sizes.rowMinHeight, paddingHorizontal: theme.sizes.rowPadding }}>
-            <Text variant="subheadline" color="secondaryLabel">{data.previous.length} left from {loadedDate === today ? 'yesterday' : 'the day before'}</Text>
-            <Button title={loadedDate === today ? 'Move to Today' : 'Move here'} variant="plain" size="small" onPress={() => { void action(() => moveIncomplete(addDays(loadedDate, -1), loadedDate)); }} />
-          </View>} />
+        <TodoList todos={data.todos} inlineDate={loadedDate} addRequest={addRequest} onDraggingChange={setDragging} header={data.previous.length > 0 && <CarryOverRow count={data.previous.length} date={loadedDate} today={today} />} />
         <JournalEditor key={loadedDate} date={loadedDate} initial={data.journal} />
         <Text align="center" variant="subheadline" color="secondaryLabel">{summary}</Text>
     </>}

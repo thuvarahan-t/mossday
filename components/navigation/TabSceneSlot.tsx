@@ -10,6 +10,8 @@ import { SceneMotionContext } from './SceneMotion';
 import { tabs } from './tabs';
 
 type RenderFn = NonNullable<TabSlotProps['renderFn']>;
+/** A hint of direction, not a page sliding across: tab bars should feel almost instant. */
+const SCENE_TRAVEL = 0.06;
 
 /**
  * Expo Router's lazy tab slot with scenes layered on top of each other. Tabs switch
@@ -21,22 +23,24 @@ function SceneTransition({ focused, direction, children }: { focused: boolean; d
   const { width } = useWindowDimensions();
   const offset = useSharedValue(0);
   const opacity = useSharedValue(1);
+  const entries = useSharedValue(0);
   const visited = useRef(false);
   const wasFocused = useRef(false);
   useLayoutEffect(() => {
     if (!focused) { wasFocused.current = false; return; }
     if (wasFocused.current) return;
     wasFocused.current = true;
+    entries.set(entries.get() + 1);
     // Leave the first screen steady; later focuses enter from their side of the tab bar.
     if (direction !== 0 || visited.current) {
-      offset.set(reduced ? 0 : direction * width * 0.18);
-      opacity.set(reduced ? 1 : 0.4);
+      offset.set(reduced ? 0 : direction * width * SCENE_TRAVEL);
+      opacity.set(reduced ? 1 : 0.6);
       offset.set(animateTo(0, 'gentle', reduced));
-      opacity.set(withTiming(1, { duration: reduced ? 0 : durations.normal, easing: easing.standard }));
+      opacity.set(withTiming(1, { duration: reduced ? 0 : durations.fast, easing: easing.standard }));
     }
     visited.current = true;
-  }, [focused, direction, reduced, width, offset, opacity]);
-  const motion = useMemo(() => ({ offset, opacity }), [offset, opacity]);
+  }, [focused, direction, reduced, width, offset, opacity, entries]);
+  const motion = useMemo(() => ({ offset, opacity, entries }), [offset, opacity, entries]);
   return <SceneMotionContext.Provider value={motion}><View style={styles.fill}>{children}</View></SceneMotionContext.Provider>;
 }
 

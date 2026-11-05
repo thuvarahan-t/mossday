@@ -91,13 +91,13 @@ assert.ok(values[0].history.every((value) => value === 0), 'Reduce Motion suppre
 reduced = false;
 
 let stateIndex = 0;
-const dateValues = [260, false, 0, 350];
+const dateValues = [260, false, 350];
 const { DiaryDateBar } = load('components/diary/DiaryDateBar.tsx', {
   ...common, react: { ...common.react, useState: () => [dateValues[stateIndex++], () => {}] },
   '@/components/ui/AnimatedEmoji': { AnimatedEmoji: 'AnimatedEmoji' }, '@/components/ui/DayStrip': { DayStrip: 'DayStrip' },
   '@/components/ui/Icon': { Icon: 'Icon' }, '@/components/ui/MonthGrid': { MonthGrid: 'MonthGrid' },
   '@/components/ui/PressableScale': { PressableScale: 'PressableScale' }, '@/components/ui/Text': { Text: 'Text' },
-  '@/lib/date': { startOfMonth: (date) => `${date.slice(0, 7)}-01`, monthName: () => 'November', dayOfMonth: () => 6, addMonths: (date) => date },
+  '@/lib/date': { startOfMonth: (date) => `${date.slice(0, 7)}-01`, monthName: () => 'November', addMonths: (date) => date },
   './JournalEditor': { MOODS: [] },
 });
 values.length = 0;
@@ -157,6 +157,7 @@ const keyedJsx = (type, props, key) => ({ type, props, key });
 const { DiaryScreen } = load('components/diary/DiaryScreen.tsx', stubbedModules({
   react: { useCallback: (fn) => fn, useState: (value) => [value, () => {}] },
   'react/jsx-runtime': { jsx: keyedJsx, jsxs: keyedJsx },
+  './CarryOverRow': { CarryOverRow: 'CarryOverRow' },
   '@/hooks/useTheme': common['@/hooks/useTheme'], '@/hooks/useCurrency': { useCurrency: () => {} },
   '@/hooks/useToday': { useToday: () => '2026-11-07' }, '@/lib/date': dateLib, '@/lib/money': { formatMoney: () => '0' },
   '@/components/share/ShareProvider': { useShareImage: () => () => {} },
@@ -175,13 +176,16 @@ const journal = findByType(diary, 'JournalEditor');
 assert.equal(journal.key, '2026-11-06', 'The journal only remounts once the tapped day has loaded');
 assert.equal(journal.props.date, '2026-11-06', 'A journal is saved to the day its text was loaded from');
 assert.equal(findByType(diary, 'TodoList').props.inlineDate, '2026-11-06');
+const entriesForTest = shared(1);
+let entryReaction;
+const scrolledTo = [];
 const { LargeTitleScreen } = load('components/ui/LargeTitleScreen.tsx', stubbedModules({
   react: { useEffect: () => {}, useState: (value) => [value, () => {}] }, 'react/jsx-runtime': { jsx: keyedJsx, jsxs: keyedJsx }, 'react-native': native,
-  'react-native-reanimated': { ...animated, __esModule: true, default: { View: 'AnimatedView', ScrollView: 'AnimatedScrollView' }, useAnimatedRef: () => ({}), useAnimatedScrollHandler: () => () => {}, useAnimatedKeyboard: () => ({ height: shared(0) }) },
+  'react-native-reanimated': { ...animated, __esModule: true, default: { View: 'AnimatedView', ScrollView: 'AnimatedScrollView' }, useAnimatedRef: () => ({}), useAnimatedScrollHandler: () => () => {}, useAnimatedReaction: (read, react) => { entryReaction = (previous) => react(read(), previous); }, scrollTo: (_ref, _x, y) => scrolledTo.push(y) },
   'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }, '@/hooks/useTheme': common['@/hooks/useTheme'],
   '@/hooks/useTabBarInset': { useTabBarInset: () => 90 }, '@/hooks/useWindowTopOffset': { useWindowTopOffset: () => 0 },
   '@/hooks/useKeyboardHeight': { useKeyboardHeight: () => shared(0) }, '@/components/navigation/FloatingAddButton': { FloatingAddButton: 'FloatingAddButton', FLOATING_ADD_SIZE: 56 },
-  '@/components/navigation/SceneMotion': { useSceneMotionStyles: () => ({ content: 'scene-content', fade: 'scene-fade' }) },
+  '@/components/navigation/SceneMotion': { useSceneMotionStyles: () => ({ content: 'scene-content', fade: 'scene-fade' }), useSceneEntries: () => entriesForTest },
   'expo-router': { router: { back: () => {} } },
 }));
 const flattenTree = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(flattenTree) : [node, ...flattenTree(node.props?.children)];
@@ -201,6 +205,11 @@ const page = LargeTitleScreen({ title: 'Diary', floatingAdd: { label: 'Add', onP
   fixedContent: { type: 'DateBar', props: {} }, children: { type: 'PageContent', props: {} } });
 const scrollerProps = flattenTree(page).find((node) => node.type === 'AnimatedScrollView').props;
 assert.equal(scrollerProps.contentContainerStyle[0].paddingBottom, 118, 'A page scrolls no further than the tab bar and add button need');
+entryReaction(null);
+assert.equal(scrolledTo.length, 0, 'The first look at a tab has nothing to reset');
+entriesForTest.set(2);
+entryReaction(1);
+assert.deepEqual(scrolledTo, [0], 'Entering a tab again starts at its beginning');
 assert.deepEqual(movedBy(page, 'TabHeaderActions').moving, [], 'Share and settings stay still across tab switches');
 assert.deepEqual(movedBy(page, 'FloatingAddButton').moving, [], 'The floating add button stays still across tab switches');
 assert.deepEqual(movedBy(page, 'PageContent').moving, ['scene-content'], 'The page content carries the tab switch');

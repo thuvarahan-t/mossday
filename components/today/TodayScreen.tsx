@@ -6,8 +6,8 @@ import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareImage } from '@/components/share/ShareProvider';
 import { BudgetMeter } from '@/components/expenses/BudgetMeter';
 import { ExpenseSheet, preloadCategories } from '@/components/expenses/ExpenseSheet';
+import { CarryOverRow } from '@/components/diary/CarryOverRow';
 import { TodoList } from '@/components/diary/TodoList';
-import { TodoSheet } from '@/components/diary/TodoSheet';
 import { useNewNote } from '@/components/notes/NotesScreen';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { Button } from '@/components/ui/Button';
@@ -18,7 +18,6 @@ import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { LoadState } from '@/components/ui/LoadState';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { HabitTickButton } from '@/components/habits/HabitTickButton';
-import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { BottomSheet } from '@/components/ui/sheet/BottomSheet';
 import { SheetHeader, SheetIconButton } from '@/components/ui/sheet/SheetHeader';
@@ -27,7 +26,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useToday } from '@/hooks/useToday';
-import { formatLongDate } from '@/lib/date';
+import { addDays, formatLongDate } from '@/lib/date';
 import { todayShareContent } from './todayShare';
 import { isActiveDay } from '@/lib/heatmap';
 import { haptics } from '@/lib/haptics';
@@ -43,9 +42,11 @@ export function TodayScreen() {
   useCurrency();
   const action = useAction();
   const newNote = useNewNote();
-  const noteAfterDismissal = useRef(false);
+  // Quick add's Note and To-do open what they lead to once its sheet has fully closed.
+  const afterDismissal = useRef<'note' | 'todo' | null>(null);
+  const [addTodoRequest, setAddTodoRequest] = useState(0);
   const today = useToday();
-  const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense' | 'todo'>(true);
+  const [sheet, setSheet, sheetTransition] = useSheetState<'quick' | 'expense'>(true);
   const [mealId, setMealId] = useState<number | undefined>();
   const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState<Expense | undefined>();
@@ -53,17 +54,16 @@ export function TodayScreen() {
   const openTodaysExpenses = () => router.navigate({ pathname: '/expenses', params: { day: today, at: String(Date.now()) } });
   useEffect(preloadCategories, []);
   const { data, error, refresh } = useResource(useCallback(async () => {
-    const [expenses, categories, habits, logs, todos, settings] = await Promise.all([
-      listDailyExpenses(today), listCategories(), listHabits(), listHabitLogs(today, today), listTodos(today), getSettings(),
+    const [expenses, categories, habits, logs, todos, previous, settings] = await Promise.all([
+      listDailyExpenses(today), listCategories(), listHabits(), listHabitLogs(today, today), listTodos(today), listTodos(addDays(today, -1)), getSettings(),
     ]);
-    return { expenses, categories, habits, logs, todos, settings };
+    return { expenses, categories, habits, logs, todos, unfinished: previous.filter((todo) => !todo.isDone).length, settings };
   }, [today]));
   const spent = data?.expenses.filter((e) => e.date === today).reduce((sum, e) => sum + e.amount, 0) ?? 0;
   const budget = data?.settings.dailyBudget ?? 0;
   const active = data?.habits.filter((h) => isActiveDay(h.activeDays, today)) ?? [];
   const countFor = (id: number) => data?.logs.find((l) => l.habitId === id)?.count ?? 0;
   const done = active.filter((h) => countFor(h.id) >= h.dailyGoal).length;
-  const sectionIconButton = { width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, alignItems: 'center', justifyContent: 'center' } as const;
   const share = useShareImage();
   const shareToday = () => {
     if (!data) return;
@@ -79,18 +79,10 @@ export function TodayScreen() {
     scrollEnabled={!dragging} contentContainerStyle={{ gap: theme.spacing.md, flexGrow: 1 }}>
     {error || !data ? <LoadState error={error} retry={refresh} /> : <>
         <AnimatedListItem><Card style={{ gap: theme.spacing.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-            <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={openTodaysExpenses} style={{ flex: 1, gap: theme.spacing.sm }}>
-              <Text color="secondaryLabel">Spent today</Text>
-              <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
-            </PressableScale>
-            {/* A sibling, not a child, of the summary so both stay separate accessible buttons. */}
-            <PressableScale accessibilityLabel="Add expense" haptic="tap" onPress={() => addExpense()}
-              style={{ width: theme.sizes.touchTarget, height: theme.sizes.touchTarget, borderRadius: theme.sizes.touchTarget / 2,
-                alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.accentFill }}>
-              <Icon name="plus" color="accent" strokeWidth={2.6} />
-            </PressableScale>
-          </View>
+          <PressableScale accessibilityLabel="View today's expenses" haptic="tap" onPress={openTodaysExpenses} style={{ gap: theme.spacing.sm }}>
+            <Text color="secondaryLabel">Spent today</Text>
+            <AnimatedNumber value={spent} format={formatMoney} color={budget && spent > budget ? 'dangerText' : 'label'} />
+          </PressableScale>
           {budget > 0 && <PressableScale accessibilityLabel="Daily budget, view today's expenses" haptic="tap" onPress={openTodaysExpenses}>
             <BudgetMeter spent={spent} budget={budget} />
           </PressableScale>}
@@ -118,26 +110,22 @@ export function TodayScreen() {
             <Text variant="subheadline" style={{ color: dataColors(theme, habit.color).accent }}>{habit.name}</Text>
           </View>) : <Button title="Add your first habit" variant="plain" onPress={() => router.navigate('/habits')} />}
         </ScrollView></Card></AnimatedListItem>
-        <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} trailing={<View style={{ flexDirection: 'row' }}>
-          <PressableScale accessibilityLabel="Add to-do" haptic="tap" onPress={() => setSheet('todo')} style={sectionIconButton}>
-            <Icon name="plus" color="accent" strokeWidth={2.6} />
-          </PressableScale>
-          <PressableScale accessibilityLabel="See all to-dos" haptic="tap" onPress={() => router.navigate('/diary')} style={sectionIconButton}>
-            <Icon name="chevronRight" color="secondaryLabel" />
-          </PressableScale>
-        </View>} />
-        <TodoList todos={data.todos} limit={5} onDraggingChange={setDragging} onAdd={() => setSheet('todo')} />
+        <SectionTitle title="To-dos" onPress={() => router.navigate('/diary')} />
+        <TodoList todos={data.todos} inlineDate={today} addRequest={addTodoRequest} onDraggingChange={setDragging}
+          header={data.unfinished > 0 && <CarryOverRow count={data.unfinished} date={today} today={today} />} />
       </>}
     <BottomSheet {...sheetTransition} onDismissed={() => {
       sheetTransition.onDismissed();
-      if (noteAfterDismissal.current) { noteAfterDismissal.current = false; newNote(); }
+      const next = afterDismissal.current;
+      afterDismissal.current = null;
+      if (next === 'note') newNote();
+      if (next === 'todo') setAddTodoRequest((request) => request + 1);
     }} visible={sheet === 'quick' && sheetTransition.visible} onClose={() => setSheet(null)} detents={['content']} background="grouped">
       <SheetHeader title="Add" trailing={<SheetIconButton icon="close" accessibilityLabel="Close" onPress={() => setSheet(null)} />} />
       <GroupedList><ListRow title="Expense" subtitle="A meal or anything you paid for" icon={{ icon: 'wallet', color: 'orange' }} accessory="chevron" onPress={() => addExpense()} />
-        <ListRow title="To-do" subtitle="Adds to today in your diary" icon={{ icon: 'todo', color: 'indigo' }} accessory="chevron" onPress={() => setSheet('todo')} />
-        <ListRow title="Note" subtitle="Text, photos or a voice memo" icon={{ icon: 'note', color: 'yellow' }} accessory="chevron" onPress={() => { noteAfterDismissal.current = true; setSheet(null); }} /></GroupedList>
+        <ListRow title="To-do" subtitle="Adds to today in your diary" icon={{ icon: 'todo', color: 'indigo' }} accessory="chevron" onPress={() => { afterDismissal.current = 'todo'; setSheet(null); }} />
+        <ListRow title="Note" subtitle="Text, photos or a voice memo" icon={{ icon: 'note', color: 'yellow' }} accessory="chevron" onPress={() => { afterDismissal.current = 'note'; setSheet(null); }} /></GroupedList>
     </BottomSheet>
     {sheet === 'expense' && <ExpenseSheet {...sheetTransition} initial={editing} mealId={mealId} onClose={() => setSheet(null)} />}
-    {sheet === 'todo' && <TodoSheet {...sheetTransition} date={today} onClose={() => setSheet(null)} />}
   </LargeTitleScreen>;
 }
