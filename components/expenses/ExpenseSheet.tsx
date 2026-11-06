@@ -96,11 +96,11 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly: defa
   const selected = categories?.find((category) => category.id === categoryId);
   const primary = primaryCategories(categories ?? [], frequency);
   const selectedOther = selected?.type === 'OTHER' && !primary.some((category) => category.id === selected.id);
-  // One-time entries and "Other" categories mean the same in both modes, so switching keeps them.
+  // Each mode has its own categories, so switching picks that mode's first; a one-time entry stays.
   const changeMode = (mode: 'Daily' | 'Monthly') => {
     const next = mode === 'Monthly' ? 'MONTHLY' : 'DAILY';
     setFrequency(next); setHint(null);
-    if (!selectedOther) setCategoryId(primaryCategories(categories ?? [], next)[0]?.id ?? null);
+    setCategoryId(primaryCategories(categories ?? [], next)[0]?.id ?? null);
   };
   const refreshCategories = async () => {
     categoryCache = await listCategories();
@@ -209,7 +209,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly: defa
       </SheetRow>
     </>}
     {other && <FormSheet {...otherTransition} title="Categories" size="fit" dense scrollEnabled={!draggingCategory} onClose={() => setOther(false)}>
-      <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER' && !primary.includes(category)).map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
+      <CategoryGrid items={(categories ?? []).filter((category) => category.type === 'OTHER' && category.frequency === frequency && !primary.includes(category)).map((category) => ({ ...category, ...categoryStyle(category.icon, category.color) }))}
         disabled={busy} onReorder={saveCategoryOrder} onDraggingChange={setDraggingCategory}
         onEdit={(id) => { const category = categories?.find((row) => row.id === id); if (category) setEditingCategory(category); }}
         onDelete={(id) => { const category = categories?.find((row) => row.id === id); if (category?.isUserCreated) removeCategory(category); }}
@@ -220,7 +220,7 @@ export function ExpenseSheet({ initial, mealId, date: initialDate, monthly: defa
         <SwatchPicker colors={['green', 'blue', 'indigo', 'orange', 'pink', 'teal']} selected={color} onSelect={setColor} />
         <Button title="Create category" disabled={!categoryName.trim() || busy} onPress={() => {
           setBusy(true);
-          void action(async () => { const id = await addCategory(categoryName, 'tag', color); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
+          void action(async () => { const id = await addCategory(categoryName, 'tag', color, frequency); categoryCache = await listCategories(); setCategories(categoryCache); setCategoryId(id); setOneTime(false); setOther(false); setNewCategory(false); }).finally(() => setBusy(false));
         }} />
       </>}
       {editingCategory && <CategoryEditor key={editingCategory.id} {...categoryEditorTransition} category={editingCategory} onSaved={refreshCategories} onClose={() => setEditingCategory(null)} />}

@@ -1,10 +1,14 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 const monthlyCategories = [
   ['Electricity', 'bills', 'yellow'], ['Water', 'bills', 'blue'], ['Rent', 'home', 'green'],
   ['Internet', 'bills', 'indigo'], ['Phone', 'bills', 'teal'], ['Insurance', 'health', 'purple'],
+];
+/** Monthly has its own Other list; a name can be in both, like Groceries for a big monthly shop. */
+const monthlyOnlyCategories = [
+  ['Groceries', 'groceries', 'green'], ['School fees', 'education', 'indigo'], ['Subscriptions', 'fun', 'purple'], ['Loan / EMI', 'currency', 'orange'],
 ];
 // A shared promise prevents duplicate initialization under React Strict Mode.
 let databasePromise: Promise<SQLiteDatabase> | undefined;
@@ -181,11 +185,25 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         await db.execAsync('PRAGMA user_version = 9;');
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 10) {
       await db.withTransactionAsync(async () => {
         const column = await db.getFirstAsync<{ n: number }>("SELECT count(*) AS n FROM pragma_table_info('note_blocks') WHERE name='spans'");
         if (!column?.n) await db.execAsync('ALTER TABLE note_blocks ADD COLUMN spans TEXT;');
         await db.execAsync('PRAGMA user_version = 10;');
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        const column = await db.getFirstAsync<{ n: number }>("SELECT count(*) AS n FROM pragma_table_info('categories') WHERE name='frequency'");
+        if (!column?.n) await db.execAsync("ALTER TABLE categories ADD COLUMN frequency TEXT NOT NULL DEFAULT 'DAILY' CHECK(frequency IN ('DAILY','MONTHLY'));");
+        const bills = [...monthlyCategories.map(([name]) => name.toLowerCase()), 'bills'];
+        await db.runAsync(`UPDATE categories SET frequency='MONTHLY' WHERE type='OTHER' AND lower(name) IN (${bills.map(() => '?').join(',')})`, ...bills);
+        for (const [name, icon, color] of monthlyOnlyCategories) {
+          await db.runAsync(`INSERT INTO categories(name,icon,color,type,sortOrder,isUserCreated,frequency)
+            SELECT ?,?,?,'OTHER',(SELECT COALESCE(MAX(sortOrder),-1)+1 FROM categories),0,'MONTHLY'
+            WHERE NOT EXISTS (SELECT 1 FROM categories WHERE lower(name)=lower(?) AND frequency='MONTHLY' AND archived=0)`, name, icon, color, name);
+        }
+        await db.execAsync('PRAGMA user_version = 11;');
       });
     }
     return db;

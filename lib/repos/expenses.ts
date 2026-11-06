@@ -1,6 +1,8 @@
 import { read, write, requireDate, requireName } from './store';
 
-export type Category = { id: number; name: string; icon: string; color: string; type: 'MEAL' | 'OTHER'; lastAmount: number | null; isUserCreated: number };
+export type Category = { id: number; name: string; icon: string; color: string; type: 'MEAL' | 'OTHER'; lastAmount: number | null; isUserCreated: number;
+  /** Which add-expense mode offers this category. */
+  frequency: 'DAILY' | 'MONTHLY' };
 export type Expense = {
   id: number; amount: number; categoryId: number | null; title: string | null; note: string | null;
   date: string; createdAt: string; paymentMethod: 'CASH' | 'CARD' | 'ONLINE'; isOneTime: number;
@@ -63,10 +65,10 @@ export const restoreExpense = (e: Expense) => write(async (db) => {
   await db.runAsync('INSERT INTO expenses(id,amount,categoryId,title,note,date,createdAt,paymentMethod,isOneTime,frequency) VALUES (?,?,?,?,?,?,?,?,?,?)',
     e.id, e.amount, e.categoryId, e.title, e.note, e.date, e.createdAt, e.paymentMethod, e.isOneTime, e.frequency ?? 'DAILY');
 });
-export function addCategory(name: string, icon: string, color: string) {
+export function addCategory(name: string, icon: string, color: string, frequency: Category['frequency'] = 'DAILY') {
   const clean = requireName(name);
   return write(async (db) => {
-    const result = await db.runAsync("INSERT INTO categories(name,icon,color,type,sortOrder) VALUES (?,?,?,'OTHER',(SELECT COALESCE(MAX(sortOrder),-1)+1 FROM categories WHERE type='OTHER'))", clean, icon, color);
+    const result = await db.runAsync("INSERT INTO categories(name,icon,color,type,sortOrder,frequency) VALUES (?,?,?,'OTHER',(SELECT COALESCE(MAX(sortOrder),-1)+1 FROM categories WHERE type='OTHER'),?)", clean, icon, color, frequency);
     return result.lastInsertRowId;
   });
 }

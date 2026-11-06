@@ -58,7 +58,12 @@ async function main() {
   const today = date.todayLocalDate();
   const yesterday = date.addDays(today, -1);
   const categories = await expenses.listCategories();
-  assert.equal(categories.length, 17);
+  assert.equal(categories.length, 21);
+  const namesFor = (rows, frequency) => rows.filter((row) => row.type === 'OTHER' && row.frequency === frequency).map((row) => row.name);
+  assert.equal(namesFor(categories, 'DAILY').includes('Electricity'), false, 'Bills are not offered as daily spending');
+  assert.equal(namesFor(categories, 'DAILY').includes('Rent'), false);
+  assert.equal(namesFor(categories, 'MONTHLY').includes('Transport'), false, 'Daily things are not offered as bills');
+  assert.equal(namesFor(categories, 'MONTHLY').includes('Internet'), true);
   const lunch = categories.find((category) => category.name === 'Lunch');
   const otherIds = categories.filter((category) => category.type === 'OTHER').map((category) => category.id).reverse();
   await expenses.reorderCategories(otherIds);
@@ -71,6 +76,10 @@ async function main() {
   await assert.rejects(expenses.reorderCategories([otherIds[0], otherIds[0]]));
   const newCategoryId = await expenses.addCategory('Coffee', 'tag', 'green');
   assert.equal((await expenses.listCategories()).filter((category) => category.type === 'OTHER').at(-1).id, newCategoryId, 'New categories append after the saved order');
+  assert.equal((await expenses.listCategories()).find((category) => category.id === newCategoryId).frequency, 'DAILY', 'A new category joins the mode it was made in');
+  const monthlyCategoryId = await expenses.addCategory('Gym', 'tag', 'green', 'MONTHLY');
+  assert.equal((await expenses.listCategories()).find((category) => category.id === monthlyCategoryId).frequency, 'MONTHLY');
+  await expenses.deleteCategory(monthlyCategoryId);
   assert.equal((await expenses.listCategories()).find((category) => category.id === newCategoryId).isUserCreated, 1);
   await assert.rejects(expenses.deleteCategory(lunch.id), /Only custom/);
   await assert.rejects(expenses.deleteCategory(otherIds[0]), /Only custom/, 'Built-in Other categories are protected too');
