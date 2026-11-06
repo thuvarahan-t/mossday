@@ -232,6 +232,15 @@ assert.equal(keyboardHeight.get(), 300, 'Reopening follows the animation straigh
 keyboardInfo.state.set(2);
 keyboardListeners.keyboardDidShow();
 assert.equal(keyboardHeight.get(), 300);
+const { periodBudget } = load('components/expenses/expenseSummary.ts', { '@/lib/date': dateLib, './categoryStyle': { categoryStyle: () => ({}) } });
+const budgets = { dailyBudget: 1000, monthlyBudget: 30000 };
+const dayBudget = periodBudget('Day', budgets, 370, 15370);
+assert.equal(dayBudget.amount, 1000); assert.equal(dayBudget.spent, 370, 'Day shows the daily budget and that day');
+for (const period of ['Week', 'Month']) {
+  const longBudget = periodBudget(period, budgets, 370, 15370);
+  assert.equal(longBudget.amount, 30000); assert.equal(longBudget.spent, 15370, `${period} shows the monthly budget and the whole month`);
+}
+
 // Removing fontVariant from a mounted Text crashes React Native 0.88, so it must never be absent.
 const { Text: AppText } = load('components/ui/Text.tsx', {
   ...common, react: { memo: (component) => component }, 'react-native': { Text: 'RNText' },
@@ -241,4 +250,4 @@ const { Text: AppText } = load('components/ui/Text.tsx', {
 const fontVariantOf = (props) => AppText(props).props.style[1].fontVariant;
 assert.ok(Array.isArray(fontVariantOf({ tabular: true })));
 assert.ok(Array.isArray(fontVariantOf({})), 'A Text that stops being tabular keeps a fontVariant, or React Native crashes');
-console.log('Navigation verified: Text font variants, swiping on blank space, keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');
+console.log('Navigation verified: budgets per period, Text font variants, swiping on blank space, keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');

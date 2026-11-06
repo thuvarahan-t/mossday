@@ -30,12 +30,15 @@ Screen data access goes through `lib/repos/` repositories.
 Amounts are integer cents; `formatMoney(125000)` returns `Rs. 1,250`.
 First launch asks for a currency (Skip keeps Rs.); Settings → Currency changes it
 later. Only the label changes; saved amounts are never converted.
-Expenses shows the month's budget as a progress line on every period; tapping it
-(or the daily budget bar) opens one Budget sheet with a Daily / Monthly switch. The
+Expenses measures Day against the daily budget, and Week and Month against the month's
+budget using everything spent that month; tapping either opens one Budget sheet with a
+Daily / Monthly switch. The
 "a day" average divides by days that have at least one expense, not by calendar days.
 The add expense sheet has a Daily / Monthly switch in its header and opens on Monthly
-from the Month tab. Monthly has the same layout as Daily, with Electricity, Water and
-Rent in place of the meals, and Groceries, Internet, Phone and others under Other.
+from the Month tab. Monthly has the same layout as Daily, and each has its own categories
+(`categories.frequency`, schema v11): meals and Snacks, Transport, Shopping and so on for
+Daily; Electricity, Water and Rent, then Groceries, Internet, Phone, Insurance, School
+fees, Subscriptions, Loan / EMI and Bills for Monthly. A new category joins the mode it was made in.
 The mode is saved with each expense. Monthly bills appear only in Month, in their own
 list that supports edit, swipe-delete and Undo. They are payments for that month, with
 no automatic recurrence, and count towards the month's total and budget but never a

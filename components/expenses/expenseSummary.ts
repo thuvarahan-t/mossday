@@ -17,6 +17,13 @@ export function categoryTotals(expenses: Expense[]): CategoryTotal[] {
   return [...totals.values()].sort((a, b) => b.amount - a.amount);
 }
 
+/** A day is measured against the daily budget; a week or month against the month's, with everything spent in that month. */
+export function periodBudget(period: 'Day' | 'Week' | 'Month', budgets: { dailyBudget: number; monthlyBudget: number }, daySpent: number, monthSpent: number) {
+  return period === 'Day'
+    ? { key: 'dailyBudget', amount: budgets.dailyBudget, spent: daySpent } as const
+    : { key: 'monthlyBudget', amount: budgets.monthlyBudget, spent: monthSpent } as const;
+}
+
 /**
  * "7:40", "18:10 · One-time", "12:50 · Card": cash is the default and stays implicit. Monthly
  * bills show their date instead, since the time they were typed in means nothing.

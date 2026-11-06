@@ -41,7 +41,7 @@ import { useDatePicker } from '@/components/ui/DateSelector';
 import { PeriodHeader } from './PeriodHeader';
 import { usePeriodSwipe } from './PeriodSwipeArea';
 import { categoryStyle } from './categoryStyle';
-import { categoryTotals, expenseDetail, sum, type CategoryTotal } from './expenseSummary';
+import { categoryTotals, expenseDetail, periodBudget, sum, type CategoryTotal } from './expenseSummary';
 import { recordedDayAverage } from './expenseMetrics';
 import { BudgetSheet, type BudgetKey } from '@/components/settings/BudgetSheet';
 import { monthlyBills } from './monthlyBills';
@@ -82,7 +82,8 @@ export function ExpensesScreen() {
   const daily = data?.filter(isDailyExpense) ?? [];
   const amounts = days.map((day) => sum(daily.filter((e) => e.date === day)));
   const average = recordedDayAverage(daily);
-  const monthlyBudget = result?.settings.monthlyBudget ?? 0;
+  const budget = periodBudget(view.period, { dailyBudget: result?.settings.dailyBudget ?? 0, monthlyBudget: result?.settings.monthlyBudget ?? 0 }, total, result?.monthlySpent ?? 0);
+  const budgetTitle = view.period === 'Day' ? 'Daily budget' : `${monthName(view.date)} budget`;
 
   const remove = (expense: Expense) => {
     void action(() => deleteExpense(expense.id), () => toast({
@@ -114,18 +115,16 @@ export function ExpensesScreen() {
         canGoForward={selected.to < today} onShift={shift} onPickDate={datePicker.open} />
       {/* iOS draws the calendar inline, right under the date it changes; Android opens a dialog. */}
       {datePicker.picker}
-      {dailyBudget > 0 && <PressableScale accessibilityLabel="Daily budget, edit" haptic="tap" onPress={() => setBudgetEditor('dailyBudget')}
-        style={{ paddingHorizontal: theme.sizes.titleInset }}><BudgetMeter spent={total} budget={dailyBudget} /></PressableScale>}
-      {monthlyBudget > 0 ? <PressableScale accessibilityLabel={`${monthName(view.date)} budget, edit`} haptic="tap" onPress={() => setBudgetEditor('monthlyBudget')}>
+      {result && (budget.amount > 0 ? <PressableScale accessibilityLabel={`${budgetTitle}, edit`} haptic="tap" onPress={() => setBudgetEditor(budget.key)}>
         <Card style={{ gap: theme.spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text variant="headline">{monthName(view.date)} budget</Text>
+            <Text variant="headline">{budgetTitle}</Text>
             <Icon name="chevronRight" color="tertiaryLabel" />
           </View>
-          <Text variant="footnote" color="secondaryLabel">{formatMoney(result?.monthlySpent ?? 0)} spent · {Math.round((result?.monthlySpent ?? 0) / monthlyBudget * 100)}% used</Text>
-          <BudgetMeter spent={result?.monthlySpent ?? 0} budget={monthlyBudget} />
+          <Text variant="footnote" color="secondaryLabel">{formatMoney(budget.spent)} spent · {Math.round(budget.spent / budget.amount * 100)}% used</Text>
+          <BudgetMeter spent={budget.spent} budget={budget.amount} />
         </Card>
-      </PressableScale> : view.period === 'Month' ? <GroupedList><ListRow title="Set a monthly budget" icon={{ icon: 'target', color: 'blue' }} accessory="chevron" onPress={() => setBudgetEditor('monthlyBudget')} /></GroupedList> : null}
+      </PressableScale> : <GroupedList><ListRow title={view.period === 'Day' ? 'Set a daily budget' : 'Set a monthly budget'} icon={{ icon: 'target', color: 'blue' }} accessory="chevron" onPress={() => setBudgetEditor(budget.key)} /></GroupedList>)}
       {error || !data ? <LoadState error={error} retry={refresh} /> : data.length === 0 ?
         <EmptyState icon="wallet" title={view.period === 'Day' && view.date === today ? 'No expenses today' : `Nothing spent this ${view.period.toLowerCase()}`}
           message="Add one in a few taps." action={{ label: view.period === 'Month' ? 'Add monthly expense' : 'Add Expense',
