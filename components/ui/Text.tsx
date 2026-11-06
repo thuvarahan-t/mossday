@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Text as RNText, type TextProps as RNTextProps } from 'react-native';
 import type { ColorToken } from '@/constants/theme';
-import { fontFamilies, tabularNums, textVariants, type FontWeight, type TextVariant } from '@/constants/typography';
+import { fontFamilies, proportionalNums, tabularNums, textVariants, type FontWeight, type TextVariant } from '@/constants/typography';
 import { useTheme } from '@/hooks/useTheme';
 
 export type TextProps = RNTextProps & {
@@ -30,7 +30,7 @@ export const Text = memo(function Text({
         {
           fontFamily: fontFamilies[weight ?? variantWeight],
           color: theme.colors[color],
-          fontVariant: tabular ? tabularNums : undefined,
+          fontVariant: tabular ? tabularNums : proportionalNums,
           textAlign: align,
           textDecorationLine: strikethrough ? 'line-through' : undefined,
         },

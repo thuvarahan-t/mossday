@@ -232,4 +232,13 @@ assert.equal(keyboardHeight.get(), 300, 'Reopening follows the animation straigh
 keyboardInfo.state.set(2);
 keyboardListeners.keyboardDidShow();
 assert.equal(keyboardHeight.get(), 300);
-console.log('Navigation verified: swiping on blank space, keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');
+// Removing fontVariant from a mounted Text crashes React Native 0.88, so it must never be absent.
+const { Text: AppText } = load('components/ui/Text.tsx', {
+  ...common, react: { memo: (component) => component }, 'react-native': { Text: 'RNText' },
+  '@/constants/typography': load('constants/typography.ts', { 'react-native': {} }),
+  '@/hooks/useTheme': { useTheme: () => ({ colors: {} }) },
+});
+const fontVariantOf = (props) => AppText(props).props.style[1].fontVariant;
+assert.ok(Array.isArray(fontVariantOf({ tabular: true })));
+assert.ok(Array.isArray(fontVariantOf({})), 'A Text that stops being tabular keeps a fontVariant, or React Native crashes');
+console.log('Navigation verified: Text font variants, swiping on blank space, keyboard height recovery, page scroll length, deliberate swipes, cancellation, exit/entry motion, reduced motion, permanent week row, month folding, floating add placement, fixed tab actions, day taps and per-day diary content.');

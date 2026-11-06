@@ -1,17 +1,17 @@
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { TabHeaderActions } from '@/components/navigation/HeaderActions';
 import { TabSwipeArea } from '@/components/navigation/TabSwipeArea';
 import { useShareWithOptions } from '@/components/share/ShareProvider';
 import { estimateNoteHeight, NoteCard, noteSummary } from './NoteCard';
-import { audioPaths, notesShareContent } from './notesShare';
+import { noteShareContent } from './notesShare';
 import { NoteColorPicker } from './NoteColorPicker';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormSheet } from '@/components/ui/FormSheet';
-import { SectionHeader } from '@/components/ui/GroupedList';
+import { GroupedList, ListRow, SectionHeader } from '@/components/ui/GroupedList';
 import { LargeTitleScreen } from '@/components/ui/LargeTitleScreen';
 import { ReorderableMasonryGrid } from '@/components/ui/ReorderableMasonryGrid';
 import { Icon } from '@/components/ui/Icon';
@@ -71,9 +71,12 @@ export function NotesScreen() {
     renderItem={(note, width) => <NoteCard note={note} blocks={blocksFor(note.id)} width={width} />}
     estimateHeight={(note, width) => estimateNoteHeight(note, blocksFor(note.id), width)} />;
   const share = useShareWithOptions();
+  // Sharing asks which note first, then how; the second sheet waits for the first to close.
+  const [choosingNote, setChoosingNote, choosingTransition] = useSheetState<true>();
+  const noteToShare = useRef<Note | null>(null);
   const shareNotes = () => {
-    share(notesShareContent({ theme, notes: filtered.map((note) => ({ id: note.id, pinned: !!note.isPinned, ...noteSummary(note, blocksFor(note.id)) })),
-      audio: filtered.flatMap((note) => audioPaths(blocksFor(note.id))) }));
+    if (filtered.length) setChoosingNote(true);
+    else toast({ message: 'There are no notes to share yet.' });
   };
   return <LargeTitleScreen title="Notes" scrollEnabled={!dragging} floatingAdd={{ label: 'New note', onPress: newNote }}
     swipeArea={(page) => <TabSwipeArea tab="notes" enabled={!dragging} style={{ flex: 1 }}>{page}</TabSwipeArea>}
@@ -95,6 +98,20 @@ export function NotesScreen() {
           <SectionHeader title="Others" />{grid(others)}
         </> : grid(filtered)}
       </>}
+    {choosingNote && <FormSheet {...choosingTransition} size="fit" title="Share which note?" onClose={() => setChoosingNote(null)} onDismissed={() => {
+      choosingTransition.onDismissed();
+      const note = noteToShare.current;
+      noteToShare.current = null;
+      if (note) share(noteShareContent({ theme, title: note.title, blocks: blocksFor(note.id) }));
+    }}>
+      <GroupedList style={{ marginHorizontal: 0 }}>
+        {filtered.map((note) => {
+          const { title, preview } = noteSummary(note, blocksFor(note.id));
+          return <ListRow key={note.id} title={title} subtitle={preview || undefined} icon={{ icon: 'note', color: 'yellow' }} accessory="chevron"
+            onPress={() => { noteToShare.current = note; setChoosingNote(null); }} />;
+        })}
+      </GroupedList>
+    </FormSheet>}
     {colorNote && <FormSheet {...colorTransition} size="fit" title="Note colour" onClose={() => setColorNote(null)}>
       <NoteColorPicker color={colorNote.color} onChange={(color) => {
         void action(() => setNoteProperty(colorNote.id, 'color', color), () => setColorNote(null));

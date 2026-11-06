@@ -38,3 +38,8 @@ export type TextVariant = keyof typeof textVariants;
 
 /** Amounts and counters keep a fixed digit width so rolling numbers don't jitter. */
 export const tabularNums: TextStyle['fontVariant'] = ['tabular-nums'];
+/**
+ * Removing `fontVariant` from a mounted Text crashes React Native 0.88 (its diff passes null to a
+ * processor that expects a string or array), so a Text that may change sets this rather than nothing.
+ */
+export const proportionalNums: TextStyle['fontVariant'] = [];
