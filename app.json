@@ -71,6 +71,12 @@
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1f9ee151-472d-46e2-843c-b50897bf6d3d"
+      }
+    },
+    "owner": "thuvarahan"
   }
 }
