@@ -31,7 +31,7 @@ const insertionPoint = { x: 0.5, y: 100, width: 0.5 };
 const pendingText = { id: -1, type: 'TEXT', content: '', layout: JSON.stringify(insertionPoint) };
 const insertedPhoto = geometry.insertCanvasBlock([blocks[0], pendingText], { id: 4, type: 'IMAGE', filePath: 'new.jpg' }, 340, {}, -1);
 assert.equal(insertedPhoto.length, 2, 'Adding media replaces an empty insertion line instead of leaving a blank block');
-assert.equal(geometry.parseBlockLayout(insertedPhoto[1].layout).y, 100, 'Media appears at the selected insertion point');
+assert.equal(geometry.parseBlockLayout(insertedPhoto[1].layout).y, 60, 'Media appears at the selected insertion point');
 assert.equal(insertedPhoto[0].content, 'Old text', 'Inserting media preserves existing text');
 const insertedAudio = geometry.insertCanvasBlock(blocks, { id: 5, type: 'VOICE' }, 340, {}, null, { x: 0.7, y: 20, width: 0.3 });
 const audioLayout = geometry.parseBlockLayout(insertedAudio.at(-1).layout);
@@ -106,12 +106,16 @@ assert.equal(rich.textSegments('hi', [{ start: 0, end: 99, bold: true }])[0].tex
 assert.deepEqual(plain(rich.parseSpans('[{"start":3,"end":1},{"start":0,"end":2,"bold":true}]')), [{ start: 0, end: 2, bold: true }], 'Bad ranges are ignored');
 assert.deepEqual(plain(rich.parseSpans('nope')), []);
 
-const placedFrames = { 1: { x: 0, y: 0, width: 1, height: 100 }, 2: { x: 0, y: 300, width: 0.5, height: 50 } };
-const placedBlocks = [{ id: 1, type: 'TEXT', content: 'Written' }, { id: 2, type: 'IMAGE' }];
-assert.deepEqual({ ...geometry.textPlacement(placedBlocks, placedFrames, 200) }, { x: 0, y: 188, width: 1 }, 'A touch writes at the left edge, centred on that line');
-assert.equal(geometry.textPlacement(placedBlocks, placedFrames, 105).y, 100, 'A new line never covers the text above it');
-assert.equal(geometry.textPlacement(placedBlocks, placedFrames, NaN).y, 350, 'A touch without a position writes below everything, never at an invalid place');
-assert.equal(geometry.textPlacement([{ id: 1, type: 'TEXT', content: ' ' }], { 1: placedFrames[1] }, 50).y, 38, 'An empty line being replaced does not push the new one down');
+const flowBlocks = [
+  { id: 1, type: 'TEXT', content: 'First', layout: JSON.stringify({ x: 0.5, y: 900, width: 0.5 }) },
+  { id: 2, type: 'CHECKLIST', content: 'Second', layout: JSON.stringify({ x: 0, y: 1200, width: 1 }) },
+  { id: 3, type: 'TEXT', content: 'Third' },
+];
+const flowAtHeight = (height) => geometry.canvasFrames(flowBlocks, 340, { 1: { width: 340, height } });
+assert.equal(flowAtHeight(120)[2].y, 136, 'Text is full width and pushes the checklist down');
+assert.equal(flowAtHeight(24)[2].y, 40, 'Deleting lines closes the gap above the checklist');
+assert.equal(flowAtHeight(24)[3].y, 100, 'Text below a checklist also closes up');
+assert.equal(geometry.insertCanvasBlock(flowBlocks, { id: 4, type: 'TEXT' }, 340, {}, null).at(-1).layout, null);
 
 const jsx = (type, props, key) => ({ type, props, key });
 const shared = (initial) => { let value = initial; return { get: () => value, set: (next) => { value = next; } }; };
@@ -140,7 +144,7 @@ const { NoteCanvas } = load('components/notes/NoteCanvas.tsx', {
   '@/lib/haptics': { haptics: { selection: () => {} } }, '@/lib/noteCanvas': geometry,
 });
 const flatten = (node) => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(flatten) : [node, ...flatten(node.props?.children)];
-const canvasProps = { blocks, width: 340, ink: null, onSelect: (id) => selections.push(id), onPlaceText: (point) => { inserted = point; }, onFrames: () => {},
+const canvasProps = { blocks, width: 340, ink: null, onSelect: (id) => selections.push(id), onPlaceText: () => { inserted = true; }, onFrames: () => {},
   onChangeLayout: (next) => { saved = next; }, onDelete: (block) => { deleted = block.id; }, onManipulating: (active) => dragging.push(active) };
 let wasHeld;
 const renderCanvas = (selectedId) => NoteCanvas({ ...canvasProps, selectedId, renderBlock: (block, style, held) => { if (block.type === 'IMAGE') { wasHeld = held; imageStyle = style; } return block.type; } });
@@ -151,11 +155,11 @@ assert.equal(page.type, 'View', 'The page has no hint text or extra controls aro
 assert.equal(page.props.style.height, undefined, 'A short note fills the screen without a fixed scrollable height');
 assert.equal(page.props.style.flexGrow, 1);
 page.props.children[0].props.onPress({ nativeEvent: { locationX: 170, locationY: 900 } });
-assert.equal(inserted.x, 0); assert.equal(inserted.width, 1); assert.equal(inserted.y, 888, 'A touch anywhere writes from the left edge of that line');
+assert.equal(inserted, true, 'A touch on blank space opens text entry in document flow');
 
 const [textItem, photoItem, audioItem] = page.props.children[1];
-const text = textItem.type(textItem.props);
-assert.equal(text.type, 'AnimatedView', 'Text is not wrapped in a drag gesture, so long press still selects words');
+const text = textItem;
+assert.equal(text.type, 'View', 'Text uses normal layout and long press can select words');
 assert.equal(flatten(text).some((node) => node.props?.accessibilityRole === 'adjustable' || node.type === 'Icon'), false, 'Text has no box, handle or button');
 panGestures.length = 0; pinchGestures.length = 0;
 
@@ -332,4 +336,4 @@ assert.equal(photoTransform()[0].translateX, 300, 'A zoomed photo pans only as f
 viewerGestures.tap.onActivate();
 assert.equal(photoTransform()[2].scale, 1, 'Double tap zooms back out');
 assert.equal(photoTransform()[0].translateX, 0, 'Zooming out recentres the photo');
-console.log('Note canvas verified: text formatting, making room, drawing on the page, drawing crops and erasing, photo zoom, legacy flow, line placement, no text chrome, hold to move, pinch resize and cancel, tap after hold, bounds, edge scrolling, deletion and cursor above the keyboard.');
+console.log('Note canvas verified: text formatting, making room, drawing on the page, drawing crops and erasing, photo zoom, text and checklist reflow, no text chrome, hold to move, pinch resize and cancel, tap after hold, bounds, edge scrolling, deletion and cursor above the keyboard.');

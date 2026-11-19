@@ -9,7 +9,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { useTheme } from '@/hooks/useTheme';
 import { animateTo } from '@/lib/animation';
 import { haptics } from '@/lib/haptics';
-import { canvasFrames, makeRoom, moveBlockLayout, scaleBlockLayout, textPlacement, type BlockFrame, type BlockLayout } from '@/lib/noteCanvas';
+import { canvasFrames, makeRoom, moveBlockLayout, scaleBlockLayout, isFlowBlock, type BlockFrame, type BlockLayout } from '@/lib/noteCanvas';
 import type { NoteBlock } from '@/lib/repos/notes';
 import { InkLayer, type InkSettings } from './InkLayer';
 
@@ -21,20 +21,14 @@ const DELETE_SIZE = 36;
 /** Text blocks keep long press for native text selection, so only these can be picked up. */
 const isMovable = (block: NoteBlock) => block.type === 'IMAGE' || block.type === 'VOICE' || block.type === 'DRAWING';
 
-export type RenderBlock = (block: NoteBlock, imageStyle: AnimatedStyle<ViewStyle>,
+export type RenderBlock = (block: NoteBlock, imageStyle?: AnimatedStyle<ViewStyle>,
   /** True once if this touch picked the block up, whose release must not also open it. */
-  wasHeld: () => boolean) => ReactNode;
+  wasHeld?: () => boolean) => ReactNode;
 
-/**
- * The note's page. There are no boxes or handles: a touch on blank space puts the cursor at
- * the left edge of that line, a long press picks up a photo, audio clip or drawing to move
- * anywhere, and two fingers resize a photo or drawing. Whatever a held block lands on moves out
- * of its way as it goes. A block that was picked up offers its delete button until the next
- * touch on blank space. With `ink` set, the page is drawn on instead.
- */
+/** Text and checklists flow down the page. Photos, audio and drawings can be arranged on it. */
 export function NoteCanvas({ blocks, width, selectedId, ink, onSelect, onPlaceText, onFrames, onChangeLayout, onDelete, onManipulating, renderBlock }: {
   blocks: NoteBlock[]; width: number; selectedId: number | null; ink: InkSettings | null; onSelect: (id: number | null) => void;
-  onPlaceText: (layout: BlockLayout) => void; onChangeLayout: (layouts: Record<number, BlockLayout>) => void;
+  onPlaceText: () => void; onChangeLayout: (layouts: Record<number, BlockLayout>) => void;
   onFrames: (frames: Record<number, BlockFrame>) => void;
   onDelete: (block: NoteBlock) => void; onManipulating: (active: boolean) => void;
   renderBlock: RenderBlock;
@@ -47,19 +41,40 @@ export function NoteCanvas({ blocks, width, selectedId, ink, onSelect, onPlaceTe
   const live = useSharedValue(frames);
   useLayoutEffect(() => { settled.set(frames); live.set(frames); }, [frames, live, settled]);
   const bottom = Math.max(0, ...Object.values(frames).map((frame) => frame.y + frame.height));
-  const change = (id: number, layout: BlockLayout) => onChangeLayout(makeRoom(frames, id, layout));
+  const change = (id: number, layout: BlockLayout) => {
+    const next = makeRoom(frames, id, layout);
+    onChangeLayout(Object.fromEntries(blocks.filter((block) => isMovable(block) &&
+      (block.id === id || next[block.id].y !== frames[block.id].y)).map((block) => [block.id, next[block.id]])));
+  };
   const selected = blocks.find((block) => block.id === selectedId);
+  const flowMargins: Record<number, number> = {};
+  let flowBottom = 0;
+  for (const block of blocks) {
+    if (!isFlowBlock(block)) continue;
+    const frame = frames[block.id];
+    flowMargins[block.id] = Math.max(0, frame.y - flowBottom);
+    flowBottom = frame.y + frame.height;
+  }
   return <View style={{ flexGrow: 1, minHeight: bottom + SPACE_BELOW }}>
-    <Pressable accessibilityRole="button" accessibilityLabel="Write on this line" style={StyleSheet.absoluteFill}
-      onPress={(event) => {
+    <Pressable accessibilityRole="button" accessibilityLabel="Write in note" style={StyleSheet.absoluteFill}
+      onPress={() => {
         if (selected && isMovable(selected)) onSelect(null);
-        else onPlaceText(textPlacement(blocks, frames, event.nativeEvent.locationY ?? (event.nativeEvent as { offsetY?: number }).offsetY ?? NaN));
+        else onPlaceText();
       }} />
-    {blocks.map((block) => <CanvasItem key={block.id} block={block} frame={frames[block.id]} canvasWidth={width} settled={settled} live={live}
-      selected={selectedId === block.id} onSelect={() => onSelect(block.id)} onLayoutChange={(layout) => change(block.id, layout)}
-      onDelete={() => onDelete(block)} onManipulating={onManipulating}
-      onMeasure={(box) => setMeasured((current) => current[block.id]?.width === box.width && current[block.id]?.height === box.height
-        ? current : { ...current, [block.id]: box })} renderBlock={renderBlock} />)}
+    {blocks.map((block) => {
+      const frame = frames[block.id];
+      const onMeasure = (box: { width: number; height: number }) => setMeasured((current) =>
+        current[block.id]?.width === box.width && current[block.id]?.height === box.height
+          ? current : { ...current, [block.id]: box });
+      if (isFlowBlock(block)) {
+        return <View key={block.id} style={{ marginTop: flowMargins[block.id] }} onLayout={({ nativeEvent: { layout } }) => onMeasure(layout)}>
+          {renderBlock(block)}
+        </View>;
+      }
+      return <CanvasItem key={block.id} block={block} frame={frame} canvasWidth={width} settled={settled} live={live}
+        selected={selectedId === block.id} onSelect={() => onSelect(block.id)} onLayoutChange={(layout) => change(block.id, layout)}
+        onDelete={() => onDelete(block)} onManipulating={onManipulating} onMeasure={onMeasure} renderBlock={renderBlock} />;
+    })}
     {ink && <InkLayer {...ink} width={width} />}
   </View>;
 }

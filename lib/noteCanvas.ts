@@ -4,8 +4,7 @@ import type { NoteBlock } from './repos/notes';
 export type BlockLayout = { x: number; y: number; width: number; ratio?: number };
 export type BlockFrame = BlockLayout & { height: number };
 export const CANVAS_GAP = 16;
-/** Half a line of body text: a new line is centred on the touch that placed it. */
-const HALF_LINE = 12;
+export const isFlowBlock = (block: NoteBlock) => block.type === 'TEXT' || block.type === 'CHECKLIST';
 const isEmptyText = (block: NoteBlock) => block.type === 'TEXT' && !block.content?.trim();
 export const serializeBlockLayout = ({ x, y, width, ratio }: BlockLayout): string =>
   JSON.stringify({ x, y, width, ...(ratio === undefined ? {} : { ratio }) });
@@ -27,7 +26,7 @@ export function canvasFrames(blocks: readonly NoteBlock[], width: number, measur
   const frames: Record<number, BlockFrame> = {};
   let bottom = 0;
   for (const block of blocks) {
-    const layout = parseBlockLayout(block.layout) ?? { x: 0, y: bottom, width: 1 };
+    const layout = (!isFlowBlock(block) && parseBlockLayout(block.layout)) || { x: 0, y: bottom, width: 1 };
     const pixels = Math.max(1, width * layout.width);
     const actual = measured[block.id];
     const estimate = block.type === 'IMAGE' ? pixels / (layout.ratio ?? 4 / 3)
@@ -38,7 +37,7 @@ export function canvasFrames(blocks: readonly NoteBlock[], width: number, measur
     const followsRatio = block.type === 'IMAGE' || (block.type === 'DRAWING' && layout.ratio !== undefined);
     const height = followsRatio ? estimate : actual && Math.abs(actual.width - pixels) < 1 ? actual.height : estimate;
     frames[block.id] = { ...layout, height };
-    bottom = Math.max(bottom, layout.y + height + CANVAS_GAP);
+    if (block.type !== 'DRAWING') bottom = Math.max(bottom, layout.y + height + CANVAS_GAP);
   }
   return settleFrames(blocks, frames);
 }
@@ -56,13 +55,17 @@ const overlap = (a: BlockFrame, b: BlockFrame) => {
 function settleFrames(blocks: readonly NoteBlock[], frames: Record<number, BlockFrame>) {
   const settled = { ...frames };
   const placed: BlockFrame[] = [];
+  let flowBottom = 0;
   for (const block of [...blocks].filter((item) => item.type !== 'DRAWING').sort((a, b) => frames[a.id].y - frames[b.id].y)) {
+    const flow = isFlowBlock(block);
     let frame = frames[block.id];
+    if (flow && frame.y < flowBottom) frame = { ...frame, y: flowBottom };
     for (let blocker = placed.find((other) => overlap(frame, other)); blocker; blocker = placed.find((other) => overlap(frame, other))) {
       frame = { ...frame, y: blocker.y + blocker.height + CANVAS_GAP };
     }
     settled[block.id] = frame;
     placed.push(frame);
+    if (flow) flowBottom = frame.y + frame.height + CANVAS_GAP;
   }
   return settled;
 }
@@ -111,21 +114,12 @@ export function scaleBlockLayout(layout: BlockLayout, scale: number, canvasWidth
   return { ...layout, x, y, width };
 }
 
-/** A touch on blank space writes at the left edge of that line, below any block that reaches it. */
-export function textPlacement(blocks: readonly NoteBlock[], frames: Readonly<Record<number, BlockFrame>>, touchY: number): BlockLayout {
-  // An unknown touch point (some pointer events lack one) must not poison the saved position.
-  let y = Number.isFinite(touchY) ? Math.max(0, touchY - HALF_LINE) : Math.max(0, ...blocks.map((block) => frames[block.id].y + frames[block.id].height));
-  for (const block of blocks) {
-    const frame = frames[block.id];
-    // Empty text is removed by this insertion, and a drawing floats over the page.
-    if (!isEmptyText(block) && block.type !== 'DRAWING' && frame.y <= touchY) y = Math.max(y, frame.y + frame.height);
-  }
-  return { x: 0, y, width: 1 };
-}
-
-/** Freeze legacy positions before inserting, replacing an empty insertion box with media. */
+/** Insert in document flow, replacing an empty insertion line with media when needed. */
 export function insertCanvasBlock(blocks: readonly NoteBlock[], block: NoteBlock, width: number,
   measuredFrames: Record<number, BlockFrame>, selectedId: number | null, at?: BlockLayout): NoteBlock[] {
+  const existing = blocks.filter((item) => !isEmptyText(item));
+  if (isFlowBlock(block)) return [...existing, { ...block, layout: null }];
+
   const frames = { ...canvasFrames(blocks, width), ...measuredFrames };
   const selected = blocks.find((item) => item.id === selectedId);
   const empty = selected && isEmptyText(selected) ? selected : !selected ? blocks.find(isEmptyText) : undefined;
@@ -136,10 +130,9 @@ export function insertCanvasBlock(blocks: readonly NoteBlock[], block: NoteBlock
     const frame = frames[selected.id];
     target = { x: frame.x, y: frame.y + frame.height + CANVAS_GAP, width: frame.width };
   }
-  target ??= { x: 0, y: bottom + CANVAS_GAP, width: block.type === 'TEXT' || block.type === 'CHECKLIST' ? 1 : 0.8 };
+  target ??= { x: 0, y: bottom + CANVAS_GAP, width: 0.8 };
   // Playback and duration controls must remain usable on narrow phone screens.
   const blockWidth = block.type === 'VOICE' ? Math.max(Math.min(0.8, target.width), Math.min(1, 220 / width)) : target.width;
   const layout = { ...target, width: blockWidth, x: Math.min(target.x, 1 - blockWidth) };
-  const existing = blocks.filter((item) => !isEmptyText(item)).map((item) => ({ ...item, layout: serializeBlockLayout(frames[item.id]) }));
   return [...existing, { ...block, layout: serializeBlockLayout(layout) }];
 }

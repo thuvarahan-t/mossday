@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Keyboard, StyleSheet, useWindowDimensions, View, type TextInputInstance } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShareWithOptions } from '@/components/share/ShareProvider';
@@ -50,7 +50,7 @@ import { PhotoViewer } from './PhotoViewer';
 import { ReminderSheet } from './ReminderSheet';
 import { formatReminder } from './reminderTimes';
 import { NoteCanvas } from './NoteCanvas';
-import { insertCanvasBlock, serializeBlockLayout, type BlockFrame, type BlockLayout } from '@/lib/noteCanvas';
+import { insertCanvasBlock, isFlowBlock, serializeBlockLayout, type BlockFrame } from '@/lib/noteCanvas';
 
 type ToolId = 'format' | 'gallery' | 'camera' | 'voice' | 'checklist' | 'drawing' | 'tools' | 'text' | 'bullets' | 'numbers' | 'checkboxes' | 'timestamp';
 type Tool = { id: ToolId; icon: IconName; label: string };
@@ -97,6 +97,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
   const [formatting, setFormatting] = useState(false);
   const [manipulating, setManipulating] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<number | null>(null);
+  const trailingText = useRef<TextInputInstance>(null);
   const frames = useRef<Record<number, BlockFrame>>({});
   const revealCaret = useRef<RevealCaret>(null);
   /** The text block or checklist being typed in, for the format bar; null in the heading. */
@@ -150,9 +151,9 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
     }) }, group);
   const newBlock = (type: NoteBlock['type'], content: string | null = '', filePath: string | null = null, durationMs: number | null = null): NoteBlock =>
     ({ id: nextId.current--, noteId: note.id, type, content, filePath, durationMs, position: 0 });
-  const addBlock = (block: NoteBlock, focusIt = false, at?: BlockLayout) => {
+  const addBlock = (block: NoteBlock, focusIt = false) => {
     const current = latest.current;
-    edit({ ...current, blocks: insertCanvasBlock(current.blocks, block, contentWidth, frames.current, selectedBlockId, at) });
+    edit({ ...current, blocks: insertCanvasBlock(current.blocks, block, contentWidth, frames.current, selectedBlockId) });
     setSelectedBlockId(block.id);
     if (focusIt) setAutoFocusId(block.id);
   };
@@ -352,13 +353,17 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
         <NoteCanvas blocks={draft.blocks} width={contentWidth} selectedId={selectedBlockId} onSelect={setSelectedBlockId}
           ink={drawingOn ? { tool: inkTool, color: inkColor, onStroke: addStroke, onErase: eraseAtPoint } : null}
           onFrames={(next) => { frames.current = next; }} onManipulating={setManipulating} onDelete={removeBlock}
-          onPlaceText={(layout) => addBlock(newBlock('TEXT'), true, layout)}
+          onPlaceText={() => {
+            if (trailingText.current) trailingText.current.focus();
+            else addBlock(newBlock('TEXT'), true);
+          }}
           onChangeLayout={(layouts) => edit({ ...latest.current, blocks: latest.current.blocks.map((block) =>
-            layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
+            !isFlowBlock(block) && layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
           renderBlock={(block, imageStyle, wasHeld) => <View style={block.type === 'DRAWING' ? undefined : { backgroundColor: background }}>
             {block.type === 'TEXT' && <TextField appearance="bare" multiline growWithContent placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} accessibilityLabel="Note text"
               // A text input takes formatted text as children instead of a plain value.
               value={block.spans ? undefined : block.content ?? ''}
+              ref={draft.blocks.at(-1)?.id === block.id ? trailingText : undefined}
               autoFocus={block.id === autoFocusId}
               onFocus={() => { setSelectedBlockId(block.id); const end = block.content?.length ?? 0; focus.current = { blockId: block.id, selection: { start: end, end } }; revealCaret.current?.(); }}
               onContentSizeChange={() => {
@@ -386,7 +391,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
               }}>{block.spans ? <RichSegments text={block.content ?? ''} spans={parseSpans(block.spans)} /> : undefined}</TextField>}
             {block.type === 'IMAGE' && block.filePath && <Animated.View style={imageStyle}>
               <PressableScale accessibilityLabel="Open photo" accessibilityHint="Hold to move, or pinch to resize" style={{ flex: 1 }}
-                onPress={() => { if (wasHeld()) return; haptics.tap(); setSelectedBlockId(null); setPhoto(mediaFile(block.filePath!).uri); }}>
+                onPress={() => { if (wasHeld?.()) return; haptics.tap(); setSelectedBlockId(null); setPhoto(mediaFile(block.filePath!).uri); }}>
                 <Image source={{ uri: mediaFile(block.filePath).uri }} contentFit="contain" transition={150} accessibilityLabel="Attached photo"
                   style={{ width: '100%', height: '100%', borderRadius: theme.radii.card }} />
               </PressableScale>
@@ -396,7 +401,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
               onFocus={() => { setSelectedBlockId(block.id); focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; revealCaret.current?.(true); }}
               onChange={(content, group) => { if (content === '[]') removeBlock(block); else replaceBlock(block.id, { content }, group); }} />}
             {block.type === 'DRAWING' && <PressableScale accessibilityLabel="Draw on the page" accessibilityHint="Hold to move, or pinch to resize"
-              onPress={() => { if (wasHeld()) return; haptics.tap(); startDrawing(); }}>
+              onPress={() => { if (wasHeld?.()) return; haptics.tap(); startDrawing(); }}>
               <DrawingView drawing={parseDrawing(block.content)} />
             </PressableScale>}
           </View>} />
