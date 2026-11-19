@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
+import { Platform, StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps, type TextStyle } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { fontFamilies, textVariants, type TextVariant } from '@/constants/typography';
 import { useTheme } from '@/hooks/useTheme';
@@ -11,6 +11,8 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColo
   appearance?: 'outlined' | 'filled' | 'bare';
   variant?: TextVariant;
   bold?: boolean;
+  /** Let a multiline field grow inside a page that owns scrolling. */
+  growWithContent?: boolean;
   /** For moving focus between fields, e.g. to the next checklist item. */
   ref?: Ref<TextInputInstance>;
 };
@@ -18,7 +20,7 @@ export type TextFieldProps = Omit<TextInputProps, 'style' | 'placeholderTextColo
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 /** Text input styled with the type tokens; outlined fields turn green while focused. */
-export function TextField({ appearance = 'outlined', variant = 'body', bold, multiline, onFocus, onBlur, ref, ...rest }: TextFieldProps) {
+export function TextField({ appearance = 'outlined', variant = 'body', bold, multiline, growWithContent, onFocus, onBlur, ref, ...rest }: TextFieldProps) {
   const theme = useTheme();
   const reduced = useReducedMotion();
   const focus = useSharedValue(0);
@@ -31,6 +33,7 @@ export function TextField({ appearance = 'outlined', variant = 'body', bold, mul
       {...rest}
       ref={ref}
       multiline={multiline}
+      scrollEnabled={growWithContent ? false : rest.scrollEnabled}
       onFocus={(event) => { focus.set(animateTo(1, 'snappy', reduced)); onFocus?.(event); }}
       onBlur={(event) => { focus.set(animateTo(0, 'snappy', reduced)); onBlur?.(event); }}
       placeholderTextColor={theme.colors.tertiaryLabel}
@@ -54,10 +57,14 @@ export function TextField({ appearance = 'outlined', variant = 'body', bold, mul
           borderWidth: appearance === 'outlined' ? 1.5 : 0,
         },
         framed && focusStyle,
+        growWithContent && multiline && Platform.OS === 'web' && [webGrowingInput, { minHeight: metrics.lineHeight }],
       ]}
     />
   );
 }
+
+// React Native Web renders multiline inputs as textareas with their own scrollbar.
+const webGrowingInput = { fieldSizing: 'content' } as TextStyle;
 
 /** iOS search field: grey rounded field with a magnifier. */
 export function SearchField({ value, onChangeText, placeholder = 'Search' }: {

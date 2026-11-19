@@ -78,7 +78,7 @@ export function ChecklistBlock({ blockId, content, onChange, onFocus, autoFocus 
       <View style={{ flex: 1 }}>
         {item.done ? <StrikeText struck>{item.text}</StrikeText>
           : <TextField ref={(input) => { if (input) inputs.current.set(id, input); else inputs.current.delete(id); }}
-            value={item.text} appearance="bare" multiline submitBehavior="submit" returnKeyType="next" placeholder="List item" accessibilityLabel="List item"
+            value={item.text} appearance="bare" multiline growWithContent submitBehavior="submit" returnKeyType="next" placeholder="List item" accessibilityLabel="List item"
             onFocus={() => { setFocusedId(id); onFocus?.(); }} onBlur={() => setFocusedId((current) => current === id ? null : current)}
             onChangeText={(text) => update(index, { text }, `check:${blockId}:${id}`)}
             onSubmitEditing={() => insertAfter(index)}

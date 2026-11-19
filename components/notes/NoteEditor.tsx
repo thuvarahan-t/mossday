@@ -348,7 +348,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
       <DragScrollView revealCaret={revealCaret} keyboardShouldPersistTaps="handled" scrollEnabled={!manipulating && !drawingOn} contentContainerStyle={{ flexGrow: 1, padding: theme.spacing.xl, gap: theme.spacing.lg }}>
         <Text align="center" variant="footnote" color="secondaryLabel">{formatTimestamp(note.createdAt)}</Text>
         <TextField value={draft.title} onChangeText={(title) => edit({ ...latest.current, title }, 'title')} onFocus={() => { focus.current = null; setSelectedBlockId(null); setDrawingOn(false); }}
-          appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline />
+          appearance="bare" variant="largeTitle" bold placeholder="Heading" accessibilityLabel="Note heading" multiline growWithContent />
         <NoteCanvas blocks={draft.blocks} width={contentWidth} selectedId={selectedBlockId} onSelect={setSelectedBlockId}
           ink={drawingOn ? { tool: inkTool, color: inkColor, onStroke: addStroke, onErase: eraseAtPoint } : null}
           onFrames={(next) => { frames.current = next; }} onManipulating={setManipulating} onDelete={removeBlock}
@@ -356,7 +356,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
           onChangeLayout={(layouts) => edit({ ...latest.current, blocks: latest.current.blocks.map((block) =>
             layouts[block.id] ? { ...block, layout: serializeBlockLayout(layouts[block.id]) } : block) })}
           renderBlock={(block, imageStyle, wasHeld) => <View style={block.type === 'DRAWING' ? undefined : { backgroundColor: background }}>
-            {block.type === 'TEXT' && <TextField appearance="bare" multiline placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} accessibilityLabel="Note text"
+            {block.type === 'TEXT' && <TextField appearance="bare" multiline growWithContent placeholder={draft.blocks.length === 1 ? 'Write something…' : undefined} accessibilityLabel="Note text"
               // A text input takes formatted text as children instead of a plain value.
               value={block.spans ? undefined : block.content ?? ''}
               autoFocus={block.id === autoFocusId}
@@ -393,7 +393,7 @@ function Editor({ note, blocks }: { note: Note; blocks: NoteBlock[] }) {
             </Animated.View>}
             {block.type === 'VOICE' && block.filePath && <VoicePlayer uri={mediaFile(block.filePath).uri} durationMs={block.durationMs ?? 0} ignorePress={wasHeld} />}
             {block.type === 'CHECKLIST' && <ChecklistBlock blockId={block.id} content={block.content} autoFocus={block.id === autoFocusId}
-              onFocus={() => { setSelectedBlockId(block.id); focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; revealCaret.current?.(); }}
+              onFocus={() => { setSelectedBlockId(block.id); focus.current = { blockId: block.id, selection: { start: 0, end: 0 } }; revealCaret.current?.(true); }}
               onChange={(content, group) => { if (content === '[]') removeBlock(block); else replaceBlock(block.id, { content }, group); }} />}
             {block.type === 'DRAWING' && <PressableScale accessibilityLabel="Draw on the page" accessibilityHint="Hold to move, or pinch to resize"
               onPress={() => { if (wasHeld()) return; haptics.tap(); startDrawing(); }}>
