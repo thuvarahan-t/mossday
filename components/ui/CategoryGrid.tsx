@@ -99,7 +99,8 @@ function CategoryTile({ item, selected, drag, width, height, labelHeight, gap, d
   const gesture = usePanGesture({
     enabled: (reorderable || !!onEdit || !!onDelete) && !disabled,
     activateAfterLongPress: 350,
-    minDistance: 0,
+    // The hold timer owns activation. A zero distance also activates on small movements before it fires.
+    minDistance: Number.MAX_SAFE_INTEGER,
     onActivate: () => {
       if (activeId.get() !== null) return;
       originalOrder.set(order.get().slice());
