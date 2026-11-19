@@ -1,6 +1,6 @@
 import { Appearance } from 'react-native';
 export type AppearancePreference = 'system' | 'light' | 'dark';
-let preference: AppearancePreference = 'system';
+let preference: AppearancePreference = 'light';
 const listeners = new Set<() => void>();
 export const getAppearancePreference = () => preference;
 export function subscribeAppearance(listener: () => void) {

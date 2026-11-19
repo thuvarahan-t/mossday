@@ -45,6 +45,9 @@ async function main() {
   const habits = load('lib/repos/habits.ts');
   const diary = load('lib/repos/diary.ts');
   const settings = load('lib/repos/settings.ts');
+  assert.equal((await settings.getSettings()).appearance, 'light', 'Fresh databases start in light mode');
+  await settings.setSetting('appearance', 'system');
+  assert.equal((await settings.getSettings()).appearance, 'system');
   assert.equal((await settings.getSettings()).currencyPrompted, false);
   await settings.completeCurrencySetup();
   assert.equal((await settings.getSettings()).currency, 'LKR', 'Skip keeps Rs.');

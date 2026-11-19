@@ -93,6 +93,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
             name, icon, color, type, sortOrder, isDefault,
           );
         }
+        await db.runAsync("INSERT INTO settings(key,value) VALUES ('appearance','light')");
         await db.execAsync('PRAGMA user_version = 1;');
       });
     }
