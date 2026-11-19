@@ -235,6 +235,9 @@ async function main() {
   await notes.setNoteProperty(noteId, 'folder', null);
   assert.deepEqual(Array.from((await notes.listNotes()).folders), [], 'No folders until the user makes or uses one');
   assert.equal(await notes.addFolder('  Recipes '), 'Recipes');
+  const recipeNote = await notes.createNote('Recipes');
+  assert.equal((await notes.getNote(recipeNote)).note.folder, 'Recipes', 'A new note starts in the selected folder');
+  await notes.deleteNote(recipeNote);
   assert.deepEqual(Array.from((await notes.listNotes()).folders), ['Recipes'], 'A new folder shows while still empty');
   await assert.rejects(notes.addFolder('recipes'), 'Folder names are unique ignoring case');
   assert.throws(() => notes.addFolder('All'), '"All" is the built-in filter');

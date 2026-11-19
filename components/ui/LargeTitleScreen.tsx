@@ -26,6 +26,7 @@ export type LargeTitleScreenProps = {
   titleAccessory?: ReactNode;
   /** Controls that stay visible below the title while the page scrolls. */
   fixedContent?: ReactNode;
+  overlay?: ReactNode;
   floatingAdd?: FloatingAddAction;
   /** Wraps the page's scroll view, so a swipe works anywhere on it, including its blank space. */
   swipeArea?: (page: ReactNode) => ReactNode;
@@ -45,7 +46,7 @@ export type LargeTitleScreenProps = {
  * switch moves the page's content only; the actions and floating add button stay still.
  */
 export function LargeTitleScreen({
-  title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, swipeArea = (page) => page, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
+  title, subtitle, titleLeading, titleAccessory, fixedContent, floatingAdd, overlay, swipeArea = (page) => page, showBack, onBack = router.back, headerRight, children, bottomInset = 'tabBar',
   contentContainerStyle, refreshControl, keyboardShouldPersistTaps = 'handled', scrollEnabled = true, resetScrollKey,
 }: LargeTitleScreenProps) {
   const theme = useTheme();
@@ -111,6 +112,7 @@ export function LargeTitleScreen({
           <Animated.View style={keyboardSpace} />
         </Animated.ScrollView>)}</Animated.View>
       </BlurTargetContent>
+      {overlay}
       {floatingAdd && <FloatingAddButton {...floatingAdd} />}
       <View style={styles.header} onLayout={(event) => setHeaderHeight(Math.ceil(event.nativeEvent.layout.height))}>
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, glassStyle]}>

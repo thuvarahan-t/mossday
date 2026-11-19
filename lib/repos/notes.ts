@@ -81,9 +81,9 @@ export const getNote = (id: number) => read(async (db) => ({
   note: await db.getFirstAsync<Note>('SELECT * FROM notes WHERE id=?', id),
   blocks: await db.getAllAsync<NoteBlock>('SELECT * FROM note_blocks WHERE noteId=? ORDER BY position,id', id),
 }));
-export const createNote = () => write(async (db) => {
+export const createNote = (folder: string | null = null) => write(async (db) => {
   const now = new Date().toISOString();
-  const result = await db.runAsync('INSERT INTO notes(createdAt,updatedAt) VALUES (?,?)', now, now);
+  const result = await db.runAsync('INSERT INTO notes(folder,createdAt,updatedAt) VALUES (?,?,?)', folder, now, now);
   return result.lastInsertRowId;
 });
 

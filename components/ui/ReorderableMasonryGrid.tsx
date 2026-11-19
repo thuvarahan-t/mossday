@@ -18,9 +18,10 @@ type GridDrag = {
 };
 
 /** Cards retain their React identity across columns; only UI-thread positions change during a drag. */
-export function ReorderableMasonryGrid<T extends { id: number }>({ items, estimateHeight, renderItem, label, actions, onPress, onReorder, onDraggingChange }: {
+export function ReorderableMasonryGrid<T extends { id: number }>({ items, estimateHeight, renderItem, label, actions, onPress, onReorder, onDraggingChange, onDropOutside }: {
   items: readonly T[]; estimateHeight: (item: T, width: number) => number; renderItem: (item: T, width: number) => ReactNode;
   label: (item: T) => string; actions: (item: T) => ContextMenuAction[]; onPress: (item: T) => void;
+  onDropOutside?: (item: T, x: number, y: number) => Promise<boolean>;
   onReorder: (ids: number[]) => Promise<boolean>; onDraggingChange: (active: boolean) => void;
 }) {
   const theme = useTheme();
@@ -95,7 +96,12 @@ export function ReorderableMasonryGrid<T extends { id: number }>({ items, estima
           borderColor: theme.colors.accent, backgroundColor: theme.colors.accentFill }, placeholderStyle]} />
       {!!width && items.map((item) => <MasonryCard key={item.id} id={item.id} drag={drag} width={columnWidth} gap={gap} reduced={reduced}
         layout={layout}
-        disabled={saving} label={label(item)} actions={actions(item)} onPress={() => onPress(item)} onCommit={commit}
+        disabled={saving} label={label(item)} actions={actions(item)} onPress={() => onPress(item)} onCommit={commit} onDrop={onDropOutside ? async (next, x, y) => {
+          const handled = await onDropOutside(item, x, y);
+          if (handled) {
+            if (latestIds.current.includes(item.id)) order.set(latestIds.current);
+          } else commit(next);
+        } : undefined}
         onDraggingChange={onDraggingChange} onMeasure={(height) => setMeasured((current) => current[item.id] === height ? current : { ...current, [item.id]: height })}>
         {renderItem(item, columnWidth)}
       </MasonryCard>)}
@@ -103,9 +109,10 @@ export function ReorderableMasonryGrid<T extends { id: number }>({ items, estima
   </View>;
 }
 
-function MasonryCard({ id, drag, width, gap, reduced, layout, disabled, label, actions, onPress, onCommit, onDraggingChange, onMeasure, children }: {
+function MasonryCard({ id, drag, width, gap, reduced, layout, disabled, label, actions, onPress, onCommit, onDrop, onDraggingChange, onMeasure, children }: {
   id: number; drag: GridDrag; width: number; gap: number; reduced: boolean; disabled: boolean; label: string; actions: ContextMenuAction[];
   layout: SharedValue<ReturnType<typeof masonryLayout>>;
+  onDrop?: (next: number[], x: number, y: number) => Promise<void>;
   onPress: () => void; onCommit: (ids: number[]) => void; onDraggingChange: (active: boolean) => void;
   onMeasure: (height: number) => void; children: ReactNode;
 }) {
@@ -145,7 +152,8 @@ function MasonryCard({ id, drag, width, gap, reduced, layout, disabled, label, a
       if (activeId.get() !== id) return;
       if (event.canceled) { order.set(original.get()); return; }
       if (!moved.get()) { scheduleOnRN(openMenu); return; }
-      scheduleOnRN(onCommit, order.get().slice());
+      if (onDrop) scheduleOnRN(onDrop, order.get().slice(), event.absoluteX, event.absoluteY);
+      else scheduleOnRN(onCommit, order.get().slice());
     },
     onFinalize: (event) => {
       if (activeId.get() !== id) return;
