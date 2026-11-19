@@ -68,11 +68,13 @@ export function ChecklistBlock({ blockId, content, onChange, onFocus, autoFocus 
   const update = (index: number, change: Partial<ChecklistItem>, group: string | null) => save(items.map((item, i) => i === index ? { ...item, ...change } : item), group);
 
   const { open, done } = checklistOrder(items);
-  const layout = reduced || Platform.OS === 'web' ? undefined : move;
+  // Web entering animations initially hide the row, which prevents focusing its input.
+  const animateRows = !reduced && Platform.OS !== 'web';
+  const layout = animateRows ? move : undefined;
   const row = (index: number) => {
     const item = items[index];
     const id = rowIds[index];
-    return <Animated.View key={id} layout={layout} entering={reduced ? undefined : FadeIn} exiting={reduced ? undefined : FadeOut}
+    return <Animated.View key={id} layout={layout} entering={animateRows ? FadeIn : undefined} exiting={animateRows ? FadeOut : undefined}
       style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, minHeight: theme.sizes.touchTarget }}>
       <Checkbox checked={item.done} accessibilityLabel={item.text || 'List item'} onToggle={() => update(index, { done: !item.done }, null)} />
       <View style={{ flex: 1 }}>
@@ -82,7 +84,22 @@ export function ChecklistBlock({ blockId, content, onChange, onFocus, autoFocus 
             onFocus={() => { setFocusedId(id); onFocus?.(); }} onBlur={() => setFocusedId((current) => current === id ? null : current)}
             onChangeText={(text) => update(index, { text }, `check:${blockId}:${id}`)}
             onSubmitEditing={() => insertAfter(index)}
-            onKeyPress={(event) => { if (event.nativeEvent.key === 'Backspace' && !item.text) remove(index); }} />}
+            onKeyPress={(event) => {
+              const { key } = event.nativeEvent;
+              if (key === 'Backspace' && !item.text) {
+                // The browser's default deletion would run after focus moves to the previous row.
+                if (Platform.OS === 'web') event.preventDefault();
+                remove(index);
+              }
+              if (Platform.OS === 'web' && key === 'Enter') {
+                // React Native Web does not implement multiline submitBehavior.
+                const { nativeEvent } = event;
+                if (('shiftKey' in nativeEvent && nativeEvent.shiftKey) ||
+                    ('isComposing' in nativeEvent && nativeEvent.isComposing)) return;
+                event.preventDefault();
+                insertAfter(index);
+              }
+            }} />}
       </View>
       {focusedId === id || item.done ? <PressableScale haptic="tap" hitSlop={theme.spacing.sm} accessibilityLabel={`Delete ${item.text || 'item'}`} onPress={() => remove(index)}>
         <Icon name="close" size={theme.sizes.iconSmall} color="tertiaryLabel" />
