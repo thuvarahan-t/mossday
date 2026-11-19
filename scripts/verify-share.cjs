@@ -169,7 +169,7 @@ async function main() {
   assert.match(html, /<h1>A &lt;title&gt;<\/h1>/, 'Titles are escaped');
   assert.match(html, /<span style="background:#FFCC0066"><strong>Second<\/strong><\/span> &amp; last/, 'Formatting carries into the PDF');
   assert.match(html, /data:image\/jpeg;base64,QkFTRTY0/, 'Photos are inlined because a WebView cannot read app files');
-  assert.ok(html.indexOf('Done') < html.indexOf('QkFTRTY0') && html.indexOf('QkFTRTY0') < html.indexOf('Second'), 'The document reads top to bottom as placed');
+  assert.ok(html.indexOf('Second', html.indexOf('</h1>')) < html.indexOf('QkFTRTY0') && html.indexOf('QkFTRTY0') < html.indexOf('Done'), 'PDF order follows the editor flow, ignoring old text and checklist coordinates');
   assert.match(html, /stroke="#FF3B30"/);
   console.log('Share verified: format choices, audio only when present, wait for the sheet, PDF routes, ZIP contents, cleanup and note documents.');
 }
