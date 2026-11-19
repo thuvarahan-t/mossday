@@ -181,9 +181,13 @@ async function main() {
   await diary.reorderTodos(todos.map((t) => t.id).reverse());
   assert.equal((await diary.listTodos(today))[0].text, 'Carry me');
   const editable = (await diary.listTodos(today)).find((t) => t.text === 'Carry me');
-  await diary.updateTodo(editable.id, today, '  Carried  ', '09:15', 1);
+  await diary.updateTodo(editable.id, today, '  Carried  ', '09:15', 1, '10:30');
   const edited = (await diary.listTodos(today)).find((t) => t.id === editable.id);
-  assert.deepEqual([edited.text, edited.time, edited.priority], ['Carried', '09:15', 1], 'Edits save text, time and priority');
+  assert.deepEqual([edited.text, edited.time, edited.endTime, edited.priority], ['Carried', '09:15', '10:30', 1], 'Edits save text, time range and priority');
+  await diary.deleteTodo(edited.id);
+  await diary.restoreTodo(edited);
+  assert.equal((await diary.listTodos(today)).find((t) => t.id === edited.id).endTime, '10:30', 'Undo restores the end time');
+  assert.throws(() => diary.updateTodo(editable.id, today, 'Bad range', '09:15', 0, '08:00'), /End time/);
   assert.throws(() => diary.updateTodo(editable.id, today, 'Bad', '25:00'), 'Invalid times are refused before saving');
   await assert.rejects(diary.updateTodo(99999, today, 'Gone', null));
   await diary.updateTodo(editable.id, yesterday, 'Carried', null);

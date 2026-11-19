@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/Text';
 import type { Theme } from '@/constants/theme';
 import { formatLongDate } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
-import type { Todo } from '@/lib/repos/diary';
+import { formatTodoTime, type Todo } from '@/lib/repos/diary';
 import type { Category, Expense } from '@/lib/repos/expenses';
 import type { Habit } from '@/lib/repos/habits';
 import { dataColors } from '@/lib/dataColors';
@@ -44,7 +44,7 @@ export function todayShareContent({ theme, today, spent, budget, meals, expenses
       </SharePanel>}
       {todos.length > 0 && <SharePanel>
         <Text variant="headline">To-dos</Text>
-        {todos.map((todo) => <ShareLine key={todo.id} title={todo.text} muted={!!todo.isDone} value={todo.time ?? undefined} leading={<ShareCheck done={!!todo.isDone} />} />)}
+        {todos.map((todo) => <ShareLine key={todo.id} title={todo.text} muted={!!todo.isDone} value={formatTodoTime(todo)} leading={<ShareCheck done={!!todo.isDone} />} />)}
       </SharePanel>}
     </View>,
   };

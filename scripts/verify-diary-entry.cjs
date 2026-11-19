@@ -21,7 +21,7 @@ function hooks() {
   };
   return { react, reset: () => { index = 0; } };
 }
-const theme = { spacing: { xs: 4, sm: 8, md: 12, lg: 16 }, sizes: { rowPadding: 16, rowMinHeight: 52, checkbox: 24, touchTarget: 44 } };
+const theme = { spacing: { xs: 4, sm: 8, md: 12, lg: 16 }, sizes: { rowPadding: 16, rowMinHeight: 52, checkbox: 24, circleButton: 44 }, radii: { pill: 999 }, colors: { accent: 'green' } };
 const common = {
   'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { View: 'View' },
   '@/hooks/useTheme': { useTheme: () => theme }, '@/lib/haptics': { haptics: { success: () => {} } },
@@ -79,10 +79,10 @@ async function main() {
   const sheetHooks = hooks();
   const deleted = [];
   let undo;
-  const todo = { id: 7, date: '2026-11-06', text: 'Buy milk', time: null, priority: 0, isDone: 0, sortOrder: 3 };
+  const todo = { id: 7, date: '2026-11-06', text: 'Buy milk', time: '09:00', endTime: '10:00', priority: 0, isDone: 0, sortOrder: 3 };
   const { TodoSheet } = load('components/diary/TodoSheet.tsx', {
     ...common, react: sheetHooks.react,
-    '@/components/ui/Button': { Button: 'Button' }, '@/components/ui/FormSheet': { FormSheet: 'FormSheet' },
+    '@/components/ui/FormSheet': { FormSheet: 'FormSheet' },
     '@/components/ui/DateSelector': { DateSelector: 'DateSelector' }, '@/components/ui/Text': { Text: 'Text' },
     '@/components/ui/TextField': { TextField: 'TextField' }, '@/components/ui/TimeField': { TimeField: 'TimeField' },
     '@/components/ui/Toggle': { Toggle: 'Toggle' }, '@/components/ui/Icon': { Icon: 'Icon' },
@@ -95,6 +95,9 @@ async function main() {
   const controls = sheet.props.trailing.props.children;
   assert.equal(controls[0].props.accessibilityLabel, 'Delete to-do');
   assert.equal(controls[0].props.children.props.color, 'dangerText', 'Delete icon is red beside Save');
+  assert.equal(controls[1].props.accessibilityLabel, 'Save to-do');
+  assert.equal(controls[1].props.children.props.name, 'check');
+  assert.deepEqual(Array.from(sheet.props.children.slice(2, 4), (row) => row.props.children[1].props.value), ['09:00', '10:00']);
   controls[0].props.onPress(); await flush();
   assert.deepEqual(deleted, [7]); undo(); await flush();
   assert.deepEqual(deleted, [7, 'restored 7'], 'Sheet deletion can be undone');
@@ -109,7 +112,7 @@ async function main() {
     '@/components/ui/Text': { Text: 'Text' }, '@/components/ui/Toast': { useToast: () => () => {} },
     '@/hooks/useResource': { useAction: () => async (operation, success) => { await operation(); success?.(); return true; } },
     '@/hooks/useSheetState': { useSheetState: () => [selected, (value) => { selected = value; }, {}] },
-    '@/lib/repos/diary': { deleteTodo: async (id) => { deleted.push(id); } },
+    '@/lib/repos/diary': { deleteTodo: async (id) => { deleted.push(id); }, formatTodoTime: () => '09:00–10:00' },
     '@/lib/haptics': { haptics: { tap: () => {} } }, './TodoSheet': { TodoSheet: 'TodoSheet' },
     './todoOrder': { savedTodoOrder: () => [] }, './InlineTodoEntry': { InlineTodoEntry: 'InlineTodoEntry' },
   });

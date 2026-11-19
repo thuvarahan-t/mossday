@@ -131,7 +131,9 @@ takes one file at a time. A note's PDF is a real document with its text, photos 
 
 To-dos are the same list on Today and in the Diary: tap a task to open its edit sheet directly,
 or hold and drag to reorder it live; swipe left to delete. The edit sheet has a red
-delete icon beside Save, with Undo after deletion. In Diary, Add to-do (or the header
+delete icon beside the Save check mark, with Undo after deletion. Start and end times
+are optional and use the task's date. Existing task times appear as start times.
+In Diary, Add to-do (or the header
 plus) inserts a focused typing row at the bottom. Keyboard Next saves it and keeps
 the cursor ready for another; leaving the field or screen also saves nonempty text.
 Empty drafts are discarded and failed saves keep the draft for retry. The

@@ -1,7 +1,7 @@
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 const DATABASE_NAME = 'mossday.db';
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 const monthlyCategories = [
   ['Electricity', 'bills', 'yellow'], ['Water', 'bills', 'blue'], ['Rent', 'home', 'green'],
   ['Internet', 'bills', 'indigo'], ['Phone', 'bills', 'teal'], ['Insurance', 'health', 'purple'],
@@ -192,7 +192,7 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
         await db.execAsync('PRAGMA user_version = 10;');
       });
     }
-    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+    if ((version?.user_version ?? 0) < 11) {
       await db.withTransactionAsync(async () => {
         const column = await db.getFirstAsync<{ n: number }>("SELECT count(*) AS n FROM pragma_table_info('categories') WHERE name='frequency'");
         if (!column?.n) await db.execAsync("ALTER TABLE categories ADD COLUMN frequency TEXT NOT NULL DEFAULT 'DAILY' CHECK(frequency IN ('DAILY','MONTHLY'));");
@@ -204,6 +204,13 @@ async function initializeDatabase(): Promise<SQLiteDatabase> {
             WHERE NOT EXISTS (SELECT 1 FROM categories WHERE lower(name)=lower(?) AND frequency='MONTHLY' AND archived=0)`, name, icon, color, name);
         }
         await db.execAsync('PRAGMA user_version = 11;');
+      });
+    }
+    if ((version?.user_version ?? 0) < SCHEMA_VERSION) {
+      await db.withTransactionAsync(async () => {
+        const column = await db.getFirstAsync<{ n: number }>("SELECT count(*) AS n FROM pragma_table_info('todos') WHERE name='endTime'");
+        if (!column?.n) await db.execAsync('ALTER TABLE todos ADD COLUMN endTime TEXT;');
+        await db.execAsync('PRAGMA user_version = 12;');
       });
     }
     return db;

@@ -5,7 +5,7 @@ import { Emoji } from '@/components/ui/Emoji';
 import { Text } from '@/components/ui/Text';
 import type { Theme } from '@/constants/theme';
 import { dayOfMonth, monthName, weekdayName } from '@/lib/date';
-import type { DiaryEntry, Todo } from '@/lib/repos/diary';
+import { formatTodoTime, type DiaryEntry, type Todo } from '@/lib/repos/diary';
 import { MOODS } from './JournalEditor';
 
 /** Diary page as an image: the day's to-dos, journal and mood, and its one-line summary. */
@@ -18,7 +18,7 @@ export function diaryShareContent({ theme, date, todos, journal, summary }: {
     subtitle: `${weekdayName(date)}, ${date.slice(0, 4)}`,
     body: <View style={{ gap: theme.spacing.md }}>
       {todos.length > 0 && <SharePanel>
-        {todos.map((todo) => <ShareLine key={todo.id} title={todo.text} muted={!!todo.isDone} value={todo.time ?? undefined} leading={<ShareCheck done={!!todo.isDone} />} />)}
+        {todos.map((todo) => <ShareLine key={todo.id} title={todo.text} muted={!!todo.isDone} value={formatTodoTime(todo)} leading={<ShareCheck done={!!todo.isDone} />} />)}
       </SharePanel>}
       {(journal?.text || journal?.mood !== null && journal?.mood !== undefined) && <SharePanel gap={theme.spacing.sm}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

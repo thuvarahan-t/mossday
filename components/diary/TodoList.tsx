@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAction } from '@/hooks/useResource';
 import { useSheetState } from '@/hooks/useSheetState';
 import { useTheme } from '@/hooks/useTheme';
-import { deleteTodo, reorderTodos, restoreTodo, toggleTodo, type Todo } from '@/lib/repos/diary';
+import { deleteTodo, formatTodoTime, reorderTodos, restoreTodo, toggleTodo, type Todo } from '@/lib/repos/diary';
 import { haptics } from '@/lib/haptics';
 import { TodoSheet } from './TodoSheet';
 import { savedTodoOrder } from './todoOrder';
@@ -83,6 +83,7 @@ function TodoRow({ todo, done, separator, separatorInset, onToggle, onEdit, onDe
 }) {
   const theme = useTheme();
   const reorderActions = useReorderActions();
+  const time = formatTodoTime(todo);
   return <SwipeableRow onDelete={onDelete}>
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: theme.spacing.lg, gap: theme.spacing.md }}>
       <Checkbox checked={done} onToggle={onToggle} accessibilityLabel={todo.text} />
@@ -92,7 +93,7 @@ function TodoRow({ todo, done, separator, separatorInset, onToggle, onEdit, onDe
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing.lg, paddingRight: theme.spacing.lg, gap: theme.spacing.md }}>
             <View style={{ flex: 1 }}><StrikeText struck={done}>{todo.text}</StrikeText></View>
             {todo.priority ? <Text color="dangerText">!</Text> : null}
-            {todo.time ? <Text variant="subheadline" color="secondaryLabel" tabular>{todo.time}</Text> : null}
+            {time ? <Text variant="subheadline" color="secondaryLabel" tabular>{time}</Text> : null}
           </View>
         </PressableScale>
       </ReorderHandle>
