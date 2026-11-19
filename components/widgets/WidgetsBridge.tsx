@@ -6,7 +6,7 @@ import { subscribeToStore } from '@/lib/repos/store';
 
 export function WidgetsBridge() {
   useEffect(() => {
-    if (Platform.OS !== 'ios' || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return;
+    if (Platform.OS === 'web' || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return;
     let disposed = false;
     let revision = 0;
     let lastSnapshot = '';
@@ -15,9 +15,10 @@ export function WidgetsBridge() {
       const [{ default: widget }, { notes, blocks }] = await Promise.all([import('./NotesWidget'), listNotes()]);
       if (disposed || request !== revision) return;
       const ordered = [...notes.filter((note) => note.isPinned), ...notes.filter((note) => !note.isPinned)];
+      const visible = Platform.OS === 'android' ? ordered : ordered.slice(0, 7);
       const snapshot = {
         count: notes.length,
-        notes: ordered.slice(0, 7).map((note) => ({
+        notes: visible.map((note) => ({
           id: note.id,
           title: (note.title.trim() || notePreview(blocks.filter((block) => block.noteId === note.id)) || 'Untitled note').slice(0, 100),
           pinned: !!note.isPinned,

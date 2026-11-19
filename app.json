@@ -72,6 +72,14 @@
                   "systemLarge"
                 ],
                 "initialLayout": "components/widgets/NotesWidget.tsx"
+              },
+              "android": {
+                "minWidth": 170,
+                "minHeight": 105,
+                "targetCellWidth": 3,
+                "targetCellHeight": 2,
+                "resizeMode": "both",
+                "initialLayout": "components/widgets/NotesWidget.android.tsx"
               }
             },
             {
@@ -84,11 +92,14 @@
                   "systemMedium"
                 ],
                 "initialLayout": "components/widgets/ExpenseWidget.tsx"
-              }
+              },
+              "android": null
             }
-          ]
+          ],
+          "enableAndroid": true
         }
-      ]
+      ],
+      "./plugins/withAndroidExpenseWidget"
     ],
     "experiments": {
       "typedRoutes": true,

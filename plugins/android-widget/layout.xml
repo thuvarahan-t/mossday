@@ -1,0 +1,13 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/mossday_expense_action"
+  android:layout_width="match_parent" android:layout_height="match_parent"
+  android:orientation="vertical" android:gravity="center_vertical"
+  android:padding="14dp" android:background="@drawable/mossday_expense_background"
+  android:contentDescription="Add expense">
+  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:text="+" android:textColor="#BFECCA" android:textSize="26sp"
+    android:importantForAccessibility="no" android:includeFontPadding="false"/>
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:text="Add expense" android:textColor="#F5FFF6" android:textSize="16sp"
+    android:textStyle="bold" android:maxLines="2" android:ellipsize="end" />
+</LinearLayout>
