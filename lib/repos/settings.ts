@@ -1,13 +1,13 @@
 import { read, write } from './store';
 import { isCurrencyCode, setActiveCurrency, type CurrencyCode } from '../currency';
-export type Settings = { appearance: 'system' | 'light' | 'dark'; dailyBudget: number; monthlyBudget: number; currency: CurrencyCode; currencyPrompted: boolean };
-export const defaultSettings: Settings = { appearance: 'system', dailyBudget: 0, monthlyBudget: 0, currency: 'LKR', currencyPrompted: false };
+export type Settings = { appearance: 'system' | 'light' | 'dark'; dailyBudget: number; monthlyBudget: number; currency: CurrencyCode; currencyPrompted: boolean; spendingRecap: boolean };
+export const defaultSettings: Settings = { appearance: 'system', dailyBudget: 0, monthlyBudget: 0, currency: 'LKR', currencyPrompted: false, spendingRecap: false };
 export async function getSettings(): Promise<Settings> {
   const rows = await read((db) => db.getAllAsync<{ key: string; value: string }>('SELECT * FROM settings'));
   const values = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return { appearance: values.appearance === 'light' || values.appearance === 'dark' ? values.appearance : 'system',
     dailyBudget: Number(values.dailyBudget) || 0, monthlyBudget: Number(values.monthlyBudget) || 0,
-    currency: isCurrencyCode(values.currency) ? values.currency : 'LKR', currencyPrompted: values.currencyPrompted === '1' };
+    currency: isCurrencyCode(values.currency) ? values.currency : 'LKR', currencyPrompted: values.currencyPrompted === '1', spendingRecap: values.spendingRecap === '1' };
 }
 export const setSetting = (key: keyof Settings, value: string | number) => write(async (db) => {
   if (key === 'currency' && !isCurrencyCode(value)) throw new Error('Choose a supported currency.');

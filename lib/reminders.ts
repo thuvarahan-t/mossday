@@ -3,6 +3,10 @@ import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 import { listHabits } from './repos/habits';
 import { listNoteReminders } from './repos/notes';
+import { addDays, parseLocalDate, todayLocalDate } from './date';
+import { formatMoney } from './money';
+import { listDailyExpenses } from './repos/expenses';
+import { getSettings, setSetting } from './repos/settings';
 import { read, write } from './repos/store';
 
 export type MealReminder = { name: string; time: string; enabled: boolean };
@@ -41,13 +45,57 @@ export async function saveMealReminder(reminder: MealReminder) {
   await write(async (db) => { await db.runAsync('INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', `meal:${reminder.name}`, JSON.stringify(reminder)); }, 'reminders');
 }
 
-type Wanted = { body: string; trigger: Notifications.SchedulableNotificationTriggerInput; url?: string };
+export async function saveSpendingRecap(enabled: boolean) {
+  if (enabled) await ensureReminderPermission();
+  await setSetting('spendingRecap', enabled ? 1 : 0);
+}
+
+type Wanted = { title?: string; body: string; trigger: Notifications.SchedulableNotificationTriggerInput; url?: string };
 const repeating = (time: string, weekday?: number): Notifications.SchedulableNotificationTriggerInput => {
   validateTime(time);
   const [hour, minute] = time.split(':').map(Number);
   return weekday ? { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday, hour, minute, channelId: CHANNEL }
     : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL };
 };
+
+async function addSpendingRecaps(wanted: Map<string, Wanted>, now: Date) {
+  const { spendingRecap, dailyBudget, currency } = await getSettings();
+  if (!spendingRecap) return;
+  const today = todayLocalDate(now);
+  const morning = parseLocalDate(today);
+  morning.setHours(8);
+  const first = now < morning ? today : addDays(today, 1);
+  const last = addDays(first, 6);
+  const expenses = await listDailyExpenses(addDays(first, -1), addDays(last, -1));
+  const totals = new Map<string, number>();
+  for (const expense of expenses) totals.set(expense.date, (totals.get(expense.date) ?? 0) + expense.amount);
+  const money = (amount: number) => formatMoney(amount, currency);
+
+  for (let day = first; day <= last; day = addDays(day, 1)) {
+    const spent = totals.get(addDays(day, -1));
+    let title = 'Good morning \u2600\uFE0F';
+    let body = 'No daily expenses were logged yesterday.';
+    if (spent !== undefined) {
+      const difference = dailyBudget - spent;
+      body = `You spent ${money(spent)} yesterday.`;
+      if (dailyBudget > 0 && difference > 0) {
+        title = 'Nice work! \u{1F389}';
+        body = `You spent ${money(difference)} less than your daily budget yesterday.`;
+      } else if (dailyBudget > 0 && difference < 0) {
+        title = 'A fresh start today \u{1F331}';
+        body = `You went ${money(-difference)} over your daily budget yesterday. Today is a clean slate.`;
+      } else if (dailyBudget > 0) {
+        title = 'Right on budget \u{1F44F}';
+      }
+    }
+    const date = parseLocalDate(day);
+    date.setHours(8);
+    // Changes to the amount or delivery time replace the previous schedule.
+    wanted.set(`${PREFIX}recap:${date.getTime()}:${title}:${body}`, {
+      title, body, url: '/expenses', trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL },
+    });
+  }
+}
 
 /** Reconcile OS schedules from saved preferences; never ask for permissions at startup. */
 export async function syncReminders() {
@@ -64,11 +112,12 @@ export async function syncReminders() {
     wanted.set(`${PREFIX}note:${note.id}:${note.reminderAt}:${note.title}`, { body: note.title.trim() || 'Note reminder', url: `/note/${note.id}`,
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(note.reminderAt), channelId: CHANNEL } });
   }
+  await addSpendingRecaps(wanted, new Date());
   for (const existing of scheduled) if (existing.identifier.startsWith(PREFIX) && !wanted.has(existing.identifier)) await Notifications.cancelScheduledNotificationAsync(existing.identifier);
   if (!(await Notifications.getPermissionsAsync()).granted) return;
   const existingIds = new Set(scheduled.map((item) => item.identifier));
   for (const [identifier, reminder] of wanted) if (!existingIds.has(identifier)) {
     await Notifications.scheduleNotificationAsync({ identifier, trigger: reminder.trigger,
-      content: { title: 'Mossday', body: reminder.body, sound: 'default', data: reminder.url ? { url: reminder.url } : {} } });
+      content: { title: reminder.title ?? 'Mossday', body: reminder.body, sound: 'default', data: reminder.url ? { url: reminder.url } : {} } });
   }
 }

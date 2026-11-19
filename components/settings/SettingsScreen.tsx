@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { useCallback, useRef, useState } from 'react';
 import { applyAppearance } from '@/lib/appearance';
 import { Button } from '@/components/ui/Button';
@@ -13,7 +14,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useSheetState } from '@/hooks/useSheetState';
 import { exportBackup, storageBytes } from '@/lib/backup';
 import { formatMoney } from '@/lib/money';
-import { getMealReminders, saveMealReminder, type MealReminder } from '@/lib/reminders';
+import { getMealReminders, saveMealReminder, saveSpendingRecap, type MealReminder } from '@/lib/reminders';
 import { getSettings, setSetting } from '@/lib/repos/settings';
 import { useCurrency } from '@/hooks/useCurrency';
 import { BudgetSheet, type BudgetKey } from './BudgetSheet';
@@ -50,6 +51,11 @@ export function SettingsScreen() {
         {(['dailyBudget', 'monthlyBudget'] as const).map((key) => <ListRow key={key} title={key === 'dailyBudget' ? 'Daily Budget' : 'Monthly Budget'} icon={key === 'dailyBudget' ? { icon: 'target', color: 'orange' } : { icon: 'calendar', color: 'red' }}
           value={data.settings[key] ? formatMoney(data.settings[key]) : 'Not set'} accessory="chevron" onPress={() => setBudget(key)} />)}
       </GroupedList>
+      {Platform.OS !== 'web' && <GroupedList>
+        <ListRow title="Morning spending recap" subtitle="Daily at 8:00 AM" icon={{ icon: 'coffee', color: 'orange' }}
+          accessory={<Toggle value={data.settings.spendingRecap} disabled={busy} accessibilityLabel="Morning spending recap"
+            onValueChange={(enabled) => run(() => saveSpendingRecap(enabled))} />} />
+      </GroupedList>}
       <SectionHeader title="Meal reminders" />
       <GroupedList>{data.meals.map((meal) => <ListRow key={meal.name} title={meal.name} value={meal.time.replace(/^0/, '')} icon={mealIcons[meal.name]}
         onPress={() => setReminder(meal)} accessory={<Toggle value={meal.enabled} disabled={busy} accessibilityLabel={`${meal.name} reminder`} onValueChange={(enabled) => run(() => saveMealReminder({ ...meal, enabled }))} />} />)}</GroupedList>

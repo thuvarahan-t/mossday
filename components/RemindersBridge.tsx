@@ -24,8 +24,10 @@ if (Platform.OS !== 'web') {
 /** Tapping a reminder that carries a `url` (note reminders do) opens that screen. */
 function openFromNotification(response: Notifications.NotificationResponse | null) {
   const url = response?.notification.request.content.data?.url;
-  if (response?.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER || typeof url !== 'string' || !url.startsWith('/note/')) return;
-  router.push({ pathname: '/note/[id]', params: { id: url.slice('/note/'.length) } });
+  if (response?.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER || typeof url !== 'string') return;
+  if (url === '/expenses') router.navigate('/expenses');
+  else if (url.startsWith('/note/')) router.push({ pathname: '/note/[id]', params: { id: url.slice('/note/'.length) } });
+  else return;
   void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
 }
 
@@ -49,7 +51,7 @@ export function RemindersBridge() {
       }, 300);
     };
     update();
-    const unsubscribe = subscribeToStore((topic) => { if (topic === 'reminders') update(); });
+    const unsubscribe = subscribeToStore((topic) => { if (topic === 'reminders' || topic === 'data') update(); });
     const appState = AppState.addEventListener('change', (state) => { if (state === 'active') update(); });
     return () => { clearTimeout(timer); unsubscribe(); appState.remove(); };
   }, [toast]);

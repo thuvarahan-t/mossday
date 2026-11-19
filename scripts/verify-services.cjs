@@ -110,7 +110,17 @@ async function main() {
   };
   const soon = new Date(Date.now() + 3_600_000).toISOString();
   let noteReminders = [{ id: 4, title: 'Call Amma', reminderAt: soon }, { id: 5, title: 'Fired', reminderAt: '2020-01-01T09:00:00.000Z' }];
+  const dates = load('lib/date.ts', {});
+  let dailyBudget = 50000;
+  let expenses = [];
   const reminders = load('lib/reminders.ts', {
+    './date': dates,
+    './money': { formatMoney: (amount, currency) => `${currency} ${amount / 100}` },
+    './repos/expenses': { listDailyExpenses: async () => expenses },
+    './repos/settings': {
+      getSettings: async () => ({ spendingRecap: preferences.get('spendingRecap') === 1, dailyBudget, currency: 'LKR' }),
+      setSetting: async (key, value) => { preferences.set(key, value); },
+    },
     'expo-notifications': notifications, 'react-native': { Platform: { OS: 'android' } },
     './repos/habits': { listHabits: async () => [{ id: 1, name: 'Water', activeDays: 65, reminderTime: '10:15' }] },
     './repos/notes': { listNoteReminders: async () => noteReminders },
@@ -133,7 +143,31 @@ async function main() {
   const count = scheduled.size;
   await reminders.syncReminders();
   assert.equal(scheduled.size, count, 'Sync is idempotent');
+  await reminders.saveSpendingRecap(true);
+  await reminders.syncReminders();
+  const recaps = () => [...scheduled.values()].filter((item) => item.identifier.startsWith('mossday:recap:'));
+  assert.equal(recaps().length, 7);
+  const morning = recaps()[0].trigger.date;
+  assert.equal(morning.getHours(), 8);
+  assert.equal(recaps()[0].content.data.url, '/expenses');
+  assert.match(recaps()[0].content.body, /No daily expenses/);
+  expenses = [{ date: dates.addDays(dates.todayLocalDate(morning), -1), amount: 40000 }];
+  await reminders.syncReminders();
+  const firstRecap = () => recaps().find((item) => item.trigger.date.getTime() === morning.getTime());
+  assert.match(firstRecap().content.body, /LKR 100 less/);
+  dailyBudget = 30000;
+  await reminders.syncReminders();
+  assert.match(firstRecap().content.body, /LKR 100 over/);
+  assert.equal(recaps().length, 7, 'Budget edits replace the earlier recap');
+  dailyBudget = 0;
+  await reminders.syncReminders();
+  assert.equal(firstRecap().content.body, 'You spent LKR 400 yesterday.');
+  await reminders.saveSpendingRecap(false);
+  await reminders.syncReminders();
+  assert.equal(recaps().length, 0);
   allowed = false;
+  await assert.rejects(reminders.saveSpendingRecap(true));
+  assert.equal(preferences.get('spendingRecap'), 0);
   await assert.rejects(reminders.saveMealReminder({ name: 'Breakfast', time: '09:00', enabled: true }));
   assert.equal(preferences.has('meal:Breakfast'), false, 'Denied permission does not enable reminder');
   await assert.rejects(reminders.saveMealReminder({ name: 'Breakfast', time: '99:99', enabled: true }));
