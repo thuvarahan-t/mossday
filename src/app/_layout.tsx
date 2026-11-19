@@ -8,6 +8,7 @@ import { Stack, TransitionPresets } from 'expo-router/js-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { WidgetsBridge } from '@/components/widgets/WidgetsBridge';
 import { RemindersBridge } from '@/components/RemindersBridge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -109,6 +110,7 @@ function AppShell({ currencyPrompt, onCurrencyDone }: { currencyPrompt: FormShee
         <ToastProvider>
           <ShareProvider>
           <RemindersBridge />
+          <WidgetsBridge />
           <BlurTargetContent style={styles.fill}>
             <Stack
               screenOptions={{

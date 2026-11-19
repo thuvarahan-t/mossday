@@ -60,7 +60,7 @@ export function ExpensesScreen() {
   const [period, setPeriod] = useState<Period>('Day');
   // Links such as Today's "Spent today" open a specific day; `at` changes on every link,
   // so repeated taps still jump back even when the day itself is the same.
-  const { day, at } = useLocalSearchParams<{ day?: string; at?: string }>();
+  const { day, at, compose } = useLocalSearchParams<{ day?: string; at?: string; compose?: string }>();
   const [handledLink, setHandledLink] = useState<string>();
   if (at && at !== handledLink) {
     setHandledLink(at);
@@ -68,6 +68,16 @@ export function ExpensesScreen() {
   }
   useEffect(preloadCategories, []);
   const [editor, setEditor, editorTransition] = useSheetState<Expense | 'new' | 'monthly'>();
+  useEffect(() => {
+    if (compose !== '1') return;
+    const open = setTimeout(() => {
+      setDate(today);
+      setPeriod('Day');
+      setEditor('new');
+      router.setParams({ compose: '' });
+    }, 0);
+    return () => clearTimeout(open);
+  }, [compose, setEditor, today]);
   const [budgetEditor, setBudgetEditor, budgetTransition] = useSheetState<BudgetKey>();
   const selected = periodRange(period, date);
   const { data: result, error, refresh } = useResource(useCallback(() => loadPeriod(period, date), [period, date]));

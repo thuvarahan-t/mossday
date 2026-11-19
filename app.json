@@ -54,7 +54,41 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-asset",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.thuvarahan.mossday.widgets",
+          "groupIdentifier": "group.com.thuvarahan.mossday",
+          "widgets": [
+            {
+              "name": "MossdayNotes",
+              "displayName": "Mossday Notes",
+              "description": "See your notes and open them from the Home Screen.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "systemLarge"
+                ],
+                "initialLayout": "components/widgets/NotesWidget.tsx"
+              }
+            },
+            {
+              "name": "MossdayExpense",
+              "displayName": "Quick Add Expense",
+              "description": "Open the expense form from the Home Screen.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium"
+                ],
+                "initialLayout": "components/widgets/ExpenseWidget.tsx"
+              }
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
